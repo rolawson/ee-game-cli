@@ -4,7 +4,7 @@ import sys
 import random
 import traceback
 from collections import defaultdict
-
+# --- CONSTANTS ---
 SPELL_JSON_DATA = """
 [
   {"id": 1, "card_name": "Fireball", "elephant": "Elé Phlambé", "element": "Fire", "is_conjury": false, "priority": 4, "spell_types": ["attack"], "notfirst": 0, "notlast": 0, "resolve_effects": [{"condition": {"type": "always"}, "action": {"type": "damage", "target": "prompt_enemy", "parameters": {"value": 2}}}]},
@@ -16,9 +16,21 @@ SPELL_JSON_DATA = """
   {"id": 7, "card_name": "Turbulence", "elephant": "Dumblo", "element": "Wind", "is_conjury": false, "priority": 4, "spell_types": ["attack", "response"], "notfirst": 1, "notlast": 0, "resolve_effects": [{"condition": {"type": "if_spell_previously_resolved_this_round"}, "action": {"type": "damage", "target": "prompt_enemy", "parameters": {"value": 2}}}, {"condition": {"type": "if_not", "sub_condition": {"type": "if_spell_previously_resolved_this_round"}}, "action": {"type": "damage", "target": "prompt_enemy", "parameters": {"value": 1}}}]},
   {"id": 8, "card_name": "Blow", "elephant": "Dumblo", "element": "Wind", "is_conjury": false, "priority": "A", "spell_types": ["boost"], "notfirst": 2, "notlast": 0, "advance_effects": [{"condition": {"type": "always"}, "action": {"type": "advance", "target": "prompt_friendly_past_spell"}}]},
   {"id": 9, "card_name": "Gust", "elephant": "Dumblo", "element": "Wind", "is_conjury": false, "priority": "A", "spell_types": ["boost"], "notfirst": 0, "notlast": 0, "advance_effects": [{"condition": {"type": "always"}, "action": {"type": "player_choice", "options": [{"label": "Advance this spell", "type": "advance", "target": "this_spell"}, {"label": "Advance another active spell", "type": "advance", "target": "prompt_other_friendly_active_spell"}]}}]},
-  {"id": 10, "card_name": "Crush", "elephant": "Columnfoot", "element": "Earth", "is_conjury": false, "priority": 3, "spell_types": ["attack"], "notfirst": 0, "notlast": 0, "resolve_effects": [{"condition": {"type": "always"}, "action": {"type": "weaken", "target": "prompt_enemy", "parameters": {"value": 2}}}]},
+  {"id": 10, "card_name": "Crush", "elephant": "Columnfoot", "element": "Earth", "is_conjury": false, "priority": 3, "spell_types": ["attack"], "notfirst": 0, "notlast": 0, "resolve_effects": [{"condition": {"type": "always"}, "action": {"type": "weaken", "target": "prompt_enemy", "parameters": {"value": 1}}}]},
   {"id": 11, "card_name": "Aftershocks", "elephant": "Columnfoot", "element": "Earth", "is_conjury": true, "priority": 5, "spell_types": ["attack", "response", "boost"], "notfirst": 1, "notlast": 0, "resolve_effects": [{"condition": {"type": "if_caster_has_active_spell_of_type", "parameters": {"spell_type": "attack", "count": 1, "exclude_self": true}}, "action": {"type": "damage", "target": "prompt_enemy", "parameters": {"value": 2}}}], "advance_effects": [{"condition": {"type": "always"}, "action": {"type": "advance", "target": "this_spell"}}]},
-  {"id": 12, "card_name": "Quake", "elephant": "Columnfoot", "element": "Earth", "is_conjury": false, "priority": 2, "spell_types": ["attack"], "notfirst": 0, "notlast": 0, "resolve_effects": [{"condition": {"type": "always"}, "action": {"type": "discard_from_hand", "target": "prompt_enemy", "parameters": {"value": 1}}}]}
+  {"id": 12, "card_name": "Quake", "elephant": "Columnfoot", "element": "Earth", "is_conjury": false, "priority": 2, "spell_types": ["attack"], "notfirst": 0, "notlast": 0, "resolve_effects": [{"condition": {"type": "always"}, "action": {"type": "discard_from_hand", "target": "prompt_enemy", "parameters": {"value": 1}}}]},
+  {"id": 13, "card_name": "Seed", "elephant": "Trunxie", "element": "Wood", "is_conjury": false, "priority": "A", "spell_types": ["boost"], "notfirst": 2, "notlast": 0, "advance_effects": [{"condition": {"type": "always"}, "action": {"type": "advance", "target": "prompt_friendly_past_spell"}}, {"condition": {"type": "always"}, "action": {"type": "advance", "target": "this_spell"}}]},
+  {"id": 14, "card_name": "Grow", "elephant": "Trunxie", "element": "Wood", "is_conjury": false, "priority": 3, "spell_types": ["remedy", "response"], "notfirst": 1, "notlast": 0, "resolve_effects": [{"condition": {"type": "always"}, "action": {"type": "player_choice", "options": [{"label": "Heal for 1", "type": "heal", "target": "self", "parameters": {"value": 1}}, {"label": "Heal for each of your other active spells", "type": "heal_per_spell", "target": "self", "parameters": {"spell_type": "any", "exclude_self": true}}]}}]},
+  {"id": 15, "card_name": "Prickle", "elephant": "Trunxie", "element": "Wood", "is_conjury": false, "priority": 4, "spell_types": ["attack", "response"], "notfirst": 1, "notlast": 0, "resolve_effects": [{"condition": {"type": "always"}, "action": {"type": "player_choice", "options": [{"label": "Damage for 1", "type": "damage", "target": "prompt_enemy", "parameters": {"value": 1}}, {"label": "Damage for each of your other active spells", "type": "damage_per_spell", "target": "prompt_enemy", "parameters": {"spell_type": "any", "exclude_self": true}}]}}]},
+  {"id": 16, "card_name": "Reinforce", "elephant": "General Guardjendra", "element": "Metal", "is_conjury": false, "priority": 2, "spell_types": ["remedy"], "notfirst": 0, "notlast": 0, "resolve_effects": [{"condition": {"type": "always"}, "action": {"type": "bolster", "target": "self", "parameters": {"value": 1}}}]},
+  {"id": 17, "card_name": "Besiege", "elephant": "General Guardjendra", "element": "Metal", "is_conjury": false, "priority": 4, "spell_types": ["attack", "response", "boost"], "notfirst": 1, "notlast": 0, "resolve_effects": [{"condition": {"type": "if_caster_has_active_spell_of_type", "parameters": {"spell_type": "remedy", "count": 1, "exclude_self": false}}, "action": {"type": "damage", "target": "prompt_enemy", "parameters": {"value": 1}}}], "advance_effects": [{"condition": {"type": "always"}, "action": {"type": "advance", "target": "this_spell"}}]},
+  {"id": 18, "card_name": "Defend", "elephant": "General Guardjendra", "element": "Metal", "is_conjury": false, "priority": 3, "spell_types": ["remedy", "response", "boost"], "notfirst": 1, "notlast": 0, "resolve_effects": [{"condition": {"type": "if_caster_has_active_spell_of_type", "parameters": {"spell_type": "attack", "count": 1, "exclude_self": false}}, "action": {"type": "heal", "target": "self", "parameters": {"value": 1}}}], "advance_effects": [{"condition": {"type": "always"}, "action": {"type": "advance", "target": "this_spell"}}]},
+  {"id": 25, "card_name": "Reflect", "elephant": "Gold Dust", "element": "Sunbeam", "is_conjury": false, "priority": 4, "spell_types": ["attack", "response"], "notfirst": 1, "notlast": 0, "resolve_effects": [{"condition": {"type": "if_enemy_has_active_spell_of_type", "parameters": {"spell_type": "attack", "count": 1}}, "action": {"type": "damage", "target": "all_enemies_who_met_condition", "parameters": {"value": 3}}}]},
+  {"id": 26, "card_name": "Glare", "elephant": "Gold Dust", "element": "Sunbeam", "is_conjury": true, "priority": 5, "spell_types": ["attack"], "notfirst": 0, "notlast": 0, "resolve_effects": [{"condition": {"type": "always"}, "action": {"type": "weaken", "target": "prompt_enemy", "parameters": {"value": 1}}}, {"condition": {"type": "always"}, "action": {"type": "damage", "target": "prompt_enemy", "parameters": {"value": 1}}}]},
+  {"id": 27, "card_name": "Illuminate", "elephant": "Gold Dust", "element": "Sunbeam", "is_conjury": false, "priority": 1, "spell_types": [], "notfirst": 0, "notlast": 0, "resolve_effects": [{"condition": {"type": "always"}, "action": {"type": "cast_extra_spell", "target": "self", "parameters": {"source": "hand"}}}]},
+  {"id": 28, "card_name": "Slumber", "elephant": "Luna Doze", "element": "Moonshine", "is_conjury": false, "priority": 5, "spell_types": ["remedy", "boost"], "notfirst": 0, "notlast": 1, "resolve_effects": [{"condition": {"type": "always"}, "action": {"type": "heal", "target": "self", "parameters": {"value": 1}}}], "advance_effects": [{"condition": {"type": "always"}, "action": {"type": "advance", "target": "this_spell"}}]},
+  {"id": 29, "card_name": "Nightglow", "elephant": "Luna Doze", "element": "Moonshine", "is_conjury": false, "priority": 2, "spell_types": ["remedy", "response", "boost"], "notfirst": 1, "notlast": 1, "resolve_effects": [{"condition": {"type": "always"}, "action": {"type": "bolster", "target": "self", "parameters": {"value": 1}}}], "advance_effects": [{"condition": {"type": "if_caster_has_active_spell_of_type", "parameters": {"spell_type": "any", "count": 1, "exclude_self": true}}, "action": {"type": "advance", "target": "this_spell"}}]},
+  {"id": 30, "card_name": "Bedim", "elephant": "Luna Doze", "element": "Moonshine", "is_conjury": false, "priority": 4, "spell_types": ["attack", "response", "boost"], "notfirst": 1, "notlast": 1, "resolve_effects": [{"condition": {"type": "always"}, "action": {"type": "damage", "target": "prompt_enemy", "parameters": {"value": 1}}}], "advance_effects": [{"condition": {"type": "if_board_has_active_spell_of_type", "parameters": {"spell_type": "attack", "count": 1, "exclude_self": true}}, "action": {"type": "advance", "target": "this_spell"}}]}
 ]
 """
 
@@ -33,42 +45,66 @@ class RoundOverException(Exception):
     pass
 
 # --- DATA MODELS ---
+# +++ REPLACE THIS CLASS +++
 class Card:
-    def __init__(self, card_data):
-        self.id = card_data.get('id'); self.name = card_data.get('card_name')
-        self.elephant = card_data.get('elephant'); self.element = card_data.get('element')
-        self.priority = card_data.get('priority'); self.types = card_data.get('spell_types', [])
-        self.is_conjury = card_data.get('is_conjury', False)
-        self.notfirst = card_data.get('notfirst', 0); self.notlast = card_data.get('notlast', 0)
-        self.resolve_effects = card_data.get('resolve_effects', []); self.advance_effects = card_data.get('advance_effects', [])
-    def __repr__(self): return f"Card({self.name})"
-    def get_instructions_text(self):
+    def __init__(self, card_data: dict):
+        self.id: int = card_data.get('id')
+        self.name: str = card_data.get('card_name')
+        self.elephant: str = card_data.get('elephant')
+        self.element: str = card_data.get('element')
+        self.priority = card_data.get('priority')
+        self.types: list[str] = card_data.get('spell_types', [])
+        self.is_conjury: bool = card_data.get('is_conjury', False)
+        self.notfirst: int = card_data.get('notfirst', 0)
+        self.notlast: int = card_data.get('notlast', 0)
+        self.resolve_effects: list[dict] = card_data.get('resolve_effects', [])
+        self.advance_effects: list[dict] = card_data.get('advance_effects', [])
+    
+    def __repr__(self) -> str: return f"Card({self.name})"
+    
+    def get_instructions_text(self) -> str:
         texts = []
         if self.resolve_effects:
             for effect in self.resolve_effects:
-                action = effect['action']; condition_text = self._format_condition(effect['condition'])
-                action_text = self._format_action(action); texts.append(f"{condition_text}{action_text}")
+                action = effect['action']
+                condition_text = self._format_condition(effect['condition'])
+                action_text = self._format_action(action)
+                texts.append(f"{condition_text}{action_text}")
         if self.advance_effects:
             adv_texts = [self._format_action(eff['action']) for eff in self.advance_effects]
             texts.append(f"Advance Phase: {', '.join(adv_texts)}")
         return "; ".join(texts) if texts else "No effect."
-    def _format_condition(self, cond):
+
+    def _format_condition(self, cond: dict) -> str:
         cond_type = cond.get('type')
         if cond_type == 'always': return ""
-        if cond_type == 'if_caster_has_active_spell_of_type': p = cond['parameters']; return f"If you have {p['count']} other active {p['spell_type']} spell(s): "
+        if cond_type == 'if_caster_has_active_spell_of_type':
+            p = cond['parameters']
+            # --- THIS IS THE FIX ---
+            count_str = p.get('count', 1) 
+            return f"If you have {count_str} other active {p['spell_type']} spell(s): "
         if cond_type == 'if_spell_previously_resolved_this_round': return "If this spell resolved in a past clash: "
         if cond_type == 'if_not': return f"Otherwise: "
+        # A new condition for Bedim
+        if cond_type == 'if_board_has_active_spell_of_type':
+            p = cond['parameters']
+            count_str = p.get('count', 1)
+            return f"If there are {count_str} other active {p['spell_type']} spells on the board: "
         return f"If {cond_type.replace('_', ' ')}: "
-    def _format_action(self, action):
+
+    def _format_action(self, action: dict) -> str:
         action_type = action.get('type')
         if action_type == 'player_choice':
-            options = [self._format_action(opt) for opt in action['options']]; return f"Choose to: {' or '.join(options)}"
+            options = [self._format_action(opt) for opt in action['options']]
+            return f"Choose to: {' or '.join(options)}"
         params = action.get('parameters', {}); value = params.get('value', '')
         target_raw = action.get('target', 'self')
-        target_map = {'self': 'yourself', 'prompt_enemy': 'an enemy', 'this_spell': 'this spell',
-                      'prompt_other_friendly_active_spell': 'another friendly active spell',
-                      'prompt_friendly_past_spell': 'one of your past spells',
-                      'prompt_multi_enemy': 'one or more enemies'}
+        target_map = {
+            'self': 'yourself', 'prompt_enemy': 'an enemy', 'this_spell': 'this spell',
+            'prompt_other_friendly_active_spell': 'another friendly active spell',
+            'prompt_friendly_past_spell': 'one of your past spells',
+            'all_enemies_and_their_conjuries': 'each enemy and their conjuries'
+        }
         target = target_map.get(target_raw, target_raw.replace('_', ' '))
         return f"{action_type.replace('_', ' ').title()} {target} for {value}".strip()
 
@@ -214,10 +250,15 @@ class ActionHandler:
                 if isinstance(target, Player):
                     if not target.is_invulnerable:
                         damage = params.get('value', 1); target.health = max(0, target.health - damage)
+                        original_health = target.health
+                        target.health = max(0, target.health - damage)
                         gs.action_log.append(f"{caster.name}'s [{current_card.name}] dealt {damage} damage to {target.name}. ({target.health}/{target.max_health})")
                         self._fire_event('player_damaged', gs, player=caster.name, target=target.name, value=damage, card_id=current_card.id)
+                        if original_health > 0 and target.health <= 0:
+                            self.engine._check_for_round_end() # Check for round end after damage
+                        
                         if target.health <= 0:
-                            if self.engine._handle_trunk_loss(target) == 'game_over': return
+                           self.engine._handle_trunk_loss(target) #trigger trunk loss
                 elif isinstance(target, PlayedCard) and target.card.is_conjury:
                     target.status = 'cancelled'; gs.action_log.append(f"{caster.name}'s [{current_card.name}] CANCELLED [{target.card.name}].")
                     self._fire_event('spell_cancelled', gs, player=caster.name, target_card_id=target.card.id, card_id=current_card.id)
@@ -227,6 +268,8 @@ class ActionHandler:
                      if isinstance(t, Player):
                          if not t.is_invulnerable:
                             damage = params.get('value', 1); t.health = max(0, t.health - damage)
+                            original_health = t.health
+                            t.health = max(0, t.health - damage)
                             gs.action_log.append(f"{caster.name}'s [{current_card.name}] dealt {damage} damage to {t.name}. ({t.health}/{t.max_health})")
                             self._fire_event('player_damaged', gs, player=caster.name, target=t.name, value=damage, card_id=current_card.id)
                             if t.health <= 0:
@@ -234,6 +277,11 @@ class ActionHandler:
                      elif isinstance(t, PlayedCard) and t.card.is_conjury:
                         t.status = 'cancelled'; gs.action_log.append(f"{caster.name}'s [{current_card.name}] CANCELLED [{t.card.name}].")
                         self._fire_event('spell_cancelled', gs, player=caster.name, target_card_id=t.card.id, card_id=current_card.id)
+                        if original_health > 0 and t.health <= 0:
+                                self.engine._check_for_round_end()
+
+                        if t.health <= 0:
+                                self.engine._handle_trunk_loss(t)
             
             elif action_type == 'heal':
                 target.health = min(target.max_health, target.health + params.get('value', 1))
@@ -411,7 +459,7 @@ class GameEngine:
             for i, p in enumerate(self.gs.players):
                 self._check_and_rebuild_deck()
                 if p.is_human:
-                    options = {i+1: s for i, s in enumerate(self.gs.main_deck[:5]) if s}; choice = self._prompt_for_choice(p, options, f"{p.name}, choose a spell set to draft:")
+                    options = {i+1: s for i, s in enumerate(self.gs.main_deck) if s}; choice = self._prompt_for_choice(p, options, f"{p.name}, choose a spell set to draft:")
                     drafted_set = options[choice]; self.gs.main_deck.remove(drafted_set)
                 else: drafted_set = self.gs.main_deck.pop(0)
                 p.discard_pile.extend(drafted_set); self.gs.action_log.append(f"{p.name} drafted the '{drafted_set[0].elephant}' ({drafted_set[0].element}) set.")
@@ -629,13 +677,10 @@ class GameEngine:
                 player.discard_pile.append(spell.card)
         player.board = [[] for _ in range(4)]
         self.gs.action_log.append(f"{player.name}'s spells were cleared from the board.")
-        
-        # Check if the round should end now.
-        self._check_for_round_end()
 
     def _check_for_round_end(self) -> None:
-        active_players = [p for p in self.gs.players if p.trunks > 0]
-        if len(active_players) < 2:
+        conscious_players = [p for p in self.gs.players if p.health > 0]
+        if len(conscious_players) <= 1:
             raise RoundOverException()
     def _check_for_game_end(self) -> bool:
         active_players = [p for p in self.gs.players if p.trunks > 0]
