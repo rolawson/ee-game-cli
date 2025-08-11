@@ -1,0 +1,1262 @@
+[
+  {
+    "id": 1,
+    "card_name": "Fireball",
+    "elephant": "Elé Phlambé",
+    "element": "Fire",
+    "set_name": "1 Fire 1",
+    "is_conjury": false,
+    "priority": 4,
+    "spell_types": ["attack"],
+    "base_set": true,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 2}}
+      }
+    ],
+    "advance_effects": []
+  },
+{
+    "id": 2,
+    "card_name": "Scorch",
+    "elephant": "Elé Phlambé",
+    "element": "Fire",
+    "is_conjury": false,
+    "priority": 4,
+    "spell_types": ["attack", "boost"],
+    "notfirst": 0,
+    "notlast": 0,
+    "resolve_effects": [
+        {
+            "condition": {
+                "type": "always"
+            },
+            "action": {
+                "type": "damage_multi_target",
+                "target": "all_enemies_and_their_conjuries",
+                "parameters": {
+                    "value": 1
+                }
+            }
+        }
+    ]
+},
+  {
+    "id": 3,
+    "card_name": "Ignite",
+    "elephant": "Elé Phlambé",
+    "element": "Fire",
+    "set_name": "3 Fire 3",
+    "is_conjury": false,
+    "priority": 4,
+    "spell_types": ["attack", "response", "boost"],
+    "base_set": true,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_caster_has_active_spell_of_type", "parameters": {"spell_type": "attack", "count": 1, "exclude_self": true}},
+        "action": {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "card_name": "Nourish",
+    "elephant": "Spout Snout",
+    "element": "Water",
+    "set_name": "4 Water 1",
+    "is_conjury": false,
+    "priority": 3,
+    "spell_types": ["remedy"],
+    "base_set": true,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "heal", "target": "self", "parameters": {"value": 2}}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 5,
+    "card_name": "Flow",
+    "elephant": "Spout Snout",
+    "element": "Water",
+    "set_name": "5 Water 2",
+    "is_conjury": false,
+    "priority": 3,
+    "spell_types": ["remedy", "response", "boost"],
+    "base_set": true,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_caster_has_active_spell_of_type", "parameters": {"spell_type": "remedy", "count": 1, "exclude_self": true}},
+        "action": {"type": "heal", "target": "self", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "card_name": "Cleanse",
+    "elephant": "Spout Snout",
+    "element": "Water",
+    "set_name": "6 Water 3",
+    "is_conjury": false,
+    "priority": 3,
+    "spell_types": ["attack", "remedy"],
+    "base_set": true,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "player_choice", "options": [
+          {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 1}},
+          {"type": "heal", "target": "self", "parameters": {"value": 1}}
+        ]}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 7,
+    "card_name": "Turbulence",
+    "elephant": "Dumblo",
+    "element": "Wind",
+    "set_name": "7 Wind 1",
+    "is_conjury": false,
+    "priority": 4,
+    "spell_types": ["attack", "response"],
+    "base_set": true,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_spell_previously_resolved_this_round"},
+        "action": {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 2}}
+      },
+      {
+        "condition": {"type": "if_not", "sub_condition": {"type": "if_spell_previously_resolved_this_round"}},
+        "action": {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 8,
+    "card_name": "Blow",
+    "elephant": "Dumblo",
+    "element": "Wind",
+    "set_name": "8 Wind 2",
+    "is_conjury": false,
+    "priority": "A",
+    "spell_types": ["boost"],
+    "base_set": true,
+    "resolve_effects": [],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance_from_past_clash", "target": "prompt_choose_past_clash"}
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "card_name": "Gust",
+    "elephant": "Dumblo",
+    "element": "Wind",
+    "set_name": "9 Wind 3",
+    "is_conjury": false,
+    "priority": "A",
+    "spell_types": ["boost"],
+    "base_set": true,
+    "resolve_effects": [],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "player_choice", "options": [
+          {"type": "advance", "target": "this_spell", "parameters": {"value": 1}},
+          {"type": "advance", "target": "prompt_other_friendly_active_spell", "parameters": {"value": 1}}
+        ]}
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "card_name": "Crush",
+    "elephant": "Columnfoot",
+    "element": "Earth",
+    "set_name": "10 Earth 1",
+    "is_conjury": false,
+    "priority": 3,
+    "spell_types": ["attack"],
+    "base_set": true,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "weaken", "target": "prompt_player", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 11,
+    "card_name": "Aftershocks",
+    "elephant": "Columnfoot",
+    "element": "Earth",
+    "set_name": "11 Earth 2",
+    "is_conjury": true,
+    "priority": 5,
+    "spell_types": ["attack", "response", "boost"],
+    "base_set": true,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_caster_has_active_spell_of_type", "parameters": {"spell_type": "attack", "count": 1, "exclude_self": true}},
+        "action": {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 2}}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "card_name": "Quake",
+    "elephant": "Columnfoot",
+    "element": "Earth",
+    "set_name": "12 Earth 3",
+    "is_conjury": false,
+    "priority": 2,
+    "spell_types": ["attack"],
+    "base_set": true,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "discard_from_hand", "target": "prompt_enemy", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 13,
+    "card_name": "Seed",
+    "elephant": "Trunxie",
+    "element": "Wood",
+    "set_name": "13 Wood 1",
+    "is_conjury": false,
+    "priority": "A",
+    "spell_types": ["boost"],
+    "base_set": false,
+    "resolve_effects": [],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "prompt_friendly_past_spell", "parameters": {"value": 1}}
+      },
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "card_name": "Grow",
+    "elephant": "Trunxie",
+    "element": "Wood",
+    "set_name": "14 Wood 2",
+    "is_conjury": false,
+    "priority": 3,
+    "spell_types": ["remedy", "response"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "player_choice", "options": [
+          {"type": "heal", "target": "self", "parameters": {"value": 1}},
+          {"type": "heal_per_spell", "target": "self", "parameters": {"spell_type": "any", "exclude_self": true}}
+        ]}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 15,
+    "card_name": "Prickle",
+    "elephant": "Trunxie",
+    "element": "Wood",
+    "set_name": "15 Wood 3",
+    "is_conjury": false,
+    "priority": 4,
+    "spell_types": ["attack", "response"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "player_choice", "options": [
+          {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 1}},
+          {"type": "damage_per_spell", "target": "prompt_player_or_conjury", "parameters": {"spell_type": "any", "exclude_self": true}}
+        ]}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 16,
+    "card_name": "Reinforce",
+    "elephant": "General Guardjendra",
+    "element": "Metal",
+    "set_name": "16 Metal 1",
+    "is_conjury": false,
+    "priority": 2,
+    "spell_types": ["remedy"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "bolster", "target": "self", "parameters": {"value": 2}}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 17,
+    "card_name": "Besiege",
+    "elephant": "General Guardjendra",
+    "element": "Metal",
+    "set_name": "17 Metal 2",
+    "is_conjury": false,
+    "priority": 4,
+    "spell_types": ["attack", "response", "boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_caster_has_active_spell_of_type", "parameters": {"spell_type": "remedy", "count": 1, "exclude_self": false}},
+        "action": {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "card_name": "Defend",
+    "elephant": "General Guardjendra",
+    "element": "Metal",
+    "set_name": "18 Metal 3",
+    "is_conjury": false,
+    "priority": 3,
+    "spell_types": ["remedy", "response", "boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_caster_has_active_spell_of_type", "parameters": {"spell_type": "attack", "count": 1, "exclude_self": false}},
+        "action": {"type": "heal", "target": "self", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "card_name": "Accelerator",
+    "elephant": "Tick-tock Tusker",
+    "element": "Time",
+    "set_name": "19 Time 1",
+    "is_conjury": true,
+    "priority": 1,
+    "spell_types": ["boost"],
+    "base_set": false,
+    "passive_effects": [
+      {
+        "type": "modify_priority",
+        "target": "other_friendly_active_spells",
+        "parameters": {"value": -2, "min_priority": 1}
+      }
+    ],
+    "resolve_effects": [],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "card_name": "Repeater",
+    "elephant": "Tick-tock Tusker",
+    "element": "Time",
+    "set_name": "20 Time 2",
+    "is_conjury": true,
+    "priority": 5,
+    "spell_types": ["boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "prompt_other_friendly_active_spell", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 21,
+    "card_name": "Quickshot",
+    "elephant": "Tick-tock Tusker",
+    "element": "Time",
+    "set_name": "21 Time 3",
+    "is_conjury": true,
+    "priority": 3,
+    "spell_types": ["attack", "response"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 2}}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 22,
+    "card_name": "Gravitate",
+    "elephant": "Elephantus Infinitum",
+    "element": "Space",
+    "set_name": "22 Space 1",
+    "is_conjury": false,
+    "priority": 1,
+    "spell_types": ["boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "move_to_future_clash", "target": "prompt_any_active_spell", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 23,
+    "card_name": "Wormhole",
+    "elephant": "Elephantus Infinitum",
+    "element": "Space",
+    "set_name": "23 Space 2",
+    "is_conjury": true,
+    "priority": 5,
+    "spell_types": ["boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "move_clash_to_clash", "target": "prompt_clash_to_clash"}
+      },
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "discard", "target": "this_spell"}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 24,
+    "card_name": "Impact",
+    "elephant": "Elephantus Infinitum",
+    "element": "Space",
+    "set_name": "24 Space 3",
+    "is_conjury": false,
+    "priority": 4,
+    "spell_types": ["attack", "response"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_spell_previously_resolved_this_round", "parameters": {"count": 2}},
+        "action": {"type": "weaken", "target": "prompt_player", "parameters": {"value": 1}}
+      },
+      {
+        "condition": {"type": "if_not", "sub_condition": {"type": "if_spell_previously_resolved_this_round", "parameters": {"count": 2}}},
+        "action": {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 25,
+    "card_name": "Reflect",
+    "elephant": "Gold Dust",
+    "element": "Sunbeam",
+    "set_name": "25 Sunbeam 1",
+    "is_conjury": false,
+    "priority": 4,
+    "spell_types": ["attack", "response"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_enemy_has_active_spell_of_type", "parameters": {"spell_type": "attack", "count": 1}},
+        "action": {"type": "damage", "target": "all_enemies_who_met_condition", "parameters": {"value": 3}}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 26,
+    "card_name": "Glare",
+    "elephant": "Gold Dust",
+    "element": "Sunbeam",
+    "set_name": "26 Sunbeam 2",
+    "is_conjury": true,
+    "priority": 5,
+    "spell_types": ["attack"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "weaken", "target": "prompt_player", "parameters": {"value": 1}}
+      },
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 27,
+    "card_name": "Illuminate",
+    "elephant": "Gold Dust",
+    "element": "Sunbeam",
+    "set_name": "27 Sunbeam 3",
+    "is_conjury": false,
+    "priority": 1,
+    "spell_types": [],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "cast_extra_spell", "target": "self", "parameters": {"source": "hand"}}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 28,
+    "card_name": "Slumber",
+    "elephant": "Luna Doze",
+    "element": "Moonshine",
+    "set_name": "28 Moonshine 1",
+    "is_conjury": false,
+    "priority": 5,
+    "spell_types": ["remedy", "boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "heal", "target": "self", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 29,
+    "card_name": "Nightglow",
+    "elephant": "Luna Doze",
+    "element": "Moonshine",
+    "set_name": "29 Moonshine 2",
+    "is_conjury": false,
+    "priority": 2,
+    "spell_types": ["remedy", "response", "boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "bolster", "target": "self", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "if_caster_has_active_spell_of_type", "parameters": {"spell_type": "any", "count": 1, "exclude_self": true}},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 30,
+    "card_name": "Bedim",
+    "elephant": "Luna Doze",
+    "element": "Moonshine",
+    "set_name": "30 Moonshine 3",
+    "is_conjury": false,
+    "priority": 4,
+    "spell_types": ["attack", "response", "boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "if_board_has_active_spell_of_type", "parameters": {"spell_type": "attack", "count": 1, "exclude_self": true}},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 31,
+    "card_name": "Familiar",
+    "elephant": "Onyx Oliphant",
+    "element": "Shadow",
+    "set_name": "31 Shadow 1",
+    "is_conjury": false,
+    "priority": 3,
+    "spell_types": ["attack", "response"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_enemy_has_active_spell_of_type", "parameters": {"spell_type": "attack", "count": 1}},
+        "action": [
+          {"type": "weaken", "target": "all_enemies_who_met_condition", "parameters": {"value": 1}},
+          {"type": "damage", "target": "all_enemies_who_met_condition", "parameters": {"value": 1}}
+        ]
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 32,
+    "card_name": "Sap",
+    "elephant": "Onyx Oliphant",
+    "element": "Shadow",
+    "set_name": "32 Shadow 2",
+    "is_conjury": false,
+    "priority": 2,
+    "spell_types": ["response"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_enemy_has_active_spell_of_type", "parameters": {"spell_type": "boost", "count": 1}},
+        "action": {"type": "recall_from_board", "target": "prompt_enemy_boost_spell", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 33,
+    "card_name": "Imitate",
+    "elephant": "Onyx Oliphant",
+    "element": "Shadow",
+    "set_name": "33 Shadow 3",
+    "is_conjury": false,
+    "priority": 1,
+    "spell_types": [],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "copy_spell", "target": "prompt_enemy_active_spell"}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 34,
+    "card_name": "Gleam",
+    "elephant": "Twinkle Tyke",
+    "element": "Aster",
+    "set_name": "34 Aster 1",
+    "is_conjury": false,
+    "priority": "A",
+    "spell_types": ["boost"],
+    "base_set": false,
+    "resolve_effects": [],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance_from_hand", "target": "self", "parameters": {"value": 2}}
+      }
+    ]
+  },
+  {
+    "id": 35,
+    "card_name": "Starfall",
+    "elephant": "Twinkle Tyke",
+    "element": "Aster",
+    "set_name": "35 Aster 2",
+    "is_conjury": false,
+    "priority": 3,
+    "spell_types": ["attack", "boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 36,
+    "card_name": "Constellation",
+    "elephant": "Twinkle Tyke",
+    "element": "Aster",
+    "set_name": "36 Aster 3",
+    "is_conjury": true,
+    "priority": 5,
+    "spell_types": ["boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "recall", "target": "self", "parameters": {"source": "friendly_past_spells", "value": 1}}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 37,
+    "card_name": "Offering",
+    "elephant": "Beelzebabar",
+    "element": "Blood",
+    "set_name": "37 Blood 1",
+    "is_conjury": false,
+    "priority": 4,
+    "spell_types": ["attack"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "player_choice", "options": [
+          {"type": "sequence", "actions": [
+            {"type": "damage", "target": "self", "parameters": {"value": 1}},
+            {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 3}}
+          ]},
+          {"type": "pass"}
+        ]}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 38,
+    "card_name": "Ritual",
+    "elephant": "Beelzebabar",
+    "element": "Blood",
+    "set_name": "38 Blood 2",
+    "is_conjury": false,
+    "priority": 3,
+    "spell_types": ["attack", "response", "boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "player_choice", "options": [
+          {"type": "sequence", "actions": [
+            {"type": "damage", "target": "self", "parameters": {"value": 1}},
+            {"type": "weaken_per_spell", "target": "prompt_player", "parameters": {"spell_type": "attack", "exclude_self": false}}
+          ]},
+          {"type": "pass"}
+        ]}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 39,
+    "card_name": "Overexert",
+    "elephant": "Beelzebabar",
+    "element": "Blood",
+    "set_name": "39 Blood 3",
+    "is_conjury": false,
+    "priority": 1,
+    "spell_types": [],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "player_choice", "options": [
+          {"type": "sequence", "actions": [
+            {"type": "damage", "target": "self", "parameters": {"value": 1}},
+            {"type": "cast_extra_spell", "target": "self", "parameters": {"source": "hand", "value": 2}}
+          ]},
+          {"type": "pass"}
+        ]}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 40,
+    "card_name": "Renew",
+    "elephant": "Godesha",
+    "element": "Ichor",
+    "set_name": "40 Ichor 1",
+    "is_conjury": true,
+    "priority": 5,
+    "spell_types": ["remedy"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "bolster", "target": "self", "parameters": {"value": 1}}
+      },
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "heal", "target": "self", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 41,
+    "card_name": "Shrine",
+    "elephant": "Godesha",
+    "element": "Ichor",
+    "set_name": "41 Ichor 2",
+    "is_conjury": true,
+    "priority": 5,
+    "spell_types": [],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "recall_from_enemy_hand", "target": "prompt_from_revealed_cards", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 42,
+    "card_name": "Dominion",
+    "elephant": "Godesha",
+    "element": "Ichor",
+    "set_name": "42 Ichor 3",
+    "is_conjury": true,
+    "priority": 5,
+    "spell_types": ["attack", "response"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "damage_per_enemy_spell_type", "target": "each_enemy", "parameters": {"spell_type": "boost"}}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 43,
+    "card_name": "Agonize",
+    "elephant": "Toxic Tai",
+    "element": "Venom",
+    "set_name": "43 Venom 1",
+    "is_conjury": false,
+    "priority": 2,
+    "spell_types": ["attack", "response", "boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_spell_advanced_this_turn"},
+        "action": {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 44,
+    "card_name": "Sap",
+    "elephant": "Toxic Tai",
+    "element": "Venom",
+    "set_name": "44 Venom 2",
+    "is_conjury": false,
+    "priority": 2,
+    "spell_types": ["response", "boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_enemy_has_active_spell_of_type", "parameters": {"spell_type": "remedy", "count": 1}},
+        "action": {"type": "cancel", "target": "all_enemy_remedy_spells"}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "if_not", "sub_condition": {"type": "if_enemy_has_active_spell_of_type", "parameters": {"spell_type": "remedy", "count": 1}}},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 45,
+    "card_name": "Enfeeble",
+    "elephant": "Toxic Tai",
+    "element": "Venom",
+    "set_name": "45 Venom 3",
+    "is_conjury": false,
+    "priority": 4,
+    "spell_types": ["attack", "response", "boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_enemy_has_active_spell_of_type", "parameters": {"spell_type": "boost", "count": 1}},
+        "action": {"type": "damage", "target": "all_enemies_who_met_condition", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 46,
+    "card_name": "Punish",
+    "elephant": "The Matriarch",
+    "element": "Nectar",
+    "set_name": "46 Nectar 1",
+    "is_conjury": false,
+    "priority": 4,
+    "spell_types": ["attack", "response", "boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_enemy_has_active_spell_of_type", "parameters": {"spell_type": "boost", "count": 1}},
+        "action": {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 47,
+    "card_name": "Root",
+    "elephant": "The Matriarch",
+    "element": "Nectar",
+    "set_name": "47 Nectar 2",
+    "is_conjury": true,
+    "priority": 1,
+    "spell_types": ["boost"],
+    "base_set": false,
+    "passive_effects": [
+      {
+        "type": "protect_from_enemy_effects",
+        "target": "other_friendly_spells",
+        "parameters": {"effects": ["cancel", "recall", "discard"]}
+      }
+    ],
+    "resolve_effects": [],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 48,
+    "card_name": "Absorb",
+    "elephant": "The Matriarch",
+    "element": "Nectar",
+    "set_name": "48 Nectar 3",
+    "is_conjury": false,
+    "priority": 2,
+    "spell_types": ["remedy", "response"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_enemy_has_active_spell_of_type", "parameters": {"spell_type": "attack", "count": 1}},
+        "action": [
+          {"type": "bolster", "target": "self", "parameters": {"value": 1}},
+          {"type": "heal", "target": "self", "parameters": {"value": 1}}
+        ]
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 49,
+    "card_name": "Bolts",
+    "elephant": "Electrophantine",
+    "element": "Lightning",
+    "set_name": "49 Lightning 1",
+    "is_conjury": true,
+    "priority": 5,
+    "spell_types": ["attack", "response", "boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "weaken", "target": "prompt_player", "parameters": {"value": 1}}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "if_caster_has_active_spell_of_type", "parameters": {"spell_type": "any", "count": 1, "exclude_self": true}},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 50,
+    "card_name": "Electrocute",
+    "elephant": "Electrophantine",
+    "element": "Lightning",
+    "set_name": "50 Lightning 2",
+    "is_conjury": false,
+    "priority": 2,
+    "spell_types": ["attack", "boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "sequence", "actions": [
+            {"type": "discard", "target": "prompt_friendly_past_spell", "parameters": {"value": 1}},
+            {"type": "discard_from_hand", "target": "prompt_enemy", "parameters": {"value": 1}}
+        ]}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 51,
+    "card_name": "Surge",
+    "elephant": "Electrophantine",
+    "element": "Lightning",
+    "set_name": "51 Lightning 3",
+    "is_conjury": false,
+    "priority": 4,
+    "spell_types": ["attack", "response", "boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "player_choice", "options": [
+            {"type": "sequence", "actions": [
+              {"type": "discard_from_hand", "target": "self", "parameters": {"value": 1}},
+              {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 1}}
+            ]},
+            {"type": "pass"}
+        ]}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 52,
+    "card_name": "Clap",
+    "elephant": "Rolling Rolo",
+    "element": "Thunder",
+    "set_name": "52 Thunder 1",
+    "is_conjury": false,
+    "priority": 2,
+    "spell_types": ["response", "boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_enemy_has_active_spell_of_type", "parameters": {"spell_type": "any", "count": 2}},
+        "action": {"type": "cancel", "target": "prompt_one_spell_from_each_enemy_who_met_condition"}
+      }
+    ],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "all_friendly_active_spells", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 53,
+    "card_name": "Break",
+    "elephant": "Rolling Rolo",
+    "element": "Thunder",
+    "set_name": "53 Thunder 2",
+    "is_conjury": false,
+    "priority": 1,
+    "spell_types": ["boost"],
+    "base_set": false,
+    "passive_effects": [
+      {
+        "type": "prevent_action",
+        "target": "enemy_spells",
+        "parameters": {"action_type": "advance"}
+      }
+    ],
+    "resolve_effects": [],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  },
+  {
+    "id": 54,
+    "card_name": "Stupefy",
+    "elephant": "Rolling Rolo",
+    "element": "Thunder",
+    "set_name": "54 Thunder 3",
+    "is_conjury": false,
+    "priority": 2,
+    "spell_types": ["attack", "response"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "if_enemy_has_active_spell_of_type", "parameters": {"spell_type": "attack", "count": 1}},
+        "action": [
+          {"type": "damage", "target": "all_enemies_who_met_condition", "parameters": {"value": 2}},
+          {"type": "cancel", "target": "all_enemy_attack_spells"}
+        ]
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 55,
+    "card_name": "Crepuscule",
+    "elephant": "Dawnotheridusk",
+    "element": "Twilight",
+    "set_name": "55 Twilight 1",
+    "is_conjury": true,
+    "priority": 5,
+    "spell_types": ["attack", "remedy"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "player_choice", "options": [
+          {"type": "damage", "target": "prompt_player_or_conjury", "parameters": {"value": 2}},
+          {"type": "heal", "target": "self", "parameters": {"value": 2}}
+        ]}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 56,
+    "card_name": "Eventide",
+    "elephant": "Dawnotheridusk",
+    "element": "Twilight",
+    "set_name": "56 Twilight 2",
+    "is_conjury": false,
+    "priority": 2,
+    "spell_types": ["boost"],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "player_choice", "options": [
+          {"type": "cancel", "target": "prompt_any_active_spell"},
+          {"type": "advance_from_hand", "target": "self", "parameters": {"value": 1}}
+        ]}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 57,
+    "card_name": "Daybreak",
+    "elephant": "Dawnotheridusk",
+    "element": "Twilight",
+    "set_name": "57 Twilight 3",
+    "is_conjury": false,
+    "priority": 1,
+    "spell_types": [],
+    "base_set": false,
+    "resolve_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "player_choice", "options": [
+          {"type": "recall", "target": "self", "parameters": {"source": "friendly_past_spells", "value": 1}},
+          {"type": "discard", "target": "prompt_enemy_past_spell"}
+        ]}
+      }
+    ],
+    "advance_effects": []
+  },
+  {
+    "id": 58,
+    "card_name": "Coalesce",
+    "elephant": "Dawnotheridusk",
+    "element": "Twilight",
+    "set_name": "58 Twilight 4",
+    "is_conjury": false,
+    "priority": 1,
+    "spell_types": ["boost"],
+    "base_set": false,
+    "passive_effects": [
+      {
+        "type": "modify_spell_logic",
+        "target": "other_friendly_active_spells",
+        "parameters": {"change": "or_to_and"}
+      }
+    ],
+    "resolve_effects": [],
+    "advance_effects": [
+      {
+        "condition": {"type": "always"},
+        "action": {"type": "advance", "target": "this_spell", "parameters": {"value": 1}}
+      }
+    ]
+  }
+]
