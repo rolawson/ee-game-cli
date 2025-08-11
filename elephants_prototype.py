@@ -28,6 +28,9 @@ class Colors:
     HEADER='\033[95m'; BLUE='\033[94m'; CYAN='\033[96m'; GREEN='\033[92m'
     WARNING='\033[93m'; FAIL='\033[91m'; ENDC='\033[0m'; BOLD='\033[1m'
     UNDERLINE='\033[4m'; GREY='\033[90m'
+class RoundOverException(Exception):
+    """Custom exception to signal the end of the current round immediately."""
+    pass
 
 # --- DATA MODELS ---
 class Card:
@@ -386,12 +389,21 @@ class GameEngine:
                 if choice_idx in options: return choice_idx
                 else: self.gs.action_log.append(f"{Colors.FAIL}Invalid choice.{Colors.ENDC}")
             except ValueError: self.gs.action_log.append(f"{Colors.FAIL}Invalid input.{Colors.ENDC}")
-    def run_game(self):
-        self._setup_game()
-        while len([p for p in self.gs.players if p.trunks > 0]) > 1:
-            self._run_round(); self.gs.round_num += 1
-        winner = next((p for p in self.gs.players if p.trunks > 0), None)
-        self.gs.action_log.append(f"GAME OVER! The winner is {winner.name}!" if winner else "GAME OVER! No winner."); self._pause()
+    def run_game(self) -> None:
+        try:
+            self._setup_game()
+            while len([p for p in self.gs.players if p.trunks > 0]) > 1:
+                self._run_round()
+                self.gs.round_num += 1
+            
+            winner = next((p for p in self.gs.players if p.trunks > 0), None)
+            self.gs.action_log.append(f"GAME OVER! The winner is {winner.name}!" if winner else "GAME OVER! No winner.")
+            self._pause()
+        except Exception:
+            clear_screen(); print("\n\n--- A CRITICAL ERROR OCCURRED ---")
+            traceback.print_exc(); print("---------------------------------")
+            print("\nPlease copy this error report for debugging.")
+
     def _setup_game(self):
         self._check_and_rebuild_deck()
         self.gs.action_log.clear(); self.gs.action_log.append("--- Game Setup ---")
@@ -411,16 +423,21 @@ class GameEngine:
                 p.hand = hand_choices; p.discard_pile = list(options.values())
             else: random.shuffle(p.discard_pile); p.hand = p.discard_pile[:4]; p.discard_pile = p.discard_pile[4:]
         self._pause("Setup complete. The first round is about to begin.")
-    def _run_round(self):
-        self.gs.action_log.clear(); self.gs.action_log.append(f"--- Round {self.gs.round_num} Begins ---")
+    def _run_round(self) -> None:
+        self.gs.action_log.clear()
+        self.gs.action_log.append(f"--- Round {self.gs.round_num} Begins ---")
+        self.gs.event_log.clear()
         for p in self.gs.players: p.is_invulnerable = False
-        for i in range(1, 5):
-            self.gs.clash_num = i; self._run_clash()
-            if len([p for p in self.gs.players if p.trunks > 0]) < 2: return
-            if self.gs.game_over:
-                return
-        if not self.gs.game_over:
-            self._run_end_of_round()
+        
+        try:
+            for i in range(1, 5):
+                self.gs.clash_num = i
+                self._run_clash()
+        except RoundOverException:
+            self.gs.action_log.append(f"{Colors.WARNING}The round has ended early due to trunk loss!{Colors.ENDC}")
+            self._pause("Proceeding to the end of the round.")
+
+        self._run_end_of_round()
     def _run_clash(self):
         self._run_prepare_phase()
         if self.gs.game_over: return # Check after prepare phase in case a player couldn't play
@@ -603,20 +620,23 @@ class GameEngine:
                             p.discard_pile.append(p.hand.pop(choice-1))
                         else: p.discard_pile.append(p.hand.pop())
         self._pause("All players have managed their hands. The next round will begin.")
-    def _handle_trunk_loss(self, player: Player) -> str | None:
+
+    def _handle_trunk_loss(self, player: Player) -> None:
         message = player.lose_trunk()
         self.gs.action_log.append(f"{Colors.FAIL}{message}{Colors.ENDC}")
         for clash_list in player.board:
             for spell in clash_list:
-                # Ensure we are adding Card objects, not PlayedCard objects
                 player.discard_pile.append(spell.card)
         player.board = [[] for _ in range(4)]
         self.gs.action_log.append(f"{player.name}'s spells were cleared from the board.")
         
-        if self._check_for_game_end():
-            return 'game_over'
-        return None
+        # Check if the round should end now.
+        self._check_for_round_end()
 
+    def _check_for_round_end(self) -> None:
+        active_players = [p for p in self.gs.players if p.trunks > 0]
+        if len(active_players) < 2:
+            raise RoundOverException()
     def _check_for_game_end(self) -> bool:
         active_players = [p for p in self.gs.players if p.trunks > 0]
         if len(active_players) < 2:
