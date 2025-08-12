@@ -8,14 +8,10 @@ Elemental Elephants is a turn-based strategy game featuring elephants who wield 
 
 ## Game Features
 
-- **4 Elemental Elephants**: Each with unique spell types
-  - 🔥 Elé Phlambé (Fire)
-  - 💧 Spout Snout (Water)
-  - 🌪️ Dumblo (Wind)
-  - 🌍 Columnfoot (Earth)
+- **Several Elemental Elephants**: Each with unique spell types
 
 - **Strategic Combat**: Spells have different priorities, types, and effects
-- **Conjury System**: Special persistent spells that remain on the board
+- **Conjury System**: Powerful spells that are also susceptible to attack
 - **Response & Boost Mechanics**: Chain spells together for powerful combos
 
 ## How to Play
