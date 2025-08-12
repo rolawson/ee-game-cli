@@ -142,6 +142,14 @@ class Card:
         elif action_type == 'heal_per_spell':
             spell_type = params.get('spell_type', 'any')
             return f"Heal {target} for each of your other active {spell_type} spells"
+        elif action_type == 'recall_from_enemy_hand':
+            return f"Reveal a spell from each enemy's hand and recall one"
+        elif action_type == 'move_clash_to_clash':
+            return f"Move all spells from one clash to another"
+        elif action_type == 'discard':
+            if target == 'this_spell':
+                return f"Discard this spell"
+            return f"Discard {target}"
         else:
             return f"{action_type.replace('_', ' ').title()} {target}".strip()
 
@@ -308,6 +316,131 @@ class ActionHandler:
         
         action_type = action_data.get('type')
         params = action_data.get('parameters', {})
+        
+        # Handle actions that don't use standard targeting first
+        if action_type == 'recall_from_enemy_hand':
+            # First, reveal a card from each enemy's hand
+            enemies = [p for p in gs.players if p != caster and p.hand]
+            revealed_cards = []
+            
+            for enemy in enemies:
+                if enemy.hand:
+                    # For AI enemies, reveal a random card
+                    revealed_card = random.choice(enemy.hand)
+                    gs.action_log.append(f"Revealed from {enemy.name}'s hand: [{revealed_card.name}]")
+                    revealed_cards.append((enemy, revealed_card))
+            
+            # Let the caster choose which card to recall
+            if revealed_cards:
+                if caster.is_human:
+                    if len(revealed_cards) == 1:
+                        # Auto-select if only one option
+                        enemy, card = revealed_cards[0]
+                        enemy.hand.remove(card)
+                        caster.hand.append(card)
+                        gs.action_log.append(f"{caster.name} recalled [{card.name}] from {enemy.name}'s hand!")
+                    else:
+                        # Let player choose
+                        options = {}
+                        for i, (enemy, card) in enumerate(revealed_cards):
+                            options[i+1] = (enemy, card)
+                        
+                        prompt = "Choose a revealed card to recall:"
+                        self.engine.display.draw(gs, gs.players.index(caster), prompt=prompt)
+                        for key, (enemy, card) in options.items():
+                            emoji = ELEMENT_EMOJIS.get(card.element, '')
+                            print(f"  [{key}] {emoji} {card.name} from {enemy.name}")
+                        
+                        choice = input("\nYour choice: ").strip()
+                        try:
+                            choice_idx = int(choice)
+                            if choice_idx in options:
+                                enemy, card = options[choice_idx]
+                                enemy.hand.remove(card)
+                                caster.hand.append(card)
+                                gs.action_log.append(f"{caster.name} recalled [{card.name}] from {enemy.name}'s hand!")
+                        except ValueError:
+                            gs.action_log.append(f"{Colors.FAIL}Invalid choice.{Colors.ENDC}")
+                else:
+                    # AI just takes the first revealed card
+                    enemy, card = revealed_cards[0]
+                    enemy.hand.remove(card)
+                    caster.hand.append(card)
+                    gs.action_log.append(f"{caster.name} recalled [{card.name}] from {enemy.name}'s hand!")
+            else:
+                gs.action_log.append("No cards to recall from enemy hands.")
+            return
+            
+        elif action_type == 'move_clash_to_clash':
+            # Let player choose source and destination clashes
+            if caster.is_human:
+                # First, choose source clash
+                clash_options = {}
+                for i in range(4):
+                    spells_in_clash = []
+                    for p in gs.players:
+                        spells_in_clash.extend([s for s in p.board[i] if s.status == 'active'])
+                    if spells_in_clash:
+                        clash_options[i+1] = (i, spells_in_clash)
+                
+                if not clash_options:
+                    gs.action_log.append("No active spells to move.")
+                    return
+                
+                # Choose source clash
+                prompt = "Choose a clash to move spells FROM:"
+                self.engine.display.draw(gs, gs.players.index(caster), prompt=prompt)
+                for key, (clash_idx, spells) in clash_options.items():
+                    spell_names = [s.card.name for s in spells]
+                    print(f"  [{key}] Clash {clash_idx + 1}: {', '.join(spell_names)}")
+                
+                source_choice = input("\nYour choice: ").strip()
+                try:
+                    source_key = int(source_choice)
+                    if source_key in clash_options:
+                        source_clash_idx, source_spells = clash_options[source_key]
+                        
+                        # Choose destination clash
+                        dest_options = {i+1: i for i in range(4) if i != source_clash_idx}
+                        prompt = "Choose a clash to move spells TO:"
+                        self.engine.display.draw(gs, gs.players.index(caster), prompt=prompt)
+                        for key, clash_idx in dest_options.items():
+                            print(f"  [{key}] Clash {clash_idx + 1}")
+                        
+                        dest_choice = input("\nYour choice: ").strip()
+                        dest_key = int(dest_choice)
+                        if dest_key in dest_options:
+                            dest_clash_idx = dest_options[dest_key]
+                            
+                            # Move all spells
+                            moved_count = 0
+                            for spell in source_spells:
+                                owner = spell.owner
+                                owner.board[source_clash_idx].remove(spell)
+                                owner.board[dest_clash_idx].append(spell)
+                                moved_count += 1
+                            
+                            gs.action_log.append(f"Moved {moved_count} spell(s) from Clash {source_clash_idx + 1} to Clash {dest_clash_idx + 1}!")
+                            self.engine._pause()
+                except ValueError:
+                    gs.action_log.append(f"{Colors.FAIL}Invalid choice.{Colors.ENDC}")
+            else:
+                # AI logic - move from current clash to next clash if possible
+                for i in range(gs.clash_num - 1, 3):
+                    spells_in_clash = []
+                    for p in gs.players:
+                        spells_in_clash.extend([s for s in p.board[i] if s.status == 'active'])
+                    if spells_in_clash and i < 3:
+                        # Move to next clash
+                        for spell in spells_in_clash:
+                            owner = spell.owner
+                            owner.board[i].remove(spell)
+                            owner.board[i+1].append(spell)
+                        gs.action_log.append(f"Moved {len(spells_in_clash)} spell(s) from Clash {i + 1} to Clash {i + 2}!")
+                        break
+            return
+        
+        # Standard targeting for other actions
         targets = self._resolve_target(action_data, gs, caster, current_card)
         
         if not targets:
@@ -505,6 +638,18 @@ class ActionHandler:
                             self._fire_event('spell_advanced', gs, player=owner.name, card_id=target.card.id); found_and_moved = True; break
                     if not found_and_moved: gs.action_log.append(f"Error: Could not find [{target.card.name}] to advance.")
                 else: gs.action_log.append(f"[{target.card.name}] could not advance past Clash 4.")
+            
+            elif action_type == 'discard':
+                if action_data.get('target') == 'this_spell':
+                    # Find and discard this spell
+                    for clash_list in caster.board:
+                        for spell in clash_list:
+                            if spell.card.id == current_card.id:
+                                spell.status = 'cancelled'
+                                clash_list.remove(spell)
+                                caster.discard_pile.append(spell.card)
+                                gs.action_log.append(f"{Colors.GREY}{ACTION_EMOJIS['discard']} [{spell.card.name}] was discarded.{Colors.ENDC}")
+                                return
 
     def _resolve_target(self, action_data: dict, gs: 'GameState', caster: 'Player', current_card: 'Card') -> list[Any]:
         target_str = action_data.get('target')
