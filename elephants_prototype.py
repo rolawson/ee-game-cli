@@ -45,7 +45,6 @@ class RoundOverException(Exception):
     pass
 
 # --- DATA MODELS ---
-# +++ REPLACE THIS CLASS +++
 class Card:
     def __init__(self, card_data: dict):
         self.id: int = card_data.get('id')
@@ -59,9 +58,7 @@ class Card:
         self.notlast: int = card_data.get('notlast', 0)
         self.resolve_effects: list[dict] = card_data.get('resolve_effects', [])
         self.advance_effects: list[dict] = card_data.get('advance_effects', [])
-    
     def __repr__(self) -> str: return f"Card({self.name})"
-    
     def get_instructions_text(self) -> str:
         texts = []
         if self.resolve_effects:
@@ -74,24 +71,24 @@ class Card:
             adv_texts = [self._format_action(eff['action']) for eff in self.advance_effects]
             texts.append(f"Advance Phase: {', '.join(adv_texts)}")
         return "; ".join(texts) if texts else "No effect."
-
     def _format_condition(self, cond: dict) -> str:
         cond_type = cond.get('type')
         if cond_type == 'always': return ""
         if cond_type == 'if_caster_has_active_spell_of_type':
             p = cond['parameters']
-            # --- THIS IS THE FIX ---
             count_str = p.get('count', 1) 
             return f"If you have {count_str} other active {p['spell_type']} spell(s): "
+        if cond_type == 'if_enemy_has_active_spell_of_type':
+            p = cond['parameters']
+            count_str = p.get('count', 1)
+            return f"If an enemy has {count_str} active {p['spell_type']} spell(s): "
         if cond_type == 'if_spell_previously_resolved_this_round': return "If this spell resolved in a past clash: "
         if cond_type == 'if_not': return f"Otherwise: "
-        # A new condition for Bedim
         if cond_type == 'if_board_has_active_spell_of_type':
             p = cond['parameters']
             count_str = p.get('count', 1)
             return f"If there are {count_str} other active {p['spell_type']} spells on the board: "
         return f"If {cond_type.replace('_', ' ')}: "
-
     def _format_action(self, action: dict) -> str:
         action_type = action.get('type')
         if action_type == 'player_choice':
@@ -103,19 +100,18 @@ class Card:
             'self': 'yourself', 'prompt_enemy': 'an enemy', 'this_spell': 'this spell',
             'prompt_other_friendly_active_spell': 'another friendly active spell',
             'prompt_friendly_past_spell': 'one of your past spells',
-            'all_enemies_and_their_conjuries': 'each enemy and their conjuries'
+            'all_enemies_and_their_conjuries': 'each enemy and their conjuries',
+            'all_enemies_who_met_condition': 'each enemy who met the condition'
         }
         target = target_map.get(target_raw, target_raw.replace('_', ' '))
         return f"{action_type.replace('_', ' ').title()} {target} for {value}".strip()
 
 class PlayedCard:
-    # ... (no changes needed here, but ensure it's the latest version)
-    def __init__(self, card: Card, owner: 'Player'): # Added Type Hints
+    def __init__(self, card: Card, owner: 'Player'):
         self.card: Card = card
         self.owner: 'Player' = owner
         self.status: str = 'prepared'
         self.has_resolved: bool = False
-
 class Player:
     def __init__(self, name: str, is_human: bool = True):
         self.name: str = name
@@ -127,7 +123,7 @@ class Player:
         self.discard_pile: list[Card] = []
         self.board: list[list[PlayedCard]] = [[] for _ in range(4)]
         self.is_invulnerable: bool = False
-    
+        self.knocked_out_this_turn: bool = False
     def lose_trunk(self) -> str:
         if self.trunks > 0:
             self.trunks -= 1; self.is_invulnerable = True
@@ -136,17 +132,17 @@ class Player:
             self.health = self.max_health; return f"{self.name} lost a trunk!"
         return f"{self.name} has no trunks to lose."
     def __repr__(self) -> str: return f"Player({self.name})"
-
 class GameState:
-    def __init__(self, player_names):
-        self.players = [Player(name, is_human=(i==0)) for i, name in enumerate(player_names)]
-        self.all_cards = {data['id']: Card(data) for data in json.loads(SPELL_JSON_DATA)}
+    def __init__(self, player_names: list[str]):
+        self.players: list[Player] = [Player(name, is_human=(i==0)) for i, name in enumerate(player_names)]
+        self.all_cards: dict[int, Card] = {data['id']: Card(data) for data in json.loads(SPELL_JSON_DATA)}
         sets = defaultdict(list);
         for data in json.loads(SPELL_JSON_DATA): sets[data['elephant']].append(self.all_cards[data['id']])
-        self.main_deck = list(sets.values()); random.shuffle(self.main_deck)
-        self.round_num = 1; self.clash_num = 1; self.ringleader_index = 0
-        self.action_log = ["Game has started!"]; self.game_over = False
-        self.event_log = []
+        self.main_deck: list[list[Card]] = list(sets.values()); random.shuffle(self.main_deck)
+        self.round_num: int = 1; self.clash_num: int = 1; self.ringleader_index: int = 0
+        self.action_log: list[str] = ["Game has started!"]
+        self.event_log: list[dict] = []
+        self.game_over: bool = False
 
 # --- DISPLAY ENGINE ---
 class DashboardDisplay:
@@ -475,7 +471,9 @@ class GameEngine:
         self.gs.action_log.clear()
         self.gs.action_log.append(f"--- Round {self.gs.round_num} Begins ---")
         self.gs.event_log.clear()
-        for p in self.gs.players: p.is_invulnerable = False
+        for p in self.gs.players: 
+            p.is_invulnerable = False
+            p.knocked_out_this_turn = False
         
         try:
             for i in range(1, 5):
@@ -553,6 +551,7 @@ class GameEngine:
                 if spell.status == 'prepared':
                     spell.status = 'active'
         self._pause("All spells are revealed simultaneously!")
+
     def _run_resolve_phase(self) -> None:
         self.gs.action_log.clear(); self.gs.action_log.append(f"--- Clash {self.gs.clash_num}: RESOLVE ---")
         
@@ -566,28 +565,52 @@ class GameEngine:
         resolve_order.sort(key=lambda x: (x['p_val'], x['caster_idx']))
 
         for spell_info in resolve_order:
-            if self.gs.game_over: return # Check at the start of each spell's resolution
-            
+            if self.gs.game_over: return
             caster: Player = self.gs.players[spell_info['caster_idx']]
             played_card: PlayedCard = spell_info['played_card']
             if played_card.status != 'active': continue
 
-            self.action_handler._fire_event('spell_resolved', self.gs, player=caster.name, card_id=played_card.card.id)
-            
+            # --- This display logic remains the same ---
             self.gs.action_log.clear()
             self.gs.action_log.append(f"--> Resolving {caster.name}'s [{Colors.BOLD}{played_card.card.name}{Colors.ENDC}] (P:{played_card.card.priority})")
             self.gs.action_log.append(f"    {Colors.GREY}{played_card.card.get_instructions_text()}{Colors.ENDC}")
             self.gs.action_log.append("--------------------")
             self._pause("Executing effect...")
 
+            # --- THIS IS THE NEW IF/ELSE LOGIC ---
+            a_condition_was_met = False
             for effect in played_card.card.resolve_effects:
-                if self.condition_checker.check(effect['condition'], self.gs, caster, played_card.card):
-                    self.action_handler.execute(effect['action'], self.gs, caster, played_card.card)
-                    if self.gs.game_over: return # Check immediately after an action
-                    self._pause()
+                condition_type = effect['condition'].get('type')
+                
+                # Check for an 'otherwise' block
+                if condition_type == 'otherwise':
+                    if not a_condition_was_met:
+                        self.action_handler.execute(effect['action'], self.gs, caster, played_card.card)
+                        if self.gs.game_over: return
+                        self._pause()
+                # Check a normal condition, but only if a previous condition hasn't already been met
+                elif not a_condition_was_met:
+                    if self.condition_checker.check(effect['condition'], self.gs, caster, played_card.card):
+                        a_condition_was_met = True # Mark that we succeeded
+                        self.action_handler.execute(effect['action'], self.gs, caster, played_card.card)
+                        if self.gs.game_over: return
+                        self._pause()
             
             played_card.has_resolved = True
+            self.action_handler._fire_event('spell_resolved', self.gs, player=caster.name, card_id=played_card.card.id)
+            self._post_resolution_checks()
             if self.gs.game_over: return
+
+    def _post_resolution_checks(self) -> None:
+        for player in self.gs.players:
+            # Check if a player was just knocked out (health is 0 but we haven't processed it yet)
+            if player.health <= 0 and not player.knocked_out_this_turn:
+                player.knocked_out_this_turn = True # Mark as processed for this turn
+                self._handle_trunk_loss(player)
+        
+        # After handling any trunk losses, check if the round should end.
+        # This will raise the RoundOverException if the condition is met.
+        self._check_for_round_end()
 
     def _run_advance_phase(self) -> None:
         self.gs.action_log.clear(); self.gs.action_log.append(f"--- Clash {self.gs.clash_num}: ADVANCE ---"); self._pause()
