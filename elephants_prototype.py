@@ -818,9 +818,24 @@ class GameEngine:
         self.gs.action_log.append(f"Board cleared. The new Ringleader is {self.gs.players[self.gs.ringleader_index].name}."); self._pause()
         
         for p in self.gs.players:
-            # Step 1: Handle Keep/Discard phase
-            if p.is_human:
-                if p.hand:
+            # Step 1: Check for empty hand FIRST
+            if not p.hand:
+                self.gs.action_log.append(f"{p.name}'s hand is empty. They get a new spell set!"); self._pause()
+                self._check_and_rebuild_deck()
+                if self.gs.main_deck:
+                    if p.is_human:
+                        options = {i+1: s for i, s in enumerate(self.gs.main_deck) if s}
+                        choice = self._prompt_for_choice(p, options, f"{p.name}, choose a new spell set:")
+                        new_set = options[choice]; self.gs.main_deck.remove(new_set)
+                    else:
+                        # AI picks randomly from available sets
+                        new_set = random.choice(self.gs.main_deck)
+                        self.gs.main_deck.remove(new_set)
+                    p.hand.extend(new_set)
+                    self.gs.action_log.append(f"{p.name} drafted the '{new_set[0].elephant}' ({new_set[0].element}) set.")
+            else:
+                # Step 2: Handle Keep/Discard phase (only if hand not empty)
+                if p.is_human:
                     options = {i+1: c for i, c in enumerate(p.hand)}; kept_cards = []
                     while True:
                         prompt = "Choose cards to KEEP from your hand (type 'done' when finished):"; choice = self._prompt_for_choice(p, options, prompt)
@@ -828,12 +843,11 @@ class GameEngine:
                         if choice is not None: kept_cards.append(options.pop(choice))
                     for card in options.values(): p.discard_pile.append(card)
                     p.hand = kept_cards
-            else: # AI Logic
-                if p.hand:
+                else: # AI Logic
                     discards = [c for c in p.hand if 'remedy' not in c.types and p.health/p.max_health > 0.7]
                     p.discard_pile.extend(discards); p.hand = [c for c in p.hand if c not in discards]
 
-            # Step 2: Handle Recall phase
+            # Step 3: Handle Recall phase
             max_hand_size = 4 + (3 - p.trunks)
             while len(p.hand) < max_hand_size:
                 if not p.discard_pile: break
@@ -850,7 +864,7 @@ class GameEngine:
                     p.hand.append(recalled_card)
                     self.action_handler._fire_event('spell_recalled', self.gs, player=p.name, card_id=recalled_card.id)
             
-            # Step 3: Final check for hand size and force draft if needed
+            # Step 4: Final check for hand size and force draft if needed
             if len(p.hand) < 4:
                 self.gs.action_log.append(f"{p.name}'s hand is below 4 cards. They must draft a new set."); self._pause()
                 self._check_and_rebuild_deck()
