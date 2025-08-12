@@ -115,7 +115,7 @@ class Card:
             'all_enemies_and_their_conjuries': 'each enemy and their conjuries',
             'all_enemies_who_met_condition': 'each enemy who met the condition',
             'prompt_player_or_conjury': 'an enemy or conjury',
-            'prompt_player': 'a player'
+            'prompt_player': 'an enemy'
         }
         target = target_map.get(target_raw, target_raw.replace('_', ' '))
         
@@ -150,6 +150,13 @@ class Card:
             if target == 'this_spell':
                 return f"Discard this spell"
             return f"Discard {target}"
+        elif action_type == 'copy_spell':
+            return f"Copy an enemy spell"
+        elif action_type == 'recall_from_board':
+            return f"Recall an enemy boost spell from the board"
+        elif action_type == 'damage_per_enemy_spell_type':
+            spell_type = params.get('spell_type', 'any')
+            return f"Deal damage to each enemy equal to their {spell_type} spells"
         else:
             return f"{action_type.replace('_', ' ').title()} {target}".strip()
 
@@ -279,6 +286,14 @@ class ConditionChecker:
             return count >= params.get('count', 1)
         
         if cond_type == 'if_not': return not self.check(condition_data['sub_condition'], gs, caster, current_card)
+        
+        if cond_type == 'if_spell_advanced_this_turn':
+            # Check if any spell has advanced this turn (round)
+            for event in gs.event_log:
+                if event['type'] == 'spell_advanced':
+                    return True
+            return False
+        
         return False
 # +++ START: REPLACE THE ENTIRE ActionHandler CLASS WITH THIS +++
 class ActionHandler:
@@ -419,6 +434,10 @@ class ActionHandler:
                                 owner.board[source_clash_idx].remove(spell)
                                 owner.board[dest_clash_idx].append(spell)
                                 moved_count += 1
+                                
+                                # If moving to current clash, add to resolution queue
+                                if dest_clash_idx == gs.clash_num - 1:
+                                    self.engine.add_to_resolution_queue(spell)
                             
                             gs.action_log.append(f"Moved {moved_count} spell(s) from Clash {source_clash_idx + 1} to Clash {dest_clash_idx + 1}!")
                             self.engine._pause()
@@ -436,6 +455,10 @@ class ActionHandler:
                             owner = spell.owner
                             owner.board[i].remove(spell)
                             owner.board[i+1].append(spell)
+                            
+                            # If moving to current clash, add to resolution queue
+                            if i+1 == gs.clash_num - 1:
+                                self.engine.add_to_resolution_queue(spell)
                         gs.action_log.append(f"Moved {len(spells_in_clash)} spell(s) from Clash {i + 1} to Clash {i + 2}!")
                         break
             return
@@ -620,6 +643,17 @@ class ActionHandler:
                     gs.action_log.append(f"{target.name} has no cards to discard.")
             
             elif action_type == 'advance':
+                # Check if Break is preventing enemy advances
+                if target.owner != caster:
+                    # Check if any opponent has Break active
+                    for player in gs.players:
+                        if player != target.owner:
+                            for clash_list in player.board:
+                                for spell in clash_list:
+                                    if spell.status == 'active' and spell.card.name == 'Break':
+                                        gs.action_log.append(f"[{target.card.name}] cannot advance because {player.name}'s [Break] prevents it!")
+                                        continue
+                
                 # Check if this advance action has a per-round limit
                 if 'limit' in params:
                     advance_limit = params['limit']
@@ -650,6 +684,54 @@ class ActionHandler:
                                 caster.discard_pile.append(spell.card)
                                 gs.action_log.append(f"{Colors.GREY}{ACTION_EMOJIS['discard']} [{spell.card.name}] was discarded.{Colors.ENDC}")
                                 return
+            
+            elif action_type == 'copy_spell':
+                # Imitate - copy an enemy spell
+                if isinstance(target, PlayedCard):
+                    # Create a copy of the spell and add it to the resolution queue
+                    copied_card = PlayedCard(target.card, caster)
+                    copied_card.status = 'active'
+                    caster.board[gs.clash_num - 1].append(copied_card)
+                    self.engine.add_to_resolution_queue(copied_card)
+                    gs.action_log.append(f"{caster.name} copies [{target.card.name}] from {target.owner.name}!")
+                    self.engine._pause()
+            
+            elif action_type == 'recall_from_board':
+                # Sap - recall an enemy boost spell from the board to your hand
+                if isinstance(target, PlayedCard) and 'boost' in target.card.types:
+                    owner = target.owner
+                    # Remove from board
+                    for clash_list in owner.board:
+                        if target in clash_list:
+                            clash_list.remove(target)
+                            break
+                    # Add to caster's hand
+                    caster.hand.append(target.card)
+                    gs.action_log.append(f"{caster.name} recalled [{target.card.name}] from {owner.name}'s board!")
+                    self._fire_event('spell_recalled_from_board', gs, player=caster.name, target=owner.name, card_id=target.card.id)
+            
+            elif action_type == 'damage_per_enemy_spell_type':
+                # Dominion - damage based on enemy boost spells
+                spell_type = params.get('spell_type', 'any')
+                enemies = [p for p in gs.players if p != caster]
+                
+                for enemy in enemies:
+                    count = 0
+                    # Count active spells of the specified type for this enemy
+                    for clash_list in enemy.board:
+                        for spell in clash_list:
+                            if spell.status == 'active' and spell_type in spell.card.types:
+                                count += 1
+                    
+                    if count > 0 and not enemy.is_invulnerable:
+                        damage = count
+                        original_health = enemy.health
+                        enemy.health = max(0, enemy.health - damage)
+                        gs.action_log.append(f"{caster.name}'s [{current_card.name}] dealt {damage} damage to {enemy.name} ({count} {spell_type} spell(s)). ({enemy.health}/{enemy.max_health})")
+                        self._fire_event('player_damaged', gs, player=caster.name, target=enemy.name, value=damage, card_id=current_card.id)
+                        if original_health > 0 and enemy.health <= 0:
+                            if self.engine._handle_trunk_loss(enemy) == 'round_over': 
+                                raise RoundOverException()
 
     def _resolve_target(self, action_data: dict, gs: 'GameState', caster: 'Player', current_card: 'Card') -> list[Any]:
         target_str = action_data.get('target')
@@ -662,7 +744,20 @@ class ActionHandler:
             return []
         enemies = [p for p in gs.players if p != caster]; valid_enemies = [p for p in enemies if not p.is_invulnerable]
         active_conjuries = [s for p in gs.players for clash_list in p.board for s in clash_list if s and s.card.is_conjury and s.status == 'active']
-        if target_str == 'prompt_enemy' or target_str == 'prompt_player_or_conjury':
+        if target_str == 'prompt_enemy' or target_str == 'prompt_player':
+            # prompt_enemy and prompt_player both target enemies only
+            if not valid_enemies: return []
+            if caster.is_human:
+                if len(valid_enemies) == 1: return valid_enemies
+                options = {i+1: e for i, e in enumerate(valid_enemies)}
+                choice = self.engine._prompt_for_choice(caster, options, "Choose an enemy:")
+                if choice is not None: return [options[choice]]
+                else: return []
+            else:
+                # AI picks lowest health enemy
+                return [min(valid_enemies, key=lambda p: p.health)]
+        
+        if target_str == 'prompt_player_or_conjury':
             all_possible_targets = valid_enemies + [c for c in active_conjuries if c.owner in valid_enemies]
             if not all_possible_targets: return []
             if caster.is_human:
@@ -714,6 +809,48 @@ class ActionHandler:
                         break  # Only need to find one attack spell per enemy
             
             return enemies_with_attack_spells
+        
+        if target_str == 'prompt_enemy_boost_spell':
+            # For Sap - find enemy boost spells on the board
+            enemy_boost_spells = []
+            for enemy in enemies:
+                for clash_list in enemy.board:
+                    for spell in clash_list:
+                        if spell.status == 'active' and 'boost' in spell.card.types:
+                            enemy_boost_spells.append(spell)
+            
+            if not enemy_boost_spells: return []
+            if caster.is_human:
+                if len(enemy_boost_spells) == 1: return enemy_boost_spells
+                options = {i+1: s for i, s in enumerate(enemy_boost_spells)}
+                choice = self.engine._prompt_for_choice(caster, options, "Choose an enemy boost spell to recall:", view_key='card.name')
+                if choice is not None: return [options[choice]]
+                else: return []
+            else:
+                return [random.choice(enemy_boost_spells)]
+        
+        if target_str == 'prompt_enemy_active_spell':
+            # For Imitate - find enemy active spells
+            enemy_spells = []
+            for enemy in enemies:
+                for clash_list in enemy.board:
+                    for spell in clash_list:
+                        if spell.status == 'active':
+                            enemy_spells.append(spell)
+            
+            if not enemy_spells: return []
+            if caster.is_human:
+                if len(enemy_spells) == 1: return enemy_spells
+                options = {i+1: s for i, s in enumerate(enemy_spells)}
+                choice = self.engine._prompt_for_choice(caster, options, "Choose an enemy spell to copy:", view_key='card.name')
+                if choice is not None: return [options[choice]]
+                else: return []
+            else:
+                return [random.choice(enemy_spells)]
+        
+        if target_str == 'each_enemy':
+            # For Dominion - target all enemies
+            return valid_enemies
         
         return []
 class AI_Player:
