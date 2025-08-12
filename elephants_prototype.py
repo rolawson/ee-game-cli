@@ -1011,6 +1011,8 @@ class Card:
         self.is_conjury: bool = card_data.get('is_conjury', False)
         self.notfirst: int = card_data.get('notfirst', 0)
         self.notlast: int = card_data.get('notlast', 0)
+        self.theme: str = card_data.get('theme', '')
+        self.base: bool = card_data.get('base', False)
         self.resolve_effects: list[dict] = card_data.get('resolve_effects', [])
         self.advance_effects: list[dict] = card_data.get('advance_effects', [])
     def __repr__(self) -> str: return f"Card({self.name})"
@@ -1556,7 +1558,13 @@ class GameEngine:
             for key, item in options.items():
                 if isinstance(item, list): 
                     emoji = ELEMENT_EMOJIS.get(item[0].element, '')
+                    theme = item[0].theme if hasattr(item[0], 'theme') else ''
                     display_name = f"The '{item[0].elephant}' Set ({emoji} {item[0].element} | {len(item)} cards)"
+                    if theme:
+                        print(f"  [{key}] {display_name}")
+                        print(f"    {Colors.GREY}Theme: {theme}{Colors.ENDC}")
+                        continue
+                    # If no theme, fall through to normal display
                 elif isinstance(item, Card): 
                     emoji = ELEMENT_EMOJIS.get(item.element, '')
                     display_name = f"{emoji} {item.name} (P:{item.priority})"; 
