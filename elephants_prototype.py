@@ -41,7 +41,22 @@ def clear_screen(): os.system('cls' if os.name == 'nt' else 'clear')
 class Colors:
     HEADER='\033[95m'; BLUE='\033[94m'; CYAN='\033[96m'; GREEN='\033[92m'
     WARNING='\033[93m'; FAIL='\033[91m'; ENDC='\033[0m'; BOLD='\033[1m'
-    UNDERLINE='\033[4m'; GREY='\033[90m'
+    UNDERLINE='\033[4m'; GREY='\033[90m'; YELLOW='\033[93m'
+    
+# Element emojis
+ELEMENT_EMOJIS = {
+    'Fire': '🔥', 'Water': '💧', 'Wind': '🌪️', 'Earth': '🗿',
+    'Wood': '🌳', 'Metal': '⚔️', 'Time': '⏰', 'Space': '🪐',
+    'Sunbeam': '☀️', 'Moonshine': '🌙', 'Shadow': '🌑', 'Aster': '⭐',
+    'Blood': '🩸', 'Ichor': '🪽', 'Venom': '☠️', 'Nectar': '🍯',
+    'Lightning': '⚡️', 'Thunder': '🫨', 'Twilight': '☯️'
+}
+
+# Action emojis
+ACTION_EMOJIS = {
+    'damage': '💥', 'heal': '💙', 'weaken': '📉', 'bolster': '📈',
+    'advance': '➡️', 'discard': '🗑️', 'recall': '♻️'
+}
 class RoundOverException(Exception):
     """Custom exception to signal the end of the current round immediately."""
     pass
@@ -95,7 +110,8 @@ class Card:
         action_type = action.get('type')
         if action_type == 'player_choice':
             options = [self._format_action(opt) for opt in action['options']]
-            return f"Choose to: {' or '.join(options)}"
+            return f"Choose: {' OR '.join(options)}"
+        
         params = action.get('parameters', {}); value = params.get('value', '')
         target_raw = action.get('target', 'self')
         target_map = {
@@ -104,10 +120,36 @@ class Card:
             'prompt_friendly_past_spell': 'one of your past spells',
             'all_enemies_and_their_conjuries': 'each enemy and their conjuries',
             'all_enemies_who_met_condition': 'each enemy who met the condition',
-            'prompt_player_or_conjury': 'an enemy or conjury'
+            'prompt_player_or_conjury': 'an enemy or conjury',
+            'prompt_player': 'a player'
         }
         target = target_map.get(target_raw, target_raw.replace('_', ' '))
-        return f"{action_type.replace('_', ' ').title()} {target} for {value}".strip()
+        
+        # Format based on action type
+        if action_type == 'damage':
+            return f"Deal {value} damage to {target}"
+        elif action_type == 'damage_multi_target':
+            return f"Deal {value} damage to {target}"
+        elif action_type == 'heal':
+            return f"Heal {target} for {value}"
+        elif action_type == 'weaken':
+            return f"Weaken {target} by {value}"
+        elif action_type == 'bolster':
+            return f"Bolster {target} by {value}"
+        elif action_type == 'advance':
+            return f"Advance {target}"
+        elif action_type == 'discard_from_hand':
+            return f"Force {target} to discard {value} card(s)"
+        elif action_type == 'cast_extra_spell':
+            return f"Cast an extra spell from your hand"
+        elif action_type == 'damage_per_spell':
+            spell_type = params.get('spell_type', 'any')
+            return f"Deal damage to {target} equal to your other active {spell_type} spells"
+        elif action_type == 'heal_per_spell':
+            spell_type = params.get('spell_type', 'any')
+            return f"Heal {target} for each of your other active {spell_type} spells"
+        else:
+            return f"{action_type.replace('_', ' ').title()} {target}".strip()
 
 class PlayedCard:
     def __init__(self, card: Card, owner: 'Player'):
@@ -153,7 +195,7 @@ class GameState:
 class DashboardDisplay:
     def draw(self, gs, pov_player_index=0, prompt=""):
         clear_screen(); print(f"{Colors.HEADER}{'='*34}[ Elemental Elephants ]{'='*33}{Colors.ENDC}")
-        print(f"Round: {gs.round_num} | Clash: {gs.clash_num} | Ringleader: {Colors.BOLD}{gs.players[gs.ringleader_index].name}{Colors.ENDC}")
+        print(f"Round: {gs.round_num} | Clash: {gs.clash_num} | Ringleader: 🐘 {Colors.BOLD}{gs.players[gs.ringleader_index].name}{Colors.ENDC}")
         print("-" * 150)
         header = f"{'PLAYER'.ljust(15)} | {'HEALTH'.ljust(16)} | {'TRUNKS'} | {'DISCARD'} | {'CLASH I'.ljust(30)} | {'CLASH II'.ljust(30)} | {'CLASH III'.ljust(30)}| {'CLASH IV'.ljust(30)}"
         print(Colors.BOLD + header + Colors.ENDC); print("-" * 150)
@@ -186,7 +228,10 @@ class DashboardDisplay:
             if not pov_player.hand: print(f"{Colors.GREY}Your hand is empty.{Colors.ENDC}")
             else:
                 for i, card in enumerate(pov_player.hand):
-                    print(f"[{i+1}] {Colors.BOLD}{card.name} (P:{card.priority}){Colors.ENDC}"); print(f"    {Colors.GREY}> {card.get_instructions_text()}{Colors.ENDC}")
+                    emoji = ELEMENT_EMOJIS.get(card.element, '')
+                    type_str = '/'.join(card.types) if card.types else 'None'
+                    print(f"[{i+1}] {emoji} {Colors.BOLD}{card.name}{Colors.ENDC} (P:{card.priority}, {type_str})"); 
+                    print(f"    {Colors.GREY}> {card.get_instructions_text()}{Colors.ENDC}")
         print("-" * 89);
         if gs.action_log: print(f"{Colors.BOLD}LOG:{Colors.ENDC}"); [print(f"  {entry}") for entry in gs.action_log[-5:]]
         if prompt: print(f"\n>>> {Colors.WARNING}{prompt}{Colors.ENDC}")
@@ -334,7 +379,7 @@ class ActionHandler:
                 if isinstance(target, Player):
                     if not target.is_invulnerable:
                         damage = params.get('value', 1); original_health = target.health; target.health = max(0, target.health - damage)
-                        gs.action_log.append(f"{caster.name}'s [{current_card.name}] dealt {damage} damage to {target.name}. ({target.health}/{target.max_health})")
+                        gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage} damage to {target.name}. ({target.health}/{target.max_health}){Colors.ENDC}")
                         self._fire_event('player_damaged', gs, player=caster.name, target=target.name, value=damage, card_id=current_card.id)
                         if original_health > 0 and target.health <= 0:
                             if self.engine._handle_trunk_loss(target) == 'round_over': raise RoundOverException()
@@ -354,18 +399,18 @@ class ActionHandler:
                         t.status = 'cancelled'; gs.action_log.append(f"{caster.name}'s [{current_card.name}] CANCELLED [{t.card.name}].")
                         self._fire_event('spell_cancelled', gs, player=caster.name, target_card_id=t.card.id, card_id=current_card.id)
             elif action_type == 'heal':
-                target.health = min(target.max_health, target.health + params.get('value', 1)); gs.action_log.append(f"{caster.name}'s [{current_card.name}] healed {target.name} for {params.get('value', 1)}. ({target.health}/{target.max_health})")
+                target.health = min(target.max_health, target.health + params.get('value', 1)); gs.action_log.append(f"{Colors.BLUE}{ACTION_EMOJIS['heal']} {caster.name}'s [{current_card.name}] healed {target.name} for {params.get('value', 1)}. ({target.health}/{target.max_health}){Colors.ENDC}")
                 self._fire_event('player_healed', gs, player=target.name, value=params.get('value', 1), card_id=current_card.id)
             elif action_type == 'weaken':
                 if isinstance(target, Player):
                     target.max_health = max(0, target.max_health - params.get('value', 1)); target.health = min(target.health, target.max_health)
-                    gs.action_log.append(f"{caster.name}'s [{current_card.name}] weakened {target.name} by {params.get('value', 1)}. Max health now {target.max_health}.")
+                    gs.action_log.append(f"{Colors.YELLOW}{ACTION_EMOJIS['weaken']} {caster.name}'s [{current_card.name}] weakened {target.name} by {params.get('value', 1)}. Max health now {target.max_health}.{Colors.ENDC}")
                 elif isinstance(target, PlayedCard) and target.card.is_conjury:
                     # Weakening a conjury cancels it
                     target.status = 'cancelled'
                     gs.action_log.append(f"{caster.name}'s [{current_card.name}] weakened and CANCELLED [{target.card.name}].")
             elif action_type == 'bolster':
-                target.max_health += params.get('value', 1); gs.action_log.append(f"{caster.name}'s [{current_card.name}] bolstered {target.name}. Max health now {target.max_health}.")
+                target.max_health += params.get('value', 1); gs.action_log.append(f"{Colors.GREEN}{ACTION_EMOJIS['bolster']} {caster.name}'s [{current_card.name}] bolstered {target.name}. Max health now {target.max_health}.{Colors.ENDC}")
             elif action_type == 'damage_per_spell':
                 # Count active spells matching criteria
                 active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'active']
@@ -456,7 +501,7 @@ class ActionHandler:
                         if target in clash_list:
                             owner.board[i].remove(target); owner.board[next_clash_idx].append(target)
                             target.advances_this_round += 1  # Increment advance count
-                            gs.action_log.append(f"{owner.name}'s [{target.card.name}] advanced from Clash {i+1} to Clash {next_clash_idx + 1}.")
+                            gs.action_log.append(f"{Colors.GREEN}{ACTION_EMOJIS['advance']} {owner.name}'s [{target.card.name}] advanced from Clash {i+1} to Clash {next_clash_idx + 1}.{Colors.ENDC}")
                             self._fire_event('spell_advanced', gs, player=owner.name, card_id=target.card.id); found_and_moved = True; break
                     if not found_and_moved: gs.action_log.append(f"Error: Could not find [{target.card.name}] to advance.")
                 else: gs.action_log.append(f"[{target.card.name}] could not advance past Clash 4.")
@@ -571,10 +616,19 @@ class GameEngine:
             self.display.draw(self.gs, self.gs.players.index(player), prompt=prompt_message)
             if not options: self.gs.action_log.append(f"{Colors.GREY}No options available.{Colors.ENDC}"); return 'done' if 'done' in prompt_message.lower() else None
             for key, item in options.items():
-                if isinstance(item, list): display_name = f"The '{item[0].elephant}' Set ({item[0].element} | {len(item)} cards)"
-                elif isinstance(item, Card): display_name = f"{item.name} (P:{item.priority})"; print(f"  [{key}] {display_name}"); print(f"    {Colors.GREY}> {item.get_instructions_text()}{Colors.ENDC}"); continue
-                elif isinstance(item, PlayedCard): display_name = f"{item.owner.name}'s [{item.card.name}]"
-                else: display_name = getattr(item, view_key, str(item))
+                if isinstance(item, list): 
+                    emoji = ELEMENT_EMOJIS.get(item[0].element, '')
+                    display_name = f"The '{item[0].elephant}' Set ({emoji} {item[0].element} | {len(item)} cards)"
+                elif isinstance(item, Card): 
+                    emoji = ELEMENT_EMOJIS.get(item.element, '')
+                    display_name = f"{emoji} {item.name} (P:{item.priority})"; 
+                    print(f"  [{key}] {display_name}"); 
+                    print(f"    {Colors.GREY}> {item.get_instructions_text()}{Colors.ENDC}"); 
+                    continue
+                elif isinstance(item, PlayedCard): 
+                    display_name = f"{item.owner.name}'s [{item.card.name}]"
+                else: 
+                    display_name = getattr(item, view_key, str(item))
                 print(f"  [{key}] {display_name}")
             if 'done' in prompt_message.lower(): print("\n  [done] Finish selection")
             choice = input("\nYour choice: ").lower().strip()
@@ -612,7 +666,9 @@ class GameEngine:
                     # AI picks randomly from available sets
                     drafted_set = random.choice(self.gs.main_deck)
                     self.gs.main_deck.remove(drafted_set)
-                p.discard_pile.extend(drafted_set); self.gs.action_log.append(f"{p.name} drafted the '{drafted_set[0].elephant}' ({drafted_set[0].element}) set.")
+                p.discard_pile.extend(drafted_set); 
+                emoji = ELEMENT_EMOJIS.get(drafted_set[0].element, '')
+                self.gs.action_log.append(f"{p.name} drafted the '{drafted_set[0].elephant}' ({emoji} {drafted_set[0].element}) set.")
         for p in self.gs.players:
             if p.is_human:
                 options = {i+1: c for i, c in enumerate(p.discard_pile)}; hand_choices = []
@@ -708,6 +764,18 @@ class GameEngine:
             for spell in p.board[self.gs.clash_num - 1]:
                 if spell.status == 'prepared':
                     spell.status = 'active'
+        
+        # Show all revealed spells with instructions
+        self.gs.action_log.append(f"{Colors.BOLD}Spells Revealed:{Colors.ENDC}")
+        for p in self.gs.players:
+            for spell in p.board[self.gs.clash_num - 1]:
+                if spell.status == 'active':
+                    emoji = ELEMENT_EMOJIS.get(spell.card.element, '')
+                    type_str = '/'.join(spell.card.types) if spell.card.types else 'None'
+                    conjury_str = " [CONJURY]" if spell.card.is_conjury else ""
+                    self.gs.action_log.append(f"  {p.name}: {emoji} [{spell.card.name}]{conjury_str} (P:{spell.card.priority}, {type_str})")
+                    self.gs.action_log.append(f"    {Colors.GREY}> {spell.card.get_instructions_text()}{Colors.ENDC}")
+        
         self._pause("All spells are revealed simultaneously!")
     
     def _handle_priority_choices(self) -> None:
