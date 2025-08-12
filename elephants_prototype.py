@@ -140,6 +140,9 @@ class Card:
         elif action_type == 'discard_from_hand':
             return f"Force {target} to discard {value} card(s)"
         elif action_type == 'cast_extra_spell':
+            value = params.get('value', 1)
+            if value > 1:
+                return f"Cast up to {value} extra spells from your hand"
             return f"Cast an extra spell from your hand"
         elif action_type == 'damage_per_spell':
             spell_type = params.get('spell_type', 'any')
@@ -181,6 +184,27 @@ class Card:
         elif action_type == 'advance_from_hand':
             value = params.get('value', 1)
             return f"Play up to {value} spell(s) from your hand to future clashes"
+        elif action_type == 'weaken_per_spell':
+            spell_type = params.get('spell_type', 'any')
+            exclude_self = params.get('exclude_self', False)
+            self_text = " other" if exclude_self else ""
+            return f"Weaken {target} for each of your{self_text} active {spell_type} spells"
+        elif action_type == 'advance_from_past_clash':
+            return f"Advance a spell from a past clash"
+        elif action_type == 'sequence':
+            # Format sequence of actions
+            actions = action.get('actions', [])
+            descriptions = [self._format_action(act) for act in actions]
+            return " then ".join(descriptions)
+        elif action_type == 'pass':
+            return "Do nothing"
+        elif action_type == 'modify_spell_logic':
+            change = params.get('change', '')
+            if change == 'or_to_and':
+                return "Changes 'Choose one' effects on your other spells to 'Do both'"
+        elif action_type == 'modify_priority':
+            value = params.get('value', 0)
+            return f"Reduces priority of your other spells by {abs(value)} (minimum 1)"
         else:
             return f"{action_type.replace('_', ' ').title()} {target}".strip()
 
@@ -563,6 +587,14 @@ class ActionHandler:
                 return
 
         if action_type == 'player_choice':
+            # Check if Coalesce is active for this player
+            has_coalesce = False
+            active_spells = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'active']
+            for spell in active_spells:
+                if spell.owner == caster and spell.card.name == 'Coalesce':
+                    has_coalesce = True
+                    break
+            
             # First, check if each option is actually valid
             valid_options = []
             for option in action_data.get('options', []):
@@ -575,6 +607,14 @@ class ActionHandler:
                 gs.action_log.append(f"{Colors.GREY}No valid options available.{Colors.ENDC}")
                 return
             
+            # If Coalesce is active, execute ALL valid options
+            if has_coalesce:
+                gs.action_log.append(f"{caster.name}'s [Coalesce] changes 'Choose one' to 'Do both'!")
+                for option in valid_options:
+                    self._execute_action(option, gs, caster, current_card)
+                    self.engine._pause()
+                return
+            
             # If only one valid option, execute it automatically
             if len(valid_options) == 1:
                 gs.action_log.append(f"Only one valid option - executing automatically.")
@@ -585,7 +625,17 @@ class ActionHandler:
                 # Build options dictionary with labels
                 options_dict = {}
                 for i, option in enumerate(valid_options):
-                    label = option.get('label', f"Option {i+1}")
+                    # Generate a descriptive label for each option
+                    if option.get('type') == 'sequence':
+                        # For sequence actions, describe all actions
+                        action_descriptions = []
+                        for act in option.get('actions', []):
+                            action_descriptions.append(current_card._format_action(act))
+                        label = " then ".join(action_descriptions)
+                    elif option.get('type') == 'pass':
+                        label = "Pass (do nothing)"
+                    else:
+                        label = current_card._format_action(option)
                     options_dict[i+1] = {'label': label, 'action': option}
                 
                 # Display options to player
@@ -603,23 +653,68 @@ class ActionHandler:
                 except ValueError:
                     gs.action_log.append(f"{Colors.FAIL}Invalid choice.{Colors.ENDC}")
             else:
-                # AI just picks the first valid option
-                self._execute_action(valid_options[0], gs, caster, current_card)
+                # AI logic - pick based on game state
+                # For attack/remedy choices, pick based on health
+                attack_options = []
+                remedy_options = []
+                other_options = []
+                
+                for option in valid_options:
+                    if option.get('type') == 'damage' or option.get('type') == 'weaken':
+                        attack_options.append(option)
+                    elif option.get('type') == 'heal' or option.get('type') == 'bolster':
+                        remedy_options.append(option)
+                    else:
+                        other_options.append(option)
+                
+                # AI decision making
+                if caster.health <= 2 and remedy_options:
+                    # Low health - prefer healing
+                    self._execute_action(remedy_options[0], gs, caster, current_card)
+                elif attack_options:
+                    # Otherwise prefer attacking
+                    self._execute_action(attack_options[0], gs, caster, current_card)
+                elif other_options:
+                    # Fallback to other options
+                    self._execute_action(other_options[0], gs, caster, current_card)
+                else:
+                    # Ultimate fallback
+                    self._execute_action(valid_options[0], gs, caster, current_card)
             return
         
         if action_type == 'cast_extra_spell':
+            num_to_cast = params.get('value', 1)
+            
             if caster.is_human:
-                if not caster.hand: gs.action_log.append(f"{caster.name} has no cards to cast."); self.engine._pause(); return
-                options = {i+1: c for i, c in enumerate(caster.hand)}
-                choice = self.engine._prompt_for_choice(caster, options, "Choose an extra spell to cast:")
-                if choice is not None:
-                    card_to_cast = caster.hand.pop(choice-1)
-                    newly_played_card = PlayedCard(card_to_cast, caster)
-                    newly_played_card.status = 'active'  # Set to active since it's cast mid-resolution
-                    gs.players[gs.players.index(caster)].board[gs.clash_num - 1].append(newly_played_card)
-                    self.engine.add_to_resolution_queue(newly_played_card)
-                    gs.action_log.append(f"{caster.name} casts an extra spell: [{card_to_cast.name}]!")
+                if not caster.hand: 
+                    gs.action_log.append(f"{caster.name} has no cards to cast.")
                     self.engine._pause()
+                    return
+                
+                for spell_num in range(min(num_to_cast, len(caster.hand))):
+                    if not caster.hand:
+                        break
+                    options = {i+1: c for i, c in enumerate(caster.hand)}
+                    prompt = f"Choose spell {spell_num + 1} of {num_to_cast} to cast:"
+                    choice = self.engine._prompt_for_choice(caster, options, prompt)
+                    if choice is not None:
+                        card_to_cast = caster.hand.pop(choice-1)
+                        newly_played_card = PlayedCard(card_to_cast, caster)
+                        newly_played_card.status = 'active'  # Set to active since it's cast mid-resolution
+                        gs.players[gs.players.index(caster)].board[gs.clash_num - 1].append(newly_played_card)
+                        self.engine.add_to_resolution_queue(newly_played_card)
+                        gs.action_log.append(f"{caster.name} casts an extra spell: [{card_to_cast.name}]!")
+                        self.engine._pause()
+            else:
+                # AI casts up to num_to_cast spells
+                for _ in range(min(num_to_cast, len(caster.hand))):
+                    if caster.hand:
+                        card_to_cast = caster.hand.pop(0)
+                        newly_played_card = PlayedCard(card_to_cast, caster)
+                        newly_played_card.status = 'active'
+                        gs.players[gs.players.index(caster)].board[gs.clash_num - 1].append(newly_played_card)
+                        self.engine.add_to_resolution_queue(newly_played_card)
+                        gs.action_log.append(f"{caster.name} casts an extra spell: [{card_to_cast.name}]!")
             return
 
         for target in targets:
@@ -744,14 +839,25 @@ class ActionHandler:
                                 for spell in clash_list:
                                     if spell.status == 'active' and spell.card.name == 'Break':
                                         gs.action_log.append(f"[{target.card.name}] cannot advance because {player.name}'s [Break] prevents it!")
-                                        continue
+                                        return  # Prevent the advance from happening
                 
-                # Check if this advance action has a per-round limit
-                if 'limit' in params:
-                    advance_limit = params['limit']
-                    if target.advances_this_round >= advance_limit:
-                        gs.action_log.append(f"[{target.card.name}] can only advance {advance_limit} time(s) per round and has already advanced {target.advances_this_round} time(s).")
-                        continue
+                # Check if the target spell has an advance limit (from its own advance effects)
+                target_has_limit = False
+                target_limit = 1
+                
+                # Check if the target spell has a limit in its own advance effects
+                for adv_effect in target.card.advance_effects:
+                    if adv_effect.get('action', {}).get('type') == 'advance':
+                        action_params = adv_effect.get('action', {}).get('parameters', {})
+                        if 'limit' in action_params:
+                            target_has_limit = True
+                            target_limit = action_params['limit']
+                            break
+                
+                # If target has a limit, check if it's been reached
+                if target_has_limit and target.advances_this_round >= target_limit:
+                    gs.action_log.append(f"[{target.card.name}] can only advance {target_limit} time(s) per round and has already advanced {target.advances_this_round} time(s).")
+                    continue
                 
                 owner = target.owner; next_clash_idx = gs.clash_num
                 if next_clash_idx < 4:
@@ -945,6 +1051,44 @@ class ActionHandler:
                             played_card.status = 'prepared'
                             caster.board[target_clash].append(played_card)
                             gs.action_log.append(f"{caster.name} advanced [{card.name}] from hand to Clash {target_clash + 1}!")
+            
+            elif action_type == 'sequence':
+                # Execute a sequence of actions in order
+                actions = action_data.get('actions', [])
+                for act in actions:
+                    self._execute_action(act, gs, caster, current_card)
+                    self.engine._pause()
+            
+            elif action_type == 'weaken_per_spell':
+                # Count active spells matching criteria (similar to damage_per_spell)
+                active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'active']
+                spell_type = params.get('spell_type', 'any')
+                exclude_self = params.get('exclude_self', False)
+                
+                count = 0
+                for spell in active_spells_this_clash:
+                    if spell.owner == caster:
+                        if exclude_self and spell.card.id == current_card.id:
+                            continue
+                        if spell_type == 'any' or spell_type in spell.card.types:
+                            count += 1
+                
+                if count > 0 and isinstance(target, Player):
+                    target.max_health = max(0, target.max_health - count)
+                    target.health = min(target.health, target.max_health)
+                    gs.action_log.append(f"{caster.name}'s [{current_card.name}] weakened {target.name} by {count} ({count} {spell_type} spell(s)). Max health now {target.max_health}.")
+                else:
+                    gs.action_log.append(f"{caster.name} has no active {spell_type} spells to boost the weakening.")
+            
+            elif action_type == 'advance_from_past_clash':
+                # This is used by Blow spell - advance a spell from a past clash
+                # For now, this is handled separately in the spell's definition
+                # The actual implementation would need to prompt for which past clash
+                gs.action_log.append(f"[advance_from_past_clash not yet implemented]")
+            
+            elif action_type == 'pass':
+                # Do nothing
+                gs.action_log.append(f"{caster.name} chose to pass.")
 
     def _resolve_target(self, action_data: dict, gs: 'GameState', caster: 'Player', current_card: 'Card') -> list[Any]:
         target_str = action_data.get('target')
@@ -1086,7 +1230,7 @@ class ActionHandler:
             return enemy_attack_spells
         
         if target_str == 'prompt_any_active_spell':
-            # For Gravitate - any active spell on the board
+            # For Gravitate/Eventide - any active spell on the board
             all_active_spells = []
             for player in gs.players:
                 for clash_list in player.board:
@@ -1098,12 +1242,35 @@ class ActionHandler:
             if caster.is_human:
                 if len(all_active_spells) == 1: return all_active_spells
                 options = {i+1: s for i, s in enumerate(all_active_spells)}
-                choice = self.engine._prompt_for_choice(caster, options, "Choose a spell to move:", view_key='card.name')
+                
+                # Different prompts based on action
+                if action_data.get('type') == 'cancel':
+                    prompt = "Choose a spell to cancel:"
+                else:
+                    prompt = "Choose a spell:"
+                    
+                choice = self.engine._prompt_for_choice(caster, options, prompt, view_key='card.name')
                 if choice is not None: return [options[choice]]
                 else: return []
             else:
-                # AI picks a random spell
-                return [random.choice(all_active_spells)]
+                # AI logic - for cancel, prefer enemy spells
+                if action_data.get('type') == 'cancel':
+                    enemy_spells = [s for s in all_active_spells if s.owner != caster]
+                    if enemy_spells:
+                        # Prefer high priority enemy spells
+                        priority_spells = sorted(enemy_spells, key=lambda s: int(s.card.priority) if str(s.card.priority).isdigit() else 99)
+                        return [priority_spells[0]]
+                    # If no enemy spells, might cancel own low-value spell
+                    own_spells = [s for s in all_active_spells if s.owner == caster]
+                    if own_spells:
+                        # Only cancel own spell if it's low priority/value
+                        low_priority = [s for s in own_spells if (int(s.card.priority) if str(s.card.priority).isdigit() else 99) >= 4]
+                        if low_priority:
+                            return [low_priority[0]]
+                    return []
+                else:
+                    # For non-cancel actions, pick any spell
+                    return [random.choice(all_active_spells)]
         
         if target_str == 'self' and action_data.get('type') == 'recall':
             # For Constellation - let player choose from past spells
@@ -1221,7 +1388,7 @@ class GameEngine:
             for i, p in enumerate(self.gs.players):
                 self._check_and_rebuild_deck()
                 if p.is_human:
-                    options = {i+1: s for i, s in enumerate(self.gs.main_deck) if s}; choice = self._prompt_for_choice(p, options, f"{p.name}, choose a spell set to draft:")
+                    options = {idx+1: s for idx, s in enumerate(self.gs.main_deck) if s}; choice = self._prompt_for_choice(p, options, f"{p.name}, choose a spell set to draft:")
                     drafted_set = options[choice]; self.gs.main_deck.remove(drafted_set)
                 else: 
                     # AI picks randomly from available sets
@@ -1398,9 +1565,26 @@ class GameEngine:
         
         active_spells = [s for p in self.gs.players for s in p.board[self.gs.clash_num-1] if s.status == 'active']
         self.gs.resolution_queue = []
+        
+        # Check for Accelerator effects
+        priority_modifiers = {}
+        for player in self.gs.players:
+            modifier = 0
+            for spell in active_spells:
+                if spell.owner == player and spell.card.name == 'Accelerator' and spell.status == 'active':
+                    # Accelerator reduces priority by 2 for other friendly spells
+                    modifier -= 2
+            if modifier != 0:
+                priority_modifiers[player] = modifier
+        
         for spell in active_spells:
             p_val = 99 if spell.card.priority == 'A' else int(spell.card.priority)
             caster_idx = self.gs.players.index(spell.owner)
+            
+            # Apply Accelerator modifier if this isn't Accelerator itself
+            if spell.card.name != 'Accelerator' and spell.owner in priority_modifiers:
+                p_val = max(1, p_val + priority_modifiers[spell.owner])  # Minimum priority of 1
+            
             self.gs.resolution_queue.append({'p_val': p_val, 'caster_idx': caster_idx, 'played_card': spell})
         
         self.gs.resolution_queue.sort(key=lambda x: (x['p_val'], x['caster_idx']))

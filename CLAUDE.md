@@ -6,6 +6,8 @@ Where applicable, use diagrams and examples.
 
 Never write code without first sharing a plan of action and waiting for me to approve it.
 
-When code is ready to commit, suggest a commit message.
+Never take proactive action without first asking me.
+
+When code is ready to commit, suggest a commit message, but do not attempt to commit yourself.
 
 After code is pushed, update CONTEXT.md if it's appropriate to do so.
