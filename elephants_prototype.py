@@ -357,8 +357,13 @@ class ActionHandler:
                 target.health = min(target.max_health, target.health + params.get('value', 1)); gs.action_log.append(f"{caster.name}'s [{current_card.name}] healed {target.name} for {params.get('value', 1)}. ({target.health}/{target.max_health})")
                 self._fire_event('player_healed', gs, player=target.name, value=params.get('value', 1), card_id=current_card.id)
             elif action_type == 'weaken':
-                target.max_health = max(0, target.max_health - params.get('value', 1)); target.health = min(target.health, target.max_health)
-                gs.action_log.append(f"{caster.name}'s [{current_card.name}] weakened {target.name} by {params.get('value', 1)}. Max health now {target.max_health}.")
+                if isinstance(target, Player):
+                    target.max_health = max(0, target.max_health - params.get('value', 1)); target.health = min(target.health, target.max_health)
+                    gs.action_log.append(f"{caster.name}'s [{current_card.name}] weakened {target.name} by {params.get('value', 1)}. Max health now {target.max_health}.")
+                elif isinstance(target, PlayedCard) and target.card.is_conjury:
+                    # Weakening a conjury cancels it
+                    target.status = 'cancelled'
+                    gs.action_log.append(f"{caster.name}'s [{current_card.name}] weakened and CANCELLED [{target.card.name}].")
             elif action_type == 'bolster':
                 target.max_health += params.get('value', 1); gs.action_log.append(f"{caster.name}'s [{current_card.name}] bolstered {target.name}. Max health now {target.max_health}.")
             elif action_type == 'damage_per_spell':
@@ -411,6 +416,30 @@ class ActionHandler:
                     self._fire_event('player_healed', gs, player=target.name, value=healing, card_id=current_card.id)
                 else:
                     gs.action_log.append(f"{caster.name} has no other active spells to boost the healing.")
+            
+            elif action_type == 'discard_from_hand':
+                if isinstance(target, Player) and target.hand:
+                    num_to_discard = min(params.get('value', 1), len(target.hand))
+                    if num_to_discard > 0:
+                        if target.is_human:
+                            for i in range(num_to_discard):
+                                prompt = f"Choose a card to discard ({i+1}/{num_to_discard}):"
+                                options = {j+1: c for j, c in enumerate(target.hand)}
+                                choice = self.engine._prompt_for_choice(target, options, prompt)
+                                if choice is not None:
+                                    discarded = target.hand.pop(choice-1)
+                                    target.discard_pile.append(discarded)
+                                    gs.action_log.append(f"{target.name} discarded [{discarded.name}].")
+                        else:
+                            # AI discards randomly
+                            for i in range(num_to_discard):
+                                if target.hand:
+                                    discarded = random.choice(target.hand)
+                                    target.hand.remove(discarded)
+                                    target.discard_pile.append(discarded)
+                                    gs.action_log.append(f"{target.name} discarded [{discarded.name}].")
+                else:
+                    gs.action_log.append(f"{target.name} has no cards to discard.")
             
             elif action_type == 'advance':
                 # Check if this advance action has a per-round limit
