@@ -39,7 +39,17 @@ These are the "worker" classes that the `GameEngine` delegates tasks to.
 -   **`DashboardDisplay`**: The game's entire user interface. Its only job is to take the current `GameState` and draw it to the console in a readable format.
 -   **`ConditionChecker`**: The "rules lawyer." Its `check()` method takes a condition from a spell's JSON and evaluates it against the current `GameState` (primarily the `event_log`) to see if it's `True` or `False`. This is how `Turbulence` and other `Response` spells work.
 -   **`ActionHandler`**: The "muscle" of the engine. Its `execute()` method takes an action from a spell's JSON and makes the corresponding changes to the `GameState` (e.g., reducing a `Player`'s `health`). It is also responsible for firing events into the `event_log`.
--   **`AI_Player`**: Contains the logic for how a non-human player makes decisions. Its `choose_card_to_play()` method looks at the `GameState` and the AI's hand and returns the index of the best card to play.
+
+### 4. AI System (Modular Architecture)
+
+The AI system now uses a modular architecture with different difficulty levels:
+
+-   **`BaseAI`**: Abstract base class that all AI strategies inherit from. Provides common methods like `_get_valid_card_indices()` for filtering cards by clash restrictions.
+-   **`EasyAI`**: Simplest AI that makes completely random decisions. Good for beginners or testing.
+-   **`AI_Player`**: The medium difficulty AI (formerly the only AI). Uses basic heuristics like prioritizing healing when low on health and attacking when enemies are weak.
+-   **`HardAI`**: Strategic AI that evaluates each card based on multiple factors (health state, enemy threats, card synergies, timing) and picks the highest-scoring option.
+
+The `GameEngine` now accepts an `ai_difficulty` parameter ('easy', 'medium', 'hard') that determines which AI strategy to use for computer players.
 
 ## The Game Flow (Simplified)
 

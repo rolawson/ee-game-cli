@@ -1614,23 +1614,40 @@ class ActionHandler:
         else:
             gs.action_log.append(f"[{target.card.name}] could not advance past Clash 4.")
 
-class AI_Player:
+class BaseAI:
+    """Base class for all AI strategies"""
+    
     def choose_card_to_play(self, player, gs):
-        # --- Filter by clash rules ---
-        valid_plays_indices = list(range(len(player.hand))) # Start with all indices as valid
+        # Get valid cards considering clash restrictions
+        valid_indices = self._get_valid_card_indices(player, gs)
+        if not valid_indices:
+            return None
+            
+        # Strategy-specific selection
+        return self._select_card(player, gs, valid_indices)
+    
+    def _get_valid_card_indices(self, player, gs):
+        """Common method to filter cards by clash rules"""
+        valid = list(range(len(player.hand)))
         if gs.clash_num == 1:
-            valid_plays_indices = [i for i in valid_plays_indices if player.hand[i].notfirst < 2]
+            valid = [i for i in valid if player.hand[i].notfirst < 2]
         if gs.clash_num == 4:
-            valid_plays_indices = [i for i in valid_plays_indices if player.hand[i].notlast < 2]
-        
-        if not valid_plays_indices:
-            return None # No valid card to play
+            valid = [i for i in valid if player.hand[i].notlast < 2]
+        return valid
+    
+    def _select_card(self, player, gs, valid_indices):
+        """Override in subclasses"""
+        raise NotImplementedError
 
+class AI_Player(BaseAI):
+    """Current AI logic - medium difficulty"""
+    
+    def _select_card(self, player, gs, valid_indices):
         # --- Categorize cards by preference based on clash timing ---
         preferred_indices = []
         acceptable_indices = []
         
-        for i in valid_plays_indices:
+        for i in valid_indices:
             card = player.hand[i]
             # Cards with notfirst/notlast = 1 are less preferred in those clashes
             if gs.clash_num == 1 and card.notfirst == 1:
@@ -1664,12 +1681,109 @@ class AI_Player:
         
         # Default to a random candidate card
         return random.choice(candidate_indices)
+
+class EasyAI(BaseAI):
+    """Easy AI - completely random decisions"""
+    
+    def _select_card(self, player, gs, valid_indices):
+        """Just pick a random valid card"""
+        return random.choice(valid_indices) if valid_indices else None
+
+class HardAI(BaseAI):
+    """Hard AI - strategic play with card evaluation"""
+    
+    def _select_card(self, player, gs, valid_indices):
+        """Evaluate each card and pick the best one"""
+        if not valid_indices:
+            return None
+            
+        # Evaluate each valid card
+        scores = {}
+        for idx in valid_indices:
+            card = player.hand[idx]
+            score = self._evaluate_card(card, player, gs)
+            scores[idx] = score
+        
+        # Return highest scoring card
+        return max(scores.items(), key=lambda x: x[1])[0]
+    
+    def _evaluate_card(self, card, player, gs):
+        """Score a card based on game state"""
+        score = 0
+        
+        # Priority scoring - faster is better early game
+        if gs.clash_num <= 2 and card.priority != 'A':
+            score += (5 - int(card.priority)) * 10
+        
+        # Critical health - prioritize healing
+        if player.health <= 2 and 'remedy' in card.types:
+            score += 150
+        elif player.health <= 3 and 'remedy' in card.types:
+            score += 80
+            
+        # Enemy at low health - prioritize damage
+        low_health_enemies = [p for p in gs.players if p != player and p.health <= 2]
+        if low_health_enemies and 'attack' in card.types:
+            score += 120
+            
+        # Boost spells when we have other spells
+        if 'boost' in card.types and len([c for c in player.hand if 'boost' not in c.types]) >= 2:
+            score += 60
+            
+        # Response spells based on round state
+        if 'response' in card.types:
+            if gs.round_num > 1:  # More likely to trigger
+                score += 50
+            else:
+                score -= 20  # Less useful early
+                
+        # Conjury spells - good for board control
+        if card.is_conjury:
+            score += 40
+            
+        # Cancel/Discard when enemies have multiple spells
+        if 'cancel' in str(card.resolve_effects) or 'discard' in str(card.resolve_effects):
+            # This is a rough heuristic - in later clashes enemies have more spells
+            if gs.clash_num >= 2:
+                score += 70
+                
+        # Avoid cards with restrictions at wrong times
+        if gs.clash_num == 1 and card.notfirst == 1:
+            score -= 50
+        elif gs.clash_num == 4 and card.notlast == 1:
+            score -= 50
+            
+        # Element synergy (if we played same element before)
+        if gs.clash_num > 1:
+            for past_clash in range(gs.clash_num - 1):
+                for spell in player.board[past_clash]:
+                    if spell.card.element == card.element:
+                        score += 15
+                        
+        # Random factor to prevent predictability
+        score += random.randint(-10, 10)
+        
+        return score
+
 # --- MAIN GAME ENGINE ---
 class GameEngine:
-    def __init__(self, player_names):
+    def __init__(self, player_names, ai_difficulty='medium'):
         self.gs = GameState(player_names); self.display = DashboardDisplay()
         self.condition_checker = ConditionChecker(); self.action_handler = ActionHandler(self)
-        self.ai_player = AI_Player()
+        
+        # Create AI strategies based on difficulty
+        self.ai_strategies = {}
+        for i, name in enumerate(player_names):
+            if i > 0:  # AI players (not the human player)
+                if ai_difficulty == 'easy':
+                    self.ai_strategies[i] = EasyAI()
+                elif ai_difficulty == 'hard':
+                    self.ai_strategies[i] = HardAI()
+                else:  # medium (default)
+                    self.ai_strategies[i] = AI_Player()
+        
+        # Keep backward compatibility
+        self.ai_player = self.ai_strategies.get(1, AI_Player())
     def _pause(self, message=""): prompt = f"{message} {Colors.GREY}[Press Enter to continue...]{Colors.ENDC}"; self.display.draw(self.gs, prompt=prompt); input()
     def _prompt_for_choice(self, player, options, prompt_message, view_key='name'):
         while True:
@@ -1804,7 +1918,9 @@ class GameEngine:
                     if choice is not None:
                         card_to_play = player.hand.pop(choice-1)
             else: # AI logic
-                chosen_index = self.ai_player.choose_card_to_play(player, self.gs)
+                # Get the AI strategy for this player
+                ai_strategy = self.ai_strategies.get(player_index, self.ai_player)
+                chosen_index = ai_strategy.choose_card_to_play(player, self.gs)
                 if chosen_index is not None:
                     card_to_play = player.hand.pop(chosen_index)
 
@@ -2186,7 +2302,30 @@ class GameEngine:
 
 if __name__ == "__main__":
     try:
-        player_names = ["Human Player", "AI Opponent"]; engine = GameEngine(player_names); engine.run_game()
+        clear_screen()
+        print(f"{Colors.HEADER}{'='*25}[ ELEMENTAL ELEPHANTS ]{'='*25}{Colors.ENDC}")
+        print("\nChoose AI Difficulty:")
+        print("[1] Easy (Random play)")
+        print("[2] Medium (Balanced)")
+        print("[3] Hard (Strategic)")
+        
+        difficulty_choice = input("\nYour choice (1-3): ").strip()
+        
+        difficulty_map = {
+            '1': 'easy',
+            '2': 'medium',
+            '3': 'hard'
+        }
+        
+        ai_difficulty = difficulty_map.get(difficulty_choice, 'medium')
+        
+        player_names = ["Human Player", "AI Opponent"]
+        engine = GameEngine(player_names, ai_difficulty=ai_difficulty)
+        
+        print(f"\nStarting game with {ai_difficulty.upper()} difficulty AI...")
+        input("Press Enter to begin...")
+        
+        engine.run_game()
     except KeyboardInterrupt: print("\n\nGame exited by user. Goodbye!")
     except Exception:
         clear_screen(); print("\n\n--- A CRITICAL ERROR OCCURRED ---")
