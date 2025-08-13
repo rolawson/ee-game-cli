@@ -7,6 +7,8 @@ from collections import defaultdict
 from typing import Optional, Any, Union
 
 # --- CONSTANTS ---
+DEBUG_AI = True  # Set to False to disable AI decision logging
+
 # Load spell data from external JSON file
 def load_spell_data():
     """Load spell data from spells.json file."""
@@ -1643,6 +1645,9 @@ class AI_Player(BaseAI):
     """Current AI logic - medium difficulty"""
     
     def _select_card(self, player, gs, valid_indices):
+        if DEBUG_AI:
+            print(f"\n{Colors.GREY}[AI-MEDIUM] {player.name} analyzing options...{Colors.ENDC}")
+        
         # --- Categorize cards by preference based on clash timing ---
         preferred_indices = []
         acceptable_indices = []
@@ -1669,7 +1674,10 @@ class AI_Player(BaseAI):
             if heal_options:
                 # Sort by priority (lower is better)
                 heal_options.sort(key=lambda x: int(x[1].priority) if str(x[1].priority).isdigit() else 99)
-                return heal_options[0][0] # Return the index of the best heal card
+                chosen = heal_options[0]
+                if DEBUG_AI:
+                    print(f"{Colors.GREY}[AI-MEDIUM] Low health ({player.health}), choosing healing: {chosen[1].name}{Colors.ENDC}")
+                return chosen[0] # Return the index of the best heal card
 
         # Finisher: Find the best damage card among candidates
         if low_health_enemies:
@@ -1677,17 +1685,29 @@ class AI_Player(BaseAI):
             if damage_options:
                 # Sort by priority (lower is better for faster resolution)
                 damage_options.sort(key=lambda x: int(x[1].priority) if str(x[1].priority).isdigit() else 99)
-                return damage_options[0][0] # Return the index of the best damage card
+                chosen = damage_options[0]
+                enemy_names = ", ".join([e.name for e in low_health_enemies])
+                if DEBUG_AI:
+                    print(f"{Colors.GREY}[AI-MEDIUM] Enemy low health ({enemy_names}), choosing attack: {chosen[1].name}{Colors.ENDC}")
+                return chosen[0] # Return the index of the best damage card
         
         # Default to a random candidate card
-        return random.choice(candidate_indices)
+        choice = random.choice(candidate_indices)
+        if DEBUG_AI:
+            print(f"{Colors.GREY}[AI-MEDIUM] No special situation, picked: {player.hand[choice].name}{Colors.ENDC}")
+        return choice
 
 class EasyAI(BaseAI):
     """Easy AI - completely random decisions"""
     
     def _select_card(self, player, gs, valid_indices):
         """Just pick a random valid card"""
-        return random.choice(valid_indices) if valid_indices else None
+        if not valid_indices:
+            return None
+        choice = random.choice(valid_indices)
+        if DEBUG_AI:
+            print(f"\n{Colors.GREY}[AI-EASY] {player.name}: Randomly picked {player.hand[choice].name}{Colors.ENDC}")
+        return choice
 
 class HardAI(BaseAI):
     """Hard AI - strategic play with card evaluation"""
@@ -1697,15 +1717,23 @@ class HardAI(BaseAI):
         if not valid_indices:
             return None
             
+        if DEBUG_AI:
+            print(f"\n{Colors.GREY}[AI-HARD] {player.name} evaluating {len(valid_indices)} options...{Colors.ENDC}")
+        
         # Evaluate each valid card
         scores = {}
         for idx in valid_indices:
             card = player.hand[idx]
             score = self._evaluate_card(card, player, gs)
             scores[idx] = score
+            if DEBUG_AI:
+                print(f"{Colors.GREY}[AI-HARD]   {card.name}: score = {score}{Colors.ENDC}")
         
         # Return highest scoring card
-        return max(scores.items(), key=lambda x: x[1])[0]
+        best = max(scores.items(), key=lambda x: x[1])
+        if DEBUG_AI:
+            print(f"{Colors.GREY}[AI-HARD] Best choice: {player.hand[best[0]].name} (score: {best[1]}){Colors.ENDC}")
+        return best[0]
     
     def _evaluate_card(self, card, player, gs):
         """Score a card based on game state"""
