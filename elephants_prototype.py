@@ -229,6 +229,7 @@ class PlayedCard:
         self.owner: 'Player' = owner
         self.status: str = 'prepared'
         self.has_resolved: bool = False
+        self.resolve_condition_met: bool = False  # Track if resolve condition was met
         self.advances_this_round: int = 0  # Track number of advances
 class Player:
     def __init__(self, name: str, is_human: bool = True):
@@ -444,6 +445,16 @@ class ConditionChecker:
                     return True
             return False
         
+        if cond_type == 'if_resolve_condition_was_met':
+            # For spells like Clap and Enfeeble that should only advance if resolve succeeded
+            # Find the PlayedCard for this spell
+            for player in gs.players:
+                for clash_list in player.board:
+                    for spell in clash_list:
+                        if spell.card.id == current_card.id and spell.owner == caster:
+                            return spell.resolve_condition_met
+            return False
+        
         return False
 # +++ START: REPLACE THE ENTIRE ActionHandler CLASS WITH THIS +++
 class ActionHandler:
@@ -453,7 +464,7 @@ class ActionHandler:
     def _fire_event(self, event_type: str, gs: 'GameState', **kwargs: Any) -> None:
         event = {"clash": gs.clash_num, "type": event_type}; event.update(kwargs); gs.event_log.append(event)
 
-    def execute_effects(self, effects: list[dict], gs: 'GameState', caster: 'Player', current_card: 'Card') -> None:
+    def execute_effects(self, effects: list[dict], gs: 'GameState', caster: 'Player', current_card: 'Card', played_card: 'PlayedCard' = None) -> None:
         a_condition_was_met = False
         is_sequential = all(eff['condition'].get('type') == 'always' for eff in effects)
 
@@ -470,15 +481,25 @@ class ActionHandler:
                 elif not a_condition_was_met:
                     if self.engine.condition_checker.check(effect['condition'], gs, caster, current_card):
                         a_condition_was_met = True
+                        # Mark that the resolve condition was met for this spell
+                        if played_card:
+                            played_card.resolve_condition_met = True
                         self._execute_action(effect['action'], gs, caster, current_card)
 
     def _execute_action(self, action_data, gs: 'GameState', caster: 'Player', current_card: 'Card') -> None:
         # Handle case where action_data is a list of actions
         if isinstance(action_data, list):
+            # For action arrays, we need to handle each action completely with its own targets
+            # This is used by spells like Stupefy, Familiar, and Absorb
             for action in action_data:
-                self._execute_action(action, gs, caster, current_card)
+                # Process each action in the array
+                self._execute_single_action(action, gs, caster, current_card)
             return
         
+        # For single actions, delegate to the single action handler
+        self._execute_single_action(action_data, gs, caster, current_card)
+    
+    def _execute_single_action(self, action_data, gs: 'GameState', caster: 'Player', current_card: 'Card') -> None:
         action_type = action_data.get('type')
         params = action_data.get('parameters', {})
         
@@ -955,35 +976,16 @@ class ActionHandler:
                     gs.action_log.append(f"{target.name} has no cards to discard.")
             
             elif action_type == 'advance':
-                # Check if Break is preventing enemy advances
-                if target.owner != caster:
-                    # Check if any opponent has Break active in the current clash
-                    for player in gs.players:
-                        if player != target.owner:
-                            for spell in player.board[gs.clash_num - 1]:
-                                if spell.status == 'active' and spell.card.name == 'Break':
-                                    gs.action_log.append(f"[{target.card.name}] cannot advance because {player.name}'s [Break] prevents it!")
-                                    return  # Prevent the advance from happening
-                
-                # Check if this is a self-advance with a limit
-                if target.card.id == current_card.id and action_data.get('target') == 'this_spell':
-                    # This spell is trying to advance itself - check for limits
-                    advance_params = params
-                    if 'limit' in advance_params and target.advances_this_round >= advance_params['limit']:
-                        gs.action_log.append(f"[{target.card.name}] can only advance itself {advance_params['limit']} time(s) per round and has already advanced {target.advances_this_round} time(s).")
-                        continue
-                
-                owner = target.owner; next_clash_idx = gs.clash_num
-                if next_clash_idx < 4:
-                    found_and_moved = False
-                    for i, clash_list in enumerate(owner.board):
-                        if target in clash_list:
-                            owner.board[i].remove(target); owner.board[next_clash_idx].append(target)
-                            target.advances_this_round += 1  # Increment advance count
-                            gs.action_log.append(f"{Colors.GREEN}{ACTION_EMOJIS['advance']} {owner.name}'s [{target.card.name}] advanced from Clash {i+1} to Clash {next_clash_idx + 1}.{Colors.ENDC}")
-                            self._fire_event('spell_advanced', gs, player=owner.name, card_id=target.card.id); found_and_moved = True; break
-                    if not found_and_moved: gs.action_log.append(f"Error: Could not find [{target.card.name}] to advance.")
-                else: gs.action_log.append(f"[{target.card.name}] could not advance past Clash 4.")
+                # Handle multiple targets (for Clap's advance effect)
+                if isinstance(target, list):
+                    # Advance multiple spells
+                    for spell_to_advance in target:
+                        if isinstance(spell_to_advance, PlayedCard):
+                            self._advance_single_spell(spell_to_advance, gs, caster, current_card, action_data)
+                else:
+                    # Single spell advance
+                    self._advance_single_spell(target, gs, caster, current_card, action_data)
+            
             
             elif action_type == 'discard':
                 if action_data.get('target') == 'this_spell':
@@ -1488,7 +1490,91 @@ class ActionHandler:
             else:
                 return [random.choice(enemy_past_spells)]
         
+        if target_str == 'prompt_one_spell_from_each_enemy_who_met_condition':
+            # For Clap - cancel one spell from each enemy who has 2+ active spells
+            enemies = [p for p in gs.players if p != caster]
+            targets_to_cancel = []
+            
+            # Find which enemies have 2+ active spells
+            for enemy in enemies:
+                enemy_spells = []
+                for spell in active_spells_this_clash:
+                    if spell.owner == enemy and spell.status == 'active':
+                        enemy_spells.append(spell)
+                
+                if len(enemy_spells) >= 2:
+                    # This enemy meets the condition - choose one spell to cancel
+                    if caster.is_human:
+                        if len(enemy_spells) == 2:
+                            # Only 2 spells, pick one
+                            options = {i+1: s for i, s in enumerate(enemy_spells)}
+                            prompt = f"Choose which of {enemy.name}'s spells to cancel:"
+                            choice = self.engine._prompt_for_choice(caster, options, prompt, view_key='card.name')
+                            if choice is not None:
+                                targets_to_cancel.append(options[choice])
+                        else:
+                            # More than 2 spells, let player choose
+                            options = {i+1: s for i, s in enumerate(enemy_spells)}
+                            prompt = f"Choose which of {enemy.name}'s spells to cancel:"
+                            choice = self.engine._prompt_for_choice(caster, options, prompt, view_key='card.name')
+                            if choice is not None:
+                                targets_to_cancel.append(options[choice])
+                    else:
+                        # AI picks the highest priority spell
+                        priority_spells = sorted(enemy_spells, key=lambda s: int(s.card.priority) if str(s.card.priority).isdigit() else 99)
+                        targets_to_cancel.append(priority_spells[0])
+            
+            return targets_to_cancel
+        
+        if target_str == 'all_friendly_active_spells':
+            # For Clap's advance effect - all friendly active spells in current clash
+            friendly_spells = []
+            for spell in active_spells_this_clash:
+                if spell.owner == caster and spell.status == 'active':
+                    friendly_spells.append(spell)
+            return friendly_spells
+        
         return []
+    
+    def _advance_single_spell(self, target: 'PlayedCard', gs: 'GameState', caster: 'Player', current_card: 'Card', action_data: dict) -> None:
+        """Helper method to advance a single spell."""
+        # Check if Break is preventing enemy advances
+        if target.owner != caster:
+            # Check if any opponent has Break active in the current clash
+            for player in gs.players:
+                if player != target.owner:
+                    for spell in player.board[gs.clash_num - 1]:
+                        if spell.status == 'active' and spell.card.name == 'Break':
+                            gs.action_log.append(f"[{target.card.name}] cannot advance because {player.name}'s [Break] prevents it!")
+                            return  # Prevent the advance from happening
+        
+        # Check if this is a self-advance with a limit
+        params = action_data.get('parameters', {})
+        if target.card.id == current_card.id and action_data.get('target') == 'this_spell':
+            # This spell is trying to advance itself - check for limits
+            advance_params = params
+            if 'limit' in advance_params and target.advances_this_round >= advance_params['limit']:
+                gs.action_log.append(f"[{target.card.name}] can only advance itself {advance_params['limit']} time(s) per round and has already advanced {target.advances_this_round} time(s).")
+                return
+        
+        owner = target.owner
+        next_clash_idx = gs.clash_num
+        if next_clash_idx < 4:
+            found_and_moved = False
+            for i, clash_list in enumerate(owner.board):
+                if target in clash_list:
+                    owner.board[i].remove(target)
+                    owner.board[next_clash_idx].append(target)
+                    target.advances_this_round += 1  # Increment advance count
+                    gs.action_log.append(f"{Colors.GREEN}{ACTION_EMOJIS['advance']} {owner.name}'s [{target.card.name}] advanced from Clash {i+1} to Clash {next_clash_idx + 1}.{Colors.ENDC}")
+                    self._fire_event('spell_advanced', gs, player=owner.name, card_id=target.card.id)
+                    found_and_moved = True
+                    break
+            if not found_and_moved:
+                gs.action_log.append(f"Error: Could not find [{target.card.name}] to advance.")
+        else:
+            gs.action_log.append(f"[{target.card.name}] could not advance past Clash 4.")
+
 class AI_Player:
     def choose_card_to_play(self, player, gs):
         # --- Filter by clash rules ---
@@ -1829,7 +1915,7 @@ class GameEngine:
             self.gs.action_log.append(f"    {Colors.GREY}{played_card.card.get_instructions_text()}{Colors.ENDC}")
             self._pause("Executing effect...")
 
-            self.action_handler.execute_effects(played_card.card.resolve_effects, self.gs, caster, played_card.card)
+            self.action_handler.execute_effects(played_card.card.resolve_effects, self.gs, caster, played_card.card, played_card)
             
             played_card.has_resolved = True
             self.action_handler._fire_event('spell_resolved', self.gs, player=caster.name, card_id=played_card.card.id)
@@ -1849,7 +1935,8 @@ class GameEngine:
         self._check_for_round_end()
 
     def _run_advance_phase(self) -> None:
-        self.gs.action_log.clear(); self.gs.action_log.append(f"--- Clash {self.gs.clash_num}: ADVANCE ---"); self._pause()
+        # Don't clear logs here - we want to see damage from the last resolved spell
+        self.gs.action_log.append(f"--- Clash {self.gs.clash_num}: ADVANCE ---"); self._pause()
         
         # We need to copy the list as the underlying board state can change
         advancing_spells = [s for p in self.gs.players for s in p.board[self.gs.clash_num - 1] if s.status == 'active' and s.card.advance_effects]
@@ -1863,7 +1950,9 @@ class GameEngine:
             if played_card.status != 'active': continue # Skip if cancelled mid-phase
 
             caster = played_card.owner
-            prompt = f"--> Advancing {caster.name}'s [{played_card.card.name}]..."; self._pause(prompt)
+            self.gs.action_log.clear()
+            self.gs.action_log.append(f"--> Advancing {caster.name}'s [{played_card.card.name}]...")
+            self._pause()
             for effect in played_card.card.advance_effects:
                 # Call the correct method: _execute_action for a single effect
                 if self.condition_checker.check(effect['condition'], self.gs, caster, played_card.card):
@@ -1881,6 +1970,8 @@ class GameEngine:
         self.gs.action_log.append(f"Board cleared. The new Ringleader is {self.gs.players[self.gs.ringleader_index].name}."); self._pause()
         
         for p in self.gs.players:
+            drew_new_set = False  # Track if player drew a new set this turn
+            
             # Step 1: Check for empty hand FIRST
             if not p.hand:
                 self.gs.action_log.append(f"{p.name}'s hand is empty. They get a new spell set!"); self._pause()
@@ -1896,6 +1987,7 @@ class GameEngine:
                         self.gs.main_deck.remove(new_set)
                     p.hand.extend(new_set)
                     self.gs.action_log.append(f"{p.name} drafted the '{new_set[0].elephant}' ({new_set[0].element}) set.")
+                    drew_new_set = True
             else:
                 # Step 2: Handle Keep/Discard phase (only if hand not empty)
                 if p.is_human:
@@ -1906,30 +1998,60 @@ class GameEngine:
                         if choice is not None: kept_cards.append(options.pop(choice))
                     for card in options.values(): p.discard_pile.append(card)
                     p.hand = kept_cards
+                    
+                    # If they discarded everything, they can get a new set
+                    if not p.hand and self.gs.main_deck:
+                        self.gs.action_log.append(f"{p.name} discarded their entire hand and can draft a new spell set!")
+                        self._pause()
+                        options = {i+1: s for i, s in enumerate(self.gs.main_deck) if s}
+                        choice = self._prompt_for_choice(p, options, f"{p.name}, choose a new spell set:")
+                        new_set = options[choice]; self.gs.main_deck.remove(new_set)
+                        p.hand.extend(new_set)
+                        self.gs.action_log.append(f"{p.name} drafted the '{new_set[0].elephant}' ({new_set[0].element}) set.")
+                        self.gs.action_log.append(f"{Colors.WARNING}Note: You cannot discard cards from this newly drafted set!{Colors.ENDC}")
+                        drew_new_set = True
                 else: # AI Logic
                     discards = [c for c in p.hand if 'remedy' not in c.types and p.health/p.max_health > 0.7]
                     p.discard_pile.extend(discards); p.hand = [c for c in p.hand if c not in discards]
 
-            # Step 3: Handle Recall phase
+            # Step 3: Handle Recall phase - MUST fill to max if drew new set
             max_hand_size = 4 + (3 - p.trunks)
-            while len(p.hand) < max_hand_size:
-                if not p.discard_pile: break
-                if p.is_human:
-                    prompt = f"Recall up to {max_hand_size - len(p.hand)} more card(s). Choose from discard (or 'done'):"
-                    options = {i+1: c for i, c in enumerate(p.discard_pile)}; choice = self._prompt_for_choice(p, options, prompt, view_key='name');
-                    if choice == 'done': break
-                    if choice is not None: 
-                        recalled_card = p.discard_pile.pop(choice - 1)
+            
+            if drew_new_set:
+                # Must fill hand to max size from discard
+                while len(p.hand) < max_hand_size and p.discard_pile:
+                    if p.is_human:
+                        prompt = f"You must recall cards to fill your hand ({len(p.hand)}/{max_hand_size}). Choose from discard:"
+                        options = {i+1: c for i, c in enumerate(p.discard_pile)}
+                        choice = self._prompt_for_choice(p, options, prompt, view_key='name')
+                        if choice is not None:
+                            recalled_card = p.discard_pile.pop(choice - 1)
+                            p.hand.append(recalled_card)
+                            self.action_handler._fire_event('spell_recalled', self.gs, player=p.name, card_id=recalled_card.id)
+                    else:
+                        recalled_card = p.discard_pile.pop(0)
                         p.hand.append(recalled_card)
                         self.action_handler._fire_event('spell_recalled', self.gs, player=p.name, card_id=recalled_card.id)
-                else: 
-                    recalled_card = p.discard_pile.pop(0)
-                    p.hand.append(recalled_card)
-                    self.action_handler._fire_event('spell_recalled', self.gs, player=p.name, card_id=recalled_card.id)
+            else:
+                # Normal optional recall
+                while len(p.hand) < max_hand_size:
+                    if not p.discard_pile: break
+                    if p.is_human:
+                        prompt = f"Recall up to {max_hand_size - len(p.hand)} more card(s). Choose from discard (or 'done'):"
+                        options = {i+1: c for i, c in enumerate(p.discard_pile)}; choice = self._prompt_for_choice(p, options, prompt, view_key='name');
+                        if choice == 'done': break
+                        if choice is not None: 
+                            recalled_card = p.discard_pile.pop(choice - 1)
+                            p.hand.append(recalled_card)
+                            self.action_handler._fire_event('spell_recalled', self.gs, player=p.name, card_id=recalled_card.id)
+                    else: 
+                        recalled_card = p.discard_pile.pop(0)
+                        p.hand.append(recalled_card)
+                        self.action_handler._fire_event('spell_recalled', self.gs, player=p.name, card_id=recalled_card.id)
             
-            # Step 4: Final check for hand size and force draft if needed
-            if len(p.hand) < 4:
-                self.gs.action_log.append(f"{p.name}'s hand is below 4 cards. They must draft a new set."); self._pause()
+            # Step 4: Final check - only if they didn't draw a set and still below 4 cards with empty discard
+            if not drew_new_set and len(p.hand) < 4 and not p.discard_pile:
+                self.gs.action_log.append(f"{p.name}'s hand is below 4 cards and discard pile is empty. They must draft a new set."); self._pause()
                 self._check_and_rebuild_deck()
                 if self.gs.main_deck:
                     if p.is_human:
@@ -1938,15 +2060,22 @@ class GameEngine:
                     else: new_set = self.gs.main_deck.pop(0)
                     p.hand.extend(new_set)
                     self.gs.action_log.append(f"{p.name} drafted the '{new_set[0].elephant}' set.")
+                    drew_new_set = True
                     
-                    # Discard down if necessary
-                    while len(p.hand) > max_hand_size:
-                        self.gs.action_log.append(f"{p.name}'s hand is over max size ({max_hand_size}).")
-                        self._pause()
+                    # Must fill to max from discard if available
+                    while len(p.hand) < max_hand_size and p.discard_pile:
                         if p.is_human:
-                            prompt = f"Choose a card to discard:"; options = {i+1: c for i, c in enumerate(p.hand)}; choice = self._prompt_for_choice(p, options, prompt)
-                            p.discard_pile.append(p.hand.pop(choice-1))
-                        else: p.discard_pile.append(p.hand.pop())
+                            prompt = f"You must recall cards to fill your hand ({len(p.hand)}/{max_hand_size}). Choose from discard:"
+                            options = {i+1: c for i, c in enumerate(p.discard_pile)}
+                            choice = self._prompt_for_choice(p, options, prompt, view_key='name')
+                            if choice is not None:
+                                recalled_card = p.discard_pile.pop(choice - 1)
+                                p.hand.append(recalled_card)
+                                self.action_handler._fire_event('spell_recalled', self.gs, player=p.name, card_id=recalled_card.id)
+                        else:
+                            recalled_card = p.discard_pile.pop(0)
+                            p.hand.append(recalled_card)
+                            self.action_handler._fire_event('spell_recalled', self.gs, player=p.name, card_id=recalled_card.id)
         self._pause("All players have managed their hands. The next round will begin.")
 
     def _handle_trunk_loss(self, player: Player) -> str:

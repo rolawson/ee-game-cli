@@ -8,6 +8,8 @@ Never write code without first sharing a plan of action and waiting for me to ap
 
 Never take proactive action without first asking me.
 
+Never update JSON files. Instead tell me what updates to make myself.
+
 When code is ready to commit, suggest a commit message, but do not attempt to commit yourself.
 
 After code is pushed, update CONTEXT.md if it's appropriate to do so.
