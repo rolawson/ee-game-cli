@@ -636,7 +636,7 @@
           "type": "bolster",
           "target": "self",
           "parameters": {
-            "value": 2
+            "value": 1
           }
         }
       }
@@ -2139,21 +2139,29 @@
           "type": "always"
         },
         "action": {
-          "type": "sequence",
-          "actions": [
+          "type": "player_choice",
+          "options": [
             {
-              "type": "discard",
-              "target": "prompt_friendly_past_spell",
-              "parameters": {
-                "value": 1
-              }
+              "type": "sequence",
+              "actions": [
+                {
+                  "type": "discard",
+                  "target": "prompt_friendly_past_or_active_spell",
+                  "parameters": {
+                    "value": 1
+                  }
+                },
+                {
+                  "type": "discard_from_hand",
+                  "target": "prompt_enemy",
+                  "parameters": {
+                    "value": 1
+                  }
+                }
+              ]
             },
             {
-              "type": "discard_from_hand",
-              "target": "prompt_enemy",
-              "parameters": {
-                "value": 1
-              }
+              "type": "pass"
             }
           ]
         }

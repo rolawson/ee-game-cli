@@ -276,8 +276,8 @@ class DashboardDisplay:
         max_spells_per_clash = 0
         for p in gs.players:
             for clash_list in p.board:
-                active_spells = [s for s in clash_list if s.status in ['active', 'prepared']]
-                max_spells_per_clash = max(max_spells_per_clash, len(active_spells))
+                visible_spells = [s for s in clash_list if s.status in ['active', 'prepared', 'cancelled']]
+                max_spells_per_clash = max(max_spells_per_clash, len(visible_spells))
         
         # Display each player's row, with multiple rows if needed for stacked spells
         for i, p in enumerate(gs.players):
@@ -302,17 +302,17 @@ class DashboardDisplay:
                 # Add clash content for this row
                 for j in range(4):
                     slot_content = p.board[j]
-                    active_spells = [s for s in slot_content if s.status in ['active', 'prepared']]
+                    visible_spells = [s for s in slot_content if s.status in ['active', 'prepared', 'cancelled']]
                     
-                    if row >= len(active_spells):
+                    if row >= len(visible_spells):
                         # No spell at this row position
-                        if row == 0 and not active_spells:
+                        if row == 0 and not visible_spells:
                             slot_str = "[Empty]"
                         else:
                             slot_str = ""
                     else:
                         # Show the spell at this row position
-                        s = active_spells[row]
+                        s = visible_spells[row]
                         if s.status == 'prepared' and s.owner != gs.players[pov_player_index]:
                             slot_str = f"{Colors.BLUE}[Spell Prepared]{Colors.ENDC}"
                         else:
@@ -534,7 +534,7 @@ class ActionHandler:
                     gs.action_log.append(f"{caster.name} recalled [{card.name}] from {enemy.name}'s hand!")
             else:
                 gs.action_log.append("No cards to recall from enemy hands.")
-            return
+            return True
             
         elif action_type == 'move_clash_to_clash':
             # Let player choose source and destination clashes
@@ -550,7 +550,7 @@ class ActionHandler:
                 
                 if not clash_options:
                     gs.action_log.append("No active spells to move.")
-                    return
+                    return True
                 
                 # Choose source clash
                 prompt = "Choose a clash to move spells FROM:"
@@ -611,7 +611,7 @@ class ActionHandler:
                                 self.engine.add_to_resolution_queue(spell)
                         gs.action_log.append(f"Moved {len(spells_in_clash)} spell(s) from Clash {i + 1} to Clash {i + 2}!")
                         break
-            return
+            return True
         
         # Handle recall separately since it needs special target resolution
         if action_type == 'recall':
@@ -626,7 +626,7 @@ class ActionHandler:
                 
                 if not past_spells:
                     gs.action_log.append(f"{caster.name} has no spells in past clashes to recall.")
-                    return
+                    return True
                 
                 if caster.is_human:
                     if len(past_spells) == 1:
@@ -636,7 +636,7 @@ class ActionHandler:
                         prompt = "Choose a spell to recall from past clashes:"
                         choice = self.engine._prompt_for_choice(caster, options, prompt, view_key='card.name')
                         if choice is None:
-                            return
+                            return True
                         target = options[choice]
                 else:
                     target = random.choice(past_spells)
@@ -649,14 +649,14 @@ class ActionHandler:
                 if not targets:
                     gs.action_log.append(f"{Colors.GREY}No valid targets for recall.{Colors.ENDC}")
                     self.engine._pause()
-                    return
+                    return True
         else:
             # Standard targeting for other actions
             targets = self._resolve_target(action_data, gs, caster, current_card)
             
             if not targets:
                 gs.action_log.append(f"{Colors.GREY}No valid targets for {action_type}.{Colors.ENDC}"); self.engine._pause()
-                return False  # Return False to stop sequences
+                return
 
         if action_type == 'player_choice':
             # Check if Coalesce is active for this player
@@ -677,7 +677,7 @@ class ActionHandler:
             
             if not valid_options:
                 gs.action_log.append(f"{Colors.GREY}No valid options available.{Colors.ENDC}")
-                return
+                return True
             
             # If Coalesce is active, execute ALL valid options
             if has_coalesce:
@@ -685,13 +685,13 @@ class ActionHandler:
                 for option in valid_options:
                     self._execute_action(option, gs, caster, current_card)
                     self.engine._pause()
-                return
+                return True
             
             # If only one valid option, execute it automatically
             if len(valid_options) == 1:
                 gs.action_log.append(f"Only one valid option - executing automatically.")
                 self._execute_action(valid_options[0], gs, caster, current_card)
-                return
+                return True
             
             if caster.is_human:
                 # Build options dictionary with labels
@@ -772,19 +772,34 @@ class ActionHandler:
                                 return
                         # Forced to take damage
                         self._execute_action(valid_options[0], gs, caster, current_card)
-                elif caster.health <= 2 and remedy_options:
-                    # Low health - prefer healing
-                    self._execute_action(remedy_options[0], gs, caster, current_card)
+                elif caster.health <= 2:
+                    # Low health - avoid risky options unless they're very powerful
+                    if remedy_options:
+                        self._execute_action(remedy_options[0], gs, caster, current_card)
+                    elif attack_options:
+                        self._execute_action(attack_options[0], gs, caster, current_card)
+                    elif safe_options:
+                        self._execute_action(safe_options[0], gs, caster, current_card)
+                    else:
+                        # Forced to take risky option
+                        self._execute_action(valid_options[0], gs, caster, current_card)
+                elif caster.health >= 4 and risky_options:
+                    # High health - willing to take risks for powerful effects
+                    # Blood spells often have powerful effects worth the self-damage
+                    self._execute_action(risky_options[0], gs, caster, current_card)
                 elif attack_options:
-                    # Otherwise prefer attacking
+                    # Mid health - prefer attacking
                     self._execute_action(attack_options[0], gs, caster, current_card)
                 elif safe_options:
                     # Fallback to other safe options
                     self._execute_action(safe_options[0], gs, caster, current_card)
+                elif risky_options and caster.health >= 3:
+                    # Mid health - consider risky options if no other choice
+                    self._execute_action(risky_options[0], gs, caster, current_card)
                 else:
                     # Ultimate fallback
                     self._execute_action(valid_options[0], gs, caster, current_card)
-            return
+            return True
         
         if action_type == 'cast_extra_spell':
             num_to_cast = params.get('value', 1)
@@ -838,7 +853,7 @@ class ActionHandler:
                      if isinstance(t, Player):
                          if not t.is_invulnerable:
                             damage = params.get('value', 1); original_health = t.health; t.health = max(0, t.health - damage)
-                            gs.action_log.append(f"{caster.name}'s [{current_card.name}] dealt {damage} damage to {t.name}. ({t.health}/{t.max_health})")
+                            gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage} damage to {t.name}. ({t.health}/{t.max_health}){Colors.ENDC}")
                             self._fire_event('player_damaged', gs, player=caster.name, target=t.name, value=damage, card_id=current_card.id)
                             if original_health > 0 and t.health <= 0:
                                 if self.engine._handle_trunk_loss(t) == 'round_over': raise RoundOverException()
@@ -877,7 +892,7 @@ class ActionHandler:
                         damage = count
                         original_health = target.health
                         target.health = max(0, target.health - damage)
-                        gs.action_log.append(f"{caster.name}'s [{current_card.name}] dealt {damage} damage to {target.name} ({count} spell(s)). ({target.health}/{target.max_health})")
+                        gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage} damage to {target.name} ({count} spell(s)). ({target.health}/{target.max_health}){Colors.ENDC}")
                         self._fire_event('player_damaged', gs, player=caster.name, target=target.name, value=damage, card_id=current_card.id)
                         if original_health > 0 and target.health <= 0:
                             if self.engine._handle_trunk_loss(target) == 'round_over': raise RoundOverException()
@@ -933,23 +948,22 @@ class ActionHandler:
                                     target.discard_pile.append(discarded)
                                     gs.action_log.append(f"{target.name} discarded [{discarded.name}].")
                                     discarded_count += 1
-                        # Return True only if we actually discarded the required number
-                        return discarded_count == num_to_discard
+                        # Log if we couldn't discard the required number
+                        if discarded_count < num_to_discard:
+                            gs.action_log.append(f"Only discarded {discarded_count} of {num_to_discard} required cards.")
                 else:
                     gs.action_log.append(f"{target.name} has no cards to discard.")
-                    return False  # Failed to discard
             
             elif action_type == 'advance':
                 # Check if Break is preventing enemy advances
                 if target.owner != caster:
-                    # Check if any opponent has Break active
+                    # Check if any opponent has Break active in the current clash
                     for player in gs.players:
                         if player != target.owner:
-                            for clash_list in player.board:
-                                for spell in clash_list:
-                                    if spell.status == 'active' and spell.card.name == 'Break':
-                                        gs.action_log.append(f"[{target.card.name}] cannot advance because {player.name}'s [Break] prevents it!")
-                                        return  # Prevent the advance from happening
+                            for spell in player.board[gs.clash_num - 1]:
+                                if spell.status == 'active' and spell.card.name == 'Break':
+                                    gs.action_log.append(f"[{target.card.name}] cannot advance because {player.name}'s [Break] prevents it!")
+                                    return  # Prevent the advance from happening
                 
                 # Check if this is a self-advance with a limit
                 if target.card.id == current_card.id and action_data.get('target') == 'this_spell':
@@ -998,8 +1012,6 @@ class ActionHandler:
                         gs.action_log.append(f"{caster.name} discarded [{target.card.name}] from past spells!")
                 else:
                     gs.action_log.append(f"No valid target to discard.")
-                    # Return false to indicate failure - this should stop sequence
-                    return False
             
             elif action_type == 'copy_spell':
                 # Imitate - copy an enemy spell
@@ -1017,12 +1029,11 @@ class ActionHandler:
                 if isinstance(target, PlayedCard) and 'boost' in target.card.types:
                     owner = target.owner
                     
-                    # Check if Root is protecting this spell
-                    for clash_list in owner.board:
-                        for spell in clash_list:
-                            if spell.status == 'active' and spell.card.name == 'Root':
-                                gs.action_log.append(f"[{target.card.name}] is protected by {owner.name}'s [Root] and cannot be recalled!")
-                                return
+                    # Check if Root is protecting this spell in the current clash
+                    for spell in owner.board[gs.clash_num - 1]:
+                        if spell.status == 'active' and spell.card.name == 'Root':
+                            gs.action_log.append(f"[{target.card.name}] is protected by {owner.name}'s [Root] and cannot be recalled!")
+                            return
                     
                     # Remove from board
                     clash_num = -1
@@ -1043,17 +1054,16 @@ class ActionHandler:
                 
                 for enemy in enemies:
                     count = 0
-                    # Count active spells of the specified type for this enemy
-                    for clash_list in enemy.board:
-                        for spell in clash_list:
-                            if spell.status == 'active' and spell_type in spell.card.types:
-                                count += 1
+                    # Count active spells of the specified type for this enemy in current clash
+                    for spell in enemy.board[gs.clash_num - 1]:
+                        if spell.status == 'active' and spell_type in spell.card.types:
+                            count += 1
                     
                     if count > 0 and not enemy.is_invulnerable:
                         damage = count
                         original_health = enemy.health
                         enemy.health = max(0, enemy.health - damage)
-                        gs.action_log.append(f"{caster.name}'s [{current_card.name}] dealt {damage} damage to {enemy.name} ({count} {spell_type} spell(s)). ({enemy.health}/{enemy.max_health})")
+                        gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage} damage to {enemy.name} ({count} {spell_type} spell(s)). ({enemy.health}/{enemy.max_health}){Colors.ENDC}")
                         self._fire_event('player_damaged', gs, player=caster.name, target=enemy.name, value=damage, card_id=current_card.id)
                         if original_health > 0 and enemy.health <= 0:
                             if self.engine._handle_trunk_loss(enemy) == 'round_over': 
@@ -1062,35 +1072,31 @@ class ActionHandler:
             elif action_type == 'cancel':
                 # Cancel spells (used by Encumber, Stupefy, etc.)
                 if isinstance(target, PlayedCard):
-                    # Check if Root is protecting this spell
+                    # Check if Root is protecting this spell in the current clash
                     owner = target.owner
-                    for clash_list in owner.board:
-                        for spell in clash_list:
-                            if spell.status == 'active' and spell.card.name == 'Root':
-                                gs.action_log.append(f"[{target.card.name}] is protected by {owner.name}'s [Root] and cannot be cancelled!")
-                                return
+                    for spell in owner.board[gs.clash_num - 1]:
+                        if spell.status == 'active' and spell.card.name == 'Root':
+                            gs.action_log.append(f"[{target.card.name}] is protected by {owner.name}'s [Root] and cannot be cancelled!")
+                            return
                     
                     target.status = 'cancelled'
-                    gs.action_log.append(f"{caster.name}'s [{current_card.name}] cancelled [{target.card.name}]!")
+                    gs.action_log.append(f"{caster.name}'s [{current_card.name}] cancelled {target.owner.name}'s [{target.card.name}]!")
                 elif isinstance(target, list):
                     # For mass cancel effects
                     for spell in target:
                         if isinstance(spell, PlayedCard):
-                            # Check if Root is protecting this spell
+                            # Check if Root is protecting this spell in the current clash
                             owner = spell.owner
                             protected = False
-                            for clash_list in owner.board:
-                                for root_spell in clash_list:
-                                    if root_spell.status == 'active' and root_spell.card.name == 'Root':
-                                        gs.action_log.append(f"[{spell.card.name}] is protected by {owner.name}'s [Root] and cannot be cancelled!")
-                                        protected = True
-                                        break
-                                if protected:
+                            for root_spell in owner.board[gs.clash_num - 1]:
+                                if root_spell.status == 'active' and root_spell.card.name == 'Root':
+                                    gs.action_log.append(f"[{spell.card.name}] is protected by {owner.name}'s [Root] and cannot be cancelled!")
+                                    protected = True
                                     break
                             
                             if not protected:
                                 spell.status = 'cancelled'
-                                gs.action_log.append(f"{caster.name}'s [{current_card.name}] cancelled [{spell.card.name}]!")
+                                gs.action_log.append(f"{caster.name}'s [{current_card.name}] cancelled {spell.owner.name}'s [{spell.card.name}]!")
             
             elif action_type == 'move_to_future_clash':
                 # Gravitate - move a spell to a future clash
@@ -1175,12 +1181,21 @@ class ActionHandler:
             elif action_type == 'sequence':
                 # Execute a sequence of actions in order
                 actions = action_data.get('actions', [])
-                for act in actions:
-                    result = self._execute_action(act, gs, caster, current_card)
-                    # If an action returns False, stop the sequence
-                    if result is False:
-                        gs.action_log.append(f"Sequence stopped - prerequisite action failed.")
-                        break
+                for i, act in enumerate(actions):
+                    # Special handling for actions that might fail
+                    if act.get('type') == 'discard' and i == 0:
+                        # For Electrocute's sequence, check if we can actually discard
+                        targets = self._resolve_target(act, gs, caster, current_card)
+                        if not targets:
+                            gs.action_log.append(f"Sequence stopped - no valid targets for discard.")
+                            break
+                    elif act.get('type') == 'discard_from_hand' and act.get('target') == 'self' and i == 0:
+                        # For Surge's sequence, check if caster has cards to discard
+                        if not caster.hand:
+                            gs.action_log.append(f"Sequence stopped - no cards to discard.")
+                            break
+                    
+                    self._execute_action(act, gs, caster, current_card)
                     self.engine._pause()
             
             elif action_type == 'weaken_per_spell':
@@ -1224,7 +1239,8 @@ class ActionHandler:
                     if spell.card.id == current_card.id: return [spell]
             return []
         enemies = [p for p in gs.players if p != caster]; valid_enemies = [p for p in enemies if not p.is_invulnerable]
-        active_conjuries = [s for p in gs.players for clash_list in p.board for s in clash_list if s and s.card.is_conjury and s.status == 'active']
+        # Only look for active conjuries in the current clash
+        active_conjuries = [s for p in gs.players for s in p.board[gs.clash_num-1] if s and s.card.is_conjury and s.status == 'active']
         if target_str == 'prompt_enemy' or target_str == 'prompt_player':
             # prompt_enemy and prompt_player both target enemies only
             if not valid_enemies: return []
@@ -1276,29 +1292,59 @@ class ActionHandler:
                 else: return []
             else: return [random.choice(past_spells)]
         
+        if target_str == 'prompt_friendly_past_or_active_spell':
+            # For Electrocute - can discard past spells (any status) or active spells in current clash
+            all_board_spells = []
+            # Add all past spells (regardless of status)
+            for i in range(gs.clash_num - 1):  # Only past clashes
+                for spell in caster.board[i]:
+                    all_board_spells.append(spell)
+            # Add active spells from current clash
+            for spell in caster.board[gs.clash_num - 1]:
+                if spell.status == 'active':
+                    all_board_spells.append(spell)
+            
+            if not all_board_spells: return []
+            if len(all_board_spells) == 1: return all_board_spells
+            if caster.is_human:
+                options = {i+1: s for i, s in enumerate(all_board_spells)}
+                choice = self.engine._prompt_for_choice(caster, options, "Choose one of your past or active spells to discard:", view_key='card.name')
+                if choice is not None: return [options[choice]]
+                else: return []
+            else: return [random.choice(all_board_spells)]
+        
         if target_str == 'all_enemies_who_met_condition':
             # This is a special target that needs to work with condition checking
-            # We need to find enemies who have attack spells (for Reflect)
+            # We need to find enemies who meet the condition from the action's parent effect
             enemies = [p for p in gs.players if p != caster and not p.is_invulnerable]
-            enemies_with_attack_spells = []
+            enemies_who_met_condition = []
             active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'active']
             
-            for enemy in enemies:
-                for spell in active_spells_this_clash:
-                    if spell.owner == enemy and 'attack' in spell.card.types:
-                        enemies_with_attack_spells.append(enemy)
-                        break  # Only need to find one attack spell per enemy
+            # Determine which spell type to check based on the spell using this
+            # For Reflect, it's attack spells. For Enfeeble, it's boost spells.
+            spell_type_to_check = None
+            if current_card.name == 'Reflect' or current_card.name == 'Familiar' or current_card.name == 'Stupefy':
+                spell_type_to_check = 'attack'
+            elif current_card.name == 'Enfeeble':
+                spell_type_to_check = 'boost'
             
-            return enemies_with_attack_spells
+            if spell_type_to_check:
+                for enemy in enemies:
+                    for spell in active_spells_this_clash:
+                        if spell.owner == enemy and spell_type_to_check in spell.card.types:
+                            enemies_who_met_condition.append(enemy)
+                            break  # Only need to find one spell per enemy
+            
+            return enemies_who_met_condition
         
         if target_str == 'prompt_enemy_boost_spell':
-            # For Sap - find enemy boost spells on the board
+            # For Sap - find enemy active boost spells in the current clash only
             enemy_boost_spells = []
             for enemy in enemies:
-                for clash_list in enemy.board:
-                    for spell in clash_list:
-                        if spell.status == 'active' and 'boost' in spell.card.types:
-                            enemy_boost_spells.append(spell)
+                # Only check current clash
+                for spell in enemy.board[gs.clash_num - 1]:
+                    if spell.status == 'active' and 'boost' in spell.card.types:
+                        enemy_boost_spells.append(spell)
             
             if not enemy_boost_spells: return []
             if caster.is_human:
@@ -1311,13 +1357,12 @@ class ActionHandler:
                 return [random.choice(enemy_boost_spells)]
         
         if target_str == 'prompt_enemy_active_spell':
-            # For Imitate - find enemy active spells
+            # For Imitate - find enemy active spells in current clash only
             enemy_spells = []
             for enemy in enemies:
-                for clash_list in enemy.board:
-                    for spell in clash_list:
-                        if spell.status == 'active':
-                            enemy_spells.append(spell)
+                for spell in enemy.board[gs.clash_num - 1]:
+                    if spell.status == 'active':
+                        enemy_spells.append(spell)
             
             if not enemy_spells: return []
             if caster.is_human:
@@ -1334,31 +1379,39 @@ class ActionHandler:
             return valid_enemies
         
         if target_str == 'all_enemy_remedy_spells':
-            # For Encumber - all enemy remedy spells
+            # For Encumber - all enemy remedy spells in current clash
             enemy_remedy_spells = []
             for enemy in enemies:
-                for clash_list in enemy.board:
-                    for spell in clash_list:
-                        if spell.status == 'active' and 'remedy' in spell.card.types:
-                            enemy_remedy_spells.append(spell)
+                for spell in enemy.board[gs.clash_num - 1]:
+                    if spell.status == 'active' and 'remedy' in spell.card.types:
+                        enemy_remedy_spells.append(spell)
             return enemy_remedy_spells
         
         if target_str == 'all_enemy_attack_spells':
-            # For Stupefy - all enemy attack spells
+            # For Stupefy - all enemy attack spells in current clash
             enemy_attack_spells = []
             for enemy in enemies:
-                for clash_list in enemy.board:
-                    for spell in clash_list:
-                        if spell.status == 'active' and 'attack' in spell.card.types:
-                            enemy_attack_spells.append(spell)
+                for spell in enemy.board[gs.clash_num - 1]:
+                    if spell.status == 'active' and 'attack' in spell.card.types:
+                        enemy_attack_spells.append(spell)
             return enemy_attack_spells
         
         if target_str == 'prompt_any_active_spell':
-            # For Gravitate/Eventide - any active spell on the board
+            # Any active spell - by default only in current clash
             all_active_spells = []
-            for player in gs.players:
-                for clash_list in player.board:
-                    for spell in clash_list:
+            
+            # For Gravitate, only include spells from current and past clashes that can move forward
+            if action_data.get('type') == 'move_to_future_clash':
+                for player in gs.players:
+                    # Only check current and past clashes (not future ones)
+                    for i in range(min(gs.clash_num, 3)):  # Up to clash 3 (index 2) can be moved
+                        for spell in player.board[i]:
+                            if spell.status == 'active':
+                                all_active_spells.append(spell)
+            else:
+                # For other actions (like cancel), check current clash only
+                for player in gs.players:
+                    for spell in player.board[gs.clash_num - 1]:
                         if spell.status == 'active':
                             all_active_spells.append(spell)
             
@@ -1415,6 +1468,25 @@ class ActionHandler:
                     else: return []
                 else:
                     return [random.choice(past_spells)] if past_spells else []
+        
+        if target_str == 'prompt_enemy_past_spell':
+            # For Daybreak - find enemy past spells
+            enemy_past_spells = []
+            for enemy in enemies:
+                for i in range(gs.clash_num - 1):  # Only past clashes
+                    for spell in enemy.board[i]:
+                        # Past spells don't need to be active
+                        enemy_past_spells.append(spell)
+            
+            if not enemy_past_spells: return []
+            if caster.is_human:
+                if len(enemy_past_spells) == 1: return enemy_past_spells
+                options = {i+1: s for i, s in enumerate(enemy_past_spells)}
+                choice = self.engine._prompt_for_choice(caster, options, "Choose an enemy past spell to discard:", view_key='card.name')
+                if choice is not None: return [options[choice]]
+                else: return []
+            else:
+                return [random.choice(enemy_past_spells)]
         
         return []
 class AI_Player:
