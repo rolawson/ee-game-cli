@@ -12,4 +12,5 @@ Never update JSON files. Instead tell me what updates to make myself.
 
 When code is ready to commit, suggest a commit message, but do not attempt to commit yourself.
 
-After code is pushed, update CONTEXT.md if it's appropriate to do so.
+After code is pushed, update CONTEXT.md and/or CLARIFICATIONS.md if it's appropriate to do so.
+

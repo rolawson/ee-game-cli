@@ -491,9 +491,12 @@ class ActionHandler:
         if isinstance(action_data, list):
             # For action arrays, we need to handle each action completely with its own targets
             # This is used by spells like Stupefy, Familiar, and Absorb
-            for action in action_data:
+            for i, action in enumerate(action_data):
                 # Process each action in the array
                 self._execute_single_action(action, gs, caster, current_card)
+                # Pause after each action except the last one
+                if i < len(action_data) - 1:
+                    self.engine._pause()
             return
         
         # For single actions, delegate to the single action handler
@@ -831,12 +834,19 @@ class ActionHandler:
                     self.engine._pause()
                     return
                 
+                spells_cast = 0
                 for spell_num in range(min(num_to_cast, len(caster.hand))):
                     if not caster.hand:
                         break
                     options = {i+1: c for i, c in enumerate(caster.hand)}
-                    prompt = f"Choose spell {spell_num + 1} of {num_to_cast} to cast:"
+                    # Make it clear that casting is optional
+                    if spell_num == 0:
+                        prompt = f"Choose a spell to cast (or 'done' to cast no spells):"
+                    else:
+                        prompt = f"Choose spell {spell_num + 1} of up to {num_to_cast} to cast (or 'done'):"
                     choice = self.engine._prompt_for_choice(caster, options, prompt)
+                    if choice == 'done':
+                        break
                     if choice is not None:
                         card_to_cast = caster.hand.pop(choice-1)
                         newly_played_card = PlayedCard(card_to_cast, caster)
@@ -844,7 +854,12 @@ class ActionHandler:
                         gs.players[gs.players.index(caster)].board[gs.clash_num - 1].append(newly_played_card)
                         self.engine.add_to_resolution_queue(newly_played_card)
                         gs.action_log.append(f"{caster.name} casts an extra spell: [{card_to_cast.name}]!")
+                        spells_cast += 1
                         self.engine._pause()
+                
+                if spells_cast == 0:
+                    gs.action_log.append(f"{caster.name} chose not to cast any extra spells.")
+                    self.engine._pause()
             else:
                 # AI casts up to num_to_cast spells
                 for _ in range(min(num_to_cast, len(caster.hand))):
@@ -1113,10 +1128,34 @@ class ActionHandler:
                             break
                     
                     if current_clash >= 0 and current_clash < 3:
-                        # Move to next clash
+                        # Let player choose which future clash
+                        available_clashes = list(range(current_clash + 1, 4))
+                        
+                        if caster.is_human and len(available_clashes) > 1:
+                            # Player chooses which future clash
+                            options = {i+1: clash_idx for i, clash_idx in enumerate(available_clashes)}
+                            prompt = f"Choose which clash to move [{target.card.name}] to:"
+                            self.engine.display.draw(gs, gs.players.index(caster), prompt=prompt)
+                            for key, clash_idx in options.items():
+                                print(f"  [{key}] Clash {clash_idx + 1}")
+                            
+                            choice = input("\nYour choice: ").strip()
+                            try:
+                                choice_idx = int(choice)
+                                if choice_idx in options:
+                                    target_clash = options[choice_idx]
+                                else:
+                                    target_clash = current_clash + 1  # Default to next clash
+                            except ValueError:
+                                target_clash = current_clash + 1  # Default to next clash
+                        else:
+                            # AI or only one option - move to next clash
+                            target_clash = current_clash + 1
+                        
+                        # Move the spell
                         owner.board[current_clash].remove(target)
-                        owner.board[current_clash + 1].append(target)
-                        gs.action_log.append(f"{caster.name} moved [{target.card.name}] from Clash {current_clash + 1} to Clash {current_clash + 2}!")
+                        owner.board[target_clash].append(target)
+                        gs.action_log.append(f"{caster.name} moved [{target.card.name}] from Clash {current_clash + 1} to Clash {target_clash + 1}!")
                         self.engine._pause()
                     else:
                         gs.action_log.append(f"Cannot move [{target.card.name}] to a future clash.")
@@ -1402,12 +1441,12 @@ class ActionHandler:
             # Any active spell - by default only in current clash
             all_active_spells = []
             
-            # For Gravitate, only include spells from current and past clashes that can move forward
+            # For Gravitate, only include spells from the current clash that can move forward
             if action_data.get('type') == 'move_to_future_clash':
-                for player in gs.players:
-                    # Only check current and past clashes (not future ones)
-                    for i in range(min(gs.clash_num, 3)):  # Up to clash 3 (index 2) can be moved
-                        for spell in player.board[i]:
+                # Only spells in the current clash can be moved to future clashes
+                if gs.clash_num < 4:  # Can't move from clash 4
+                    for player in gs.players:
+                        for spell in player.board[gs.clash_num - 1]:
                             if spell.status == 'active':
                                 all_active_spells.append(spell)
             else:
@@ -1909,6 +1948,18 @@ class GameEngine:
             
             if played_card in processed_this_phase or played_card.status != 'active':
                 continue
+            
+            # Check if spell is still in the current clash (it might have been moved by Gravitate)
+            spell_still_in_current_clash = False
+            for spell in caster.board[self.gs.clash_num - 1]:
+                if spell == played_card:
+                    spell_still_in_current_clash = True
+                    break
+            
+            if not spell_still_in_current_clash:
+                self.gs.action_log.append(f"[{played_card.card.name}] was moved to a future clash and will not resolve now.")
+                self._pause()
+                continue
 
             self.gs.action_log.clear()
             self.gs.action_log.append(f"--> Resolving {caster.name}'s [{Colors.BOLD}{played_card.card.name}{Colors.ENDC}] (P:{played_card.card.priority})")
@@ -1948,8 +1999,17 @@ class GameEngine:
         for played_card in advancing_spells:
             if self.gs.game_over: return
             if played_card.status != 'active': continue # Skip if cancelled mid-phase
-
+            
+            # Check if spell is still in the current clash (it might have been moved)
             caster = played_card.owner
+            spell_still_in_current_clash = False
+            for spell in caster.board[self.gs.clash_num - 1]:
+                if spell == played_card:
+                    spell_still_in_current_clash = True
+                    break
+            
+            if not spell_still_in_current_clash:
+                continue  # Skip spells that were moved to future clashes
             self.gs.action_log.clear()
             self.gs.action_log.append(f"--> Advancing {caster.name}'s [{played_card.card.name}]...")
             self._pause()
