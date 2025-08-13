@@ -6,7 +6,12 @@ import traceback
 from collections import defaultdict
 from typing import Optional, Any, Union
 
+# Import AI classes from separate module
+from ai import BaseAI, EasyAI, MediumAI, HardAI
+
 # --- CONSTANTS ---
+DEBUG_AI = True  # Set to False to disable AI decision logging
+
 # Load spell data from external JSON file
 def load_spell_data():
     """Load spell data from spells.json file."""
@@ -23,965 +28,6 @@ def load_spell_data():
         sys.exit(1)
 
 SPELL_DATA = load_spell_data()
-    "elephant": "El\u00e9 Phlamb\u00e9",
-    "element": "Fire",
-    "is_conjury": false,
-    "priority": 4,
-    "spell_types": [
-      "attack"
-    ],
-    "notfirst": 0,
-    "notlast": 0,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "damage",
-          "target": "prompt_enemy",
-          "parameters": {
-            "value": 2
-          }
-        }
-      }
-    ],
-    "theme": "Damage your foes!",
-    "base": true
-  },
-  {
-    "id": 2,
-    "card_name": "Scorch",
-    "elephant": "El\u00e9 Phlamb\u00e9",
-    "element": "Fire",
-    "is_conjury": false,
-    "priority": 4,
-    "spell_types": [
-      "attack",
-      "boost"
-    ],
-    "notfirst": 0,
-    "notlast": 0,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "damage_multi_target",
-          "target": "all_enemies_and_their_conjuries",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "theme": "Damage your foes!",
-    "base": true
-  },
-  {
-    "id": 3,
-    "card_name": "Ignite",
-    "elephant": "El\u00e9 Phlamb\u00e9",
-    "element": "Fire",
-    "is_conjury": false,
-    "priority": 4,
-    "spell_types": [
-      "attack",
-      "response",
-      "boost"
-    ],
-    "notfirst": 0,
-    "notlast": 1,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "if_caster_has_active_spell_of_type",
-          "parameters": {
-            "spell_type": "attack",
-            "count": 1,
-            "exclude_self": true
-          }
-        },
-        "action": {
-          "type": "damage",
-          "target": "prompt_enemy",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "advance_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "advance",
-          "target": "this_spell",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "theme": "Damage your foes!",
-    "base": true
-  },
-  {
-    "id": 4,
-    "card_name": "Nourish",
-    "elephant": "Spout Snout",
-    "element": "Water",
-    "is_conjury": false,
-    "priority": 3,
-    "spell_types": [
-      "remedy"
-    ],
-    "notfirst": 0,
-    "notlast": 0,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "heal",
-          "target": "self",
-          "parameters": {
-            "value": 2
-          }
-        }
-      }
-    ],
-    "theme": "Heal up!",
-    "base": true
-  },
-  {
-    "id": 5,
-    "card_name": "Flow",
-    "elephant": "Spout Snout",
-    "element": "Water",
-    "is_conjury": false,
-    "priority": 3,
-    "spell_types": [
-      "remedy",
-      "response",
-      "boost"
-    ],
-    "notfirst": 0,
-    "notlast": 1,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "if_caster_has_active_spell_of_type",
-          "parameters": {
-            "spell_type": "remedy",
-            "count": 1,
-            "exclude_self": true
-          }
-        },
-        "action": {
-          "type": "heal",
-          "target": "self",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "advance_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "advance",
-          "target": "this_spell",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "theme": "Heal up!",
-    "base": true
-  },
-  {
-    "id": 6,
-    "card_name": "Cleanse",
-    "elephant": "Spout Snout",
-    "element": "Water",
-    "is_conjury": false,
-    "priority": 3,
-    "spell_types": [
-      "attack",
-      "remedy"
-    ],
-    "notfirst": 0,
-    "notlast": 0,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "player_choice",
-          "options": [
-            {
-              "label": "Damage an enemy",
-              "type": "damage",
-              "target": "prompt_enemy",
-              "parameters": {
-                "value": 1
-              }
-            },
-            {
-              "label": "Heal yourself",
-              "type": "heal",
-              "target": "self",
-              "parameters": {
-                "value": 1
-              }
-            }
-          ]
-        }
-      }
-    ],
-    "theme": "Heal up!",
-    "base": true
-  },
-  {
-    "id": 7,
-    "card_name": "Turbulence",
-    "elephant": "Dumblo",
-    "element": "Wind",
-    "is_conjury": false,
-    "priority": 4,
-    "spell_types": [
-      "attack",
-      "response"
-    ],
-    "notfirst": 0,
-    "notlast": 1,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "if_spell_previously_resolved_this_round"
-        },
-        "action": {
-          "type": "damage",
-          "target": "prompt_enemy",
-          "parameters": {
-            "value": 2
-          }
-        }
-      },
-      {
-        "condition": {
-          "type": "if_not",
-          "sub_condition": {
-            "type": "if_spell_previously_resolved_this_round"
-          }
-        },
-        "action": {
-          "type": "damage",
-          "target": "prompt_enemy",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "theme": "Advance forward!",
-    "base": true
-  },
-  {
-    "id": 8,
-    "card_name": "Blow",
-    "elephant": "Dumblo",
-    "element": "Wind",
-    "is_conjury": false,
-    "priority": "A",
-    "spell_types": [
-      "boost"
-    ],
-    "notfirst": 2,
-    "notlast": 2,
-    "advance_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "advance",
-          "target": "prompt_friendly_past_spell",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "theme": "Advance forward!",
-    "base": true
-  },
-  {
-    "id": 9,
-    "card_name": "Gust",
-    "elephant": "Dumblo",
-    "element": "Wind",
-    "is_conjury": false,
-    "priority": "A",
-    "spell_types": [
-      "boost"
-    ],
-    "notfirst": 1,
-    "notlast": 2,
-    "advance_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "player_choice",
-          "options": [
-            {
-              "label": "Advance this spell",
-              "type": "advance",
-              "target": "this_spell",
-              "parameters": {
-                "value": 1
-              }
-            },
-            {
-              "label": "Advance another active spell",
-              "type": "advance",
-              "target": "prompt_other_friendly_active_spell",
-              "parameters": {
-                "value": 1
-              }
-            }
-          ]
-        }
-      }
-    ],
-    "theme": "Advance forward!",
-    "base": true
-  },
-  {
-    "id": 10,
-    "card_name": "Crush",
-    "elephant": "Columnfoot",
-    "element": "Earth",
-    "is_conjury": false,
-    "priority": 3,
-    "spell_types": [
-      "attack"
-    ],
-    "notfirst": 0,
-    "notlast": 0,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "weaken",
-          "target": "prompt_enemy",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "theme": "Impair enemies!",
-    "base": true
-  },
-  {
-    "id": 11,
-    "card_name": "Aftershocks",
-    "elephant": "Columnfoot",
-    "element": "Earth",
-    "is_conjury": true,
-    "priority": 5,
-    "spell_types": [
-      "attack",
-      "response",
-      "boost"
-    ],
-    "notfirst": 0,
-    "notlast": 1,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "if_caster_has_active_spell_of_type",
-          "parameters": {
-            "spell_type": "attack",
-            "count": 1,
-            "exclude_self": true
-          }
-        },
-        "action": {
-          "type": "damage",
-          "target": "prompt_enemy",
-          "parameters": {
-            "value": 2
-          }
-        }
-      }
-    ],
-    "advance_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "advance",
-          "target": "this_spell"
-        }
-      }
-    ],
-    "theme": "Impair enemies!",
-    "base": true
-  },
-  {
-    "id": 12,
-    "card_name": "Quake",
-    "elephant": "Columnfoot",
-    "element": "Earth",
-    "is_conjury": false,
-    "priority": 2,
-    "spell_types": [
-      "attack"
-    ],
-    "notfirst": 0,
-    "notlast": 2,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "discard_from_hand",
-          "target": "prompt_enemy",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "theme": "Impair enemies!",
-    "base": true
-  },
-  {
-    "id": 13,
-    "card_name": "Seed",
-    "elephant": "Trunxie",
-    "element": "Wood",
-    "is_conjury": false,
-    "priority": "A",
-    "spell_types": [
-      "boost"
-    ],
-    "notfirst": 1,
-    "notlast": 2,
-    "advance_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "advance",
-          "target": "prompt_friendly_past_spell",
-          "parameters": {
-            "value": 1
-          }
-        }
-      },
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "advance",
-          "target": "this_spell",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "theme": "Grow your advantage!",
-    "base": true
-  },
-  {
-    "id": 14,
-    "card_name": "Grow",
-    "elephant": "Trunxie",
-    "element": "Wood",
-    "is_conjury": false,
-    "priority": 3,
-    "spell_types": [
-      "remedy",
-      "response"
-    ],
-    "notfirst": 0,
-    "notlast": 0,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "player_choice",
-          "options": [
-            {
-              "label": "Heal for 1",
-              "type": "heal",
-              "target": "self",
-              "parameters": {
-                "value": 1
-              }
-            },
-            {
-              "label": "Heal for each of your other active spells",
-              "type": "heal_per_spell",
-              "target": "self",
-              "parameters": {
-                "spell_type": "any",
-                "exclude_self": true
-              }
-            }
-          ]
-        }
-      }
-    ],
-    "theme": "Grow your advantage!",
-    "base": true
-  },
-  {
-    "id": 15,
-    "card_name": "Prickle",
-    "elephant": "Trunxie",
-    "element": "Wood",
-    "is_conjury": false,
-    "priority": 4,
-    "spell_types": [
-      "attack",
-      "response"
-    ],
-    "notfirst": 0,
-    "notlast": 0,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "player_choice",
-          "options": [
-            {
-              "label": "Damage for 1",
-              "type": "damage",
-              "target": "prompt_enemy",
-              "parameters": {
-                "value": 1
-              }
-            },
-            {
-              "label": "Damage for each of your other active spells",
-              "type": "damage_per_spell",
-              "target": "prompt_enemy",
-              "parameters": {
-                "spell_type": "any",
-                "exclude_self": true
-              }
-            }
-          ]
-        }
-      }
-    ],
-    "theme": "Grow your advantage!",
-    "base": true
-  },
-  {
-    "id": 16,
-    "card_name": "Reinforce",
-    "elephant": "General Guardjendra",
-    "element": "Metal",
-    "is_conjury": false,
-    "priority": 2,
-    "spell_types": [
-      "remedy"
-    ],
-    "notfirst": 0,
-    "notlast": 0,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "bolster",
-          "target": "self",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "theme": "Protect and protract!",
-    "base": true
-  },
-  {
-    "id": 17,
-    "card_name": "Besiege",
-    "elephant": "General Guardjendra",
-    "element": "Metal",
-    "is_conjury": false,
-    "priority": 4,
-    "spell_types": [
-      "attack",
-      "response",
-      "boost"
-    ],
-    "notfirst": 1,
-    "notlast": 1,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "if_caster_has_active_spell_of_type",
-          "parameters": {
-            "spell_type": "remedy",
-            "count": 1,
-            "exclude_self": false
-          }
-        },
-        "action": {
-          "type": "damage",
-          "target": "prompt_enemy",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "advance_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "advance",
-          "target": "this_spell",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "theme": "Protect and protract!",
-    "base": true
-  },
-  {
-    "id": 18,
-    "card_name": "Defend",
-    "elephant": "General Guardjendra",
-    "element": "Metal",
-    "is_conjury": false,
-    "priority": 3,
-    "spell_types": [
-      "remedy",
-      "response",
-      "boost"
-    ],
-    "notfirst": 1,
-    "notlast": 1,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "if_caster_has_active_spell_of_type",
-          "parameters": {
-            "spell_type": "attack",
-            "count": 1,
-            "exclude_self": false
-          }
-        },
-        "action": {
-          "type": "heal",
-          "target": "self",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "advance_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "advance",
-          "target": "this_spell",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "theme": "Protect and protract!",
-    "base": true
-  },
-  {
-    "id": 25,
-    "card_name": "Reflect",
-    "elephant": "Gold Dust",
-    "element": "Sunbeam",
-    "is_conjury": false,
-    "priority": 4,
-    "spell_types": [
-      "attack",
-      "response"
-    ],
-    "notfirst": 0,
-    "notlast": 0,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "if_enemy_has_active_spell_of_type",
-          "parameters": {
-            "spell_type": "attack",
-            "count": 1
-          }
-        },
-        "action": {
-          "type": "damage",
-          "target": "all_enemies_who_met_condition",
-          "parameters": {
-            "value": 3
-          }
-        }
-      }
-    ],
-    "theme": "Retaliate!",
-    "base": true
-  },
-  {
-    "id": 26,
-    "card_name": "Glare",
-    "elephant": "Gold Dust",
-    "element": "Sunbeam",
-    "is_conjury": true,
-    "priority": 5,
-    "spell_types": [
-      "attack"
-    ],
-    "notfirst": 0,
-    "notlast": 0,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "weaken",
-          "target": "prompt_enemy",
-          "parameters": {
-            "value": 1
-          }
-        }
-      },
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "damage",
-          "target": "prompt_enemy",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "theme": "Retaliate!",
-    "base": true
-  },
-  {
-    "id": 27,
-    "card_name": "Illuminate",
-    "elephant": "Gold Dust",
-    "element": "Sunbeam",
-    "is_conjury": false,
-    "priority": 1,
-    "spell_types": [],
-    "notfirst": 0,
-    "notlast": 0,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "cast_extra_spell",
-          "target": "self",
-          "parameters": {
-            "source": "hand"
-          }
-        }
-      }
-    ],
-    "theme": "Retaliate!",
-    "base": true
-  },
-  {
-    "id": 28,
-    "card_name": "Slumber",
-    "elephant": "Luna Doze",
-    "element": "Moonshine",
-    "is_conjury": false,
-    "priority": 5,
-    "spell_types": [
-      "remedy",
-      "boost"
-    ],
-    "notfirst": 0,
-    "notlast": 1,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "heal",
-          "target": "self",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "advance_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "advance",
-          "target": "this_spell",
-          "parameters": {
-            "value": 1,
-            "limit": 1
-          }
-        }
-      }
-    ],
-    "theme": "Recuperate!",
-    "base": true
-  },
-  {
-    "id": 29,
-    "card_name": "Nightglow",
-    "elephant": "Luna Doze",
-    "element": "Moonshine",
-    "is_conjury": false,
-    "priority": 2,
-    "spell_types": [
-      "remedy",
-      "response",
-      "boost"
-    ],
-    "notfirst": 1,
-    "notlast": 0,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "bolster",
-          "target": "self",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "advance_effects": [
-      {
-        "condition": {
-          "type": "if_caster_has_active_spell_of_type",
-          "parameters": {
-            "spell_type": "any",
-            "count": 1,
-            "exclude_self": true
-          }
-        },
-        "action": {
-          "type": "advance",
-          "target": "this_spell",
-          "parameters": {
-            "value": 1,
-            "limit": 1
-          }
-        }
-      }
-    ],
-    "theme": "Recuperate!",
-    "base": true
-  },
-  {
-    "id": 30,
-    "card_name": "Bedim",
-    "elephant": "Luna Doze",
-    "element": "Moonshine",
-    "is_conjury": false,
-    "priority": 4,
-    "spell_types": [
-      "attack",
-      "response",
-      "boost"
-    ],
-    "notfirst": 0,
-    "notlast": 1,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "always"
-        },
-        "action": {
-          "type": "damage",
-          "target": "prompt_enemy",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "advance_effects": [
-      {
-        "condition": {
-          "type": "if_board_has_active_spell_of_type",
-          "parameters": {
-            "spell_type": "attack",
-            "count": 1,
-            "exclude_self": true
-          }
-        },
-        "action": {
-          "type": "advance",
-          "target": "this_spell",
-          "parameters": {
-            "value": 1
-          }
-        }
-      }
-    ],
-    "theme": "Recuperate!",
-    "base": true
-  }
 
 # --- UTILITIES ---
 def clear_screen(): os.system('cls' if os.name == 'nt' else 'clear')
@@ -1024,9 +70,14 @@ class Card:
         self.base: bool = card_data.get('base', False)
         self.resolve_effects: list[dict] = card_data.get('resolve_effects', [])
         self.advance_effects: list[dict] = card_data.get('advance_effects', [])
+        self.passive_effects: list[dict] = card_data.get('passive_effects', [])
     def __repr__(self) -> str: return f"Card({self.name})"
     def get_instructions_text(self) -> str:
         texts = []
+        if self.passive_effects:
+            for effect in self.passive_effects:
+                action_text = self._format_action(effect)
+                texts.append(f"Passive: {action_text}")
         if self.resolve_effects:
             for effect in self.resolve_effects:
                 action = effect['action']
@@ -1042,8 +93,14 @@ class Card:
         if cond_type == 'always': return ""
         if cond_type == 'if_caster_has_active_spell_of_type':
             p = cond['parameters']
-            count_str = p.get('count', 1) 
-            return f"If you have {count_str} other active {p['spell_type']} spell(s): "
+            count_str = p.get('count', 1)
+            exclude_self = p.get('exclude_self', False)
+            other_text = " other" if exclude_self else ""
+            spell_type_text = p['spell_type'] if p['spell_type'] != 'any' else ""
+            if spell_type_text:
+                return f"If you have {count_str}{other_text} active {spell_type_text} spell(s) this clash: "
+            else:
+                return f"If you have {count_str}{other_text} active spell(s) this clash: "
         if cond_type == 'if_enemy_has_active_spell_of_type':
             p = cond['parameters']
             count_str = p.get('count', 1)
@@ -1055,7 +112,11 @@ class Card:
             count_str = p.get('count', 1)
             return f"If there are {count_str} other active {p['spell_type']} spells on the board: "
         return f"If {cond_type.replace('_', ' ')}: "
-    def _format_action(self, action: dict) -> str:
+    def _format_action(self, action) -> str:
+        # Handle case where action is a list of actions
+        if isinstance(action, list):
+            return " AND ".join([self._format_action(a) for a in action])
+        
         action_type = action.get('type')
         if action_type == 'player_choice':
             options = [self._format_action(opt) for opt in action['options']]
@@ -1064,13 +125,22 @@ class Card:
         params = action.get('parameters', {}); value = params.get('value', '')
         target_raw = action.get('target', 'self')
         target_map = {
-            'self': 'yourself', 'prompt_enemy': 'an enemy', 'this_spell': 'this spell',
+            'self': 'yourself', 
+            'prompt_enemy': 'an enemy', 
+            'this_spell': 'this spell',
             'prompt_other_friendly_active_spell': 'another friendly active spell',
             'prompt_friendly_past_spell': 'one of your past spells',
             'all_enemies_and_their_conjuries': 'each enemy and their conjuries',
             'all_enemies_who_met_condition': 'each enemy who met the condition',
             'prompt_player_or_conjury': 'an enemy or conjury',
-            'prompt_player': 'a player'
+            'prompt_player': 'an enemy',
+            'prompt_any_active_spell': 'any active spell',
+            'prompt_enemy_past_spell': 'an enemy past spell',
+            'each_enemy': 'each enemy',
+            'all_enemy_remedy_spells': 'all enemy remedy spells',
+            'all_enemy_attack_spells': 'all enemy attack spells',
+            'prompt_enemy_boost_spell': 'an enemy boost spell',
+            'prompt_enemy_active_spell': 'an enemy active spell'
         }
         target = target_map.get(target_raw, target_raw.replace('_', ' '))
         
@@ -1090,6 +160,9 @@ class Card:
         elif action_type == 'discard_from_hand':
             return f"Force {target} to discard {value} card(s)"
         elif action_type == 'cast_extra_spell':
+            value = params.get('value', 1)
+            if value > 1:
+                return f"Cast up to {value} extra spells from your hand"
             return f"Cast an extra spell from your hand"
         elif action_type == 'damage_per_spell':
             spell_type = params.get('spell_type', 'any')
@@ -1097,6 +170,61 @@ class Card:
         elif action_type == 'heal_per_spell':
             spell_type = params.get('spell_type', 'any')
             return f"Heal {target} for each of your other active {spell_type} spells"
+        elif action_type == 'recall_from_enemy_hand':
+            return f"Reveal a spell from each enemy's hand and recall one"
+        elif action_type == 'move_clash_to_clash':
+            return f"Move all spells from one clash to another"
+        elif action_type == 'discard':
+            if target == 'this_spell':
+                return f"Discard this spell"
+            return f"Discard {target}"
+        elif action_type == 'copy_spell':
+            return f"Copy an enemy spell"
+        elif action_type == 'recall_from_board':
+            return f"Recall an enemy boost spell from the board"
+        elif action_type == 'damage_per_enemy_spell_type':
+            spell_type = params.get('spell_type', 'any')
+            return f"Deal damage to each enemy equal to their {spell_type} spells"
+        elif action_type == 'cancel':
+            if 'all_enemy' in str(target):
+                spell_type = str(target).replace('all_enemy_', '').replace('_spells', '')
+                return f"Cancel all enemy {spell_type} spells"
+            return f"Cancel {target}"
+        elif action_type == 'move_to_future_clash':
+            return f"Move a spell to a future clash"
+        elif action_type == 'recall':
+            source = params.get('source', 'discard')
+            if source == 'friendly_past_spells':
+                return f"Recall a spell from past clashes to your hand"
+            return f"Recall a spell from {source}"
+        elif action_type == 'protect_from_enemy_effects':
+            # This is a passive effect, shown differently
+            effects = params.get('effects', [])
+            return f"Protects your other spells from enemy {', '.join(effects)} effects"
+        elif action_type == 'advance_from_hand':
+            value = params.get('value', 1)
+            return f"Play up to {value} spell(s) from your hand to future clashes"
+        elif action_type == 'weaken_per_spell':
+            spell_type = params.get('spell_type', 'any')
+            exclude_self = params.get('exclude_self', False)
+            self_text = " other" if exclude_self else ""
+            return f"Weaken {target} for each of your{self_text} active {spell_type} spells"
+        elif action_type == 'advance_from_past_clash':
+            return f"Advance a spell from a past clash"
+        elif action_type == 'sequence':
+            # Format sequence of actions
+            actions = action.get('actions', [])
+            descriptions = [self._format_action(act) for act in actions]
+            return " then ".join(descriptions)
+        elif action_type == 'pass':
+            return "Do nothing"
+        elif action_type == 'modify_spell_logic':
+            change = params.get('change', '')
+            if change == 'or_to_and':
+                return "Changes 'Choose one' effects on your other spells to 'Do both'"
+        elif action_type == 'modify_priority':
+            value = params.get('value', 0)
+            return f"Reduces priority of your other spells by {abs(value)} (minimum 1)"
         else:
             return f"{action_type.replace('_', ' ').title()} {target}".strip()
 
@@ -1106,6 +234,7 @@ class PlayedCard:
         self.owner: 'Player' = owner
         self.status: str = 'prepared'
         self.has_resolved: bool = False
+        self.resolve_condition_met: bool = False  # Track if resolve condition was met
         self.advances_this_round: int = 0  # Track number of advances
 class Player:
     def __init__(self, name: str, is_human: bool = True):
@@ -1148,28 +277,58 @@ class DashboardDisplay:
         print("-" * 150)
         header = f"{'PLAYER'.ljust(15)} | {'HEALTH'.ljust(16)} | {'TRUNKS'} | {'DISCARD'} | {'CLASH I'.ljust(30)} | {'CLASH II'.ljust(30)} | {'CLASH III'.ljust(30)}| {'CLASH IV'.ljust(30)}"
         print(Colors.BOLD + header + Colors.ENDC); print("-" * 150)
+        
+        # Find the maximum number of spells in any clash for any player
+        max_spells_per_clash = 0
+        for p in gs.players:
+            for clash_list in p.board:
+                visible_spells = [s for s in clash_list if s.status in ['active', 'prepared', 'cancelled']]
+                max_spells_per_clash = max(max_spells_per_clash, len(visible_spells))
+        
+        # Display each player's row, with multiple rows if needed for stacked spells
         for i, p in enumerate(gs.players):
-            is_current = ">" if i == pov_player_index and p.is_human else " "; p_color = Colors.CYAN if i == pov_player_index and p.is_human else Colors.ENDC
+            # Prepare player info that will be shown on first row only
+            is_current = ">" if i == pov_player_index and p.is_human else " "
+            p_color = Colors.CYAN if i == pov_player_index and p.is_human else Colors.ENDC
             p_info = f"{is_current} {p_color}{p.name.ljust(13)}{Colors.ENDC}"
             h_color = Colors.GREEN if p.health > p.max_health / 2 else Colors.FAIL
             health_str = f"{h_color}{str(p.health).rjust(2)}/{str(p.max_health).ljust(2)}{Colors.ENDC}".ljust(25)
-            trunks_str = ("O " * p.trunks).ljust(6); discard_str = str(len(p.discard_pile)).ljust(7)
-            clash_slots_str = ""
-            for j in range(4):
-                slot_content = p.board[j]
-                if not slot_content: slot_str = "[Empty]"
+            trunks_str = ("O " * p.trunks).ljust(6)
+            discard_str = str(len(p.discard_pile)).ljust(7)
+            
+            # Build clash content for each row
+            for row in range(max(1, max_spells_per_clash)):
+                if row == 0:
+                    # First row shows player info
+                    row_str = f"{p_info} | {health_str} | {trunks_str} | {discard_str} | "
                 else:
-                    # --- NEW: Display face-down spells ---
-                    card_names = []
-                    for s in slot_content:
+                    # Additional rows are just spacing
+                    row_str = " " * 15 + " | " + " " * 16 + " | " + " " * 6 + " | " + " " * 7 + " | "
+                
+                # Add clash content for this row
+                for j in range(4):
+                    slot_content = p.board[j]
+                    visible_spells = [s for s in slot_content if s.status in ['active', 'prepared', 'cancelled']]
+                    
+                    if row >= len(visible_spells):
+                        # No spell at this row position
+                        if row == 0 and not visible_spells:
+                            slot_str = "[Empty]"
+                        else:
+                            slot_str = ""
+                    else:
+                        # Show the spell at this row position
+                        s = visible_spells[row]
                         if s.status == 'prepared' and s.owner != gs.players[pov_player_index]:
-                            card_names.append(f"{Colors.BLUE}[Spell Prepared]{Colors.ENDC}")
+                            slot_str = f"{Colors.BLUE}[Spell Prepared]{Colors.ENDC}"
                         else:
                             color = Colors.GREY if s.status == 'cancelled' else ''
-                            card_names.append(f"{color}{s.card.name}{Colors.ENDC}")
-                    slot_str = ", ".join(card_names)
-                width = 30; clash_slots_str += slot_str.ljust(width) + " | "
-            print(f"{p_info} | {health_str} | {trunks_str} | {discard_str} | {clash_slots_str.strip().rstrip('|')}")
+                            emoji = ELEMENT_EMOJIS.get(s.card.element, '')
+                            slot_str = f"{color}{emoji} {s.card.name}{Colors.ENDC}"
+                    
+                    row_str += slot_str.ljust(30) + " | "
+                
+                print(row_str.rstrip(" |"))
 
         print("=" * 150); pov_player = gs.players[pov_player_index]
         if pov_player.is_human:
@@ -1191,31 +350,88 @@ class ConditionChecker:
         if cond_type == 'always': return True
 
         if cond_type == 'if_spell_previously_resolved_this_round':
-            # --- TURBULENCE FIX: Check the log for a past event ---
-            for event in gs.event_log:
-                if (event['type'] == 'spell_resolved' and
-                    event['player'] == caster.name and
-                    event['card_id'] == current_card.id and
-                    event['clash'] < gs.clash_num): # Must be from a previous clash
-                    return True
-            return False
+            # Check if this specific spell resolved in a past clash
+            params = condition_data.get('parameters', {})
+            required_count = params.get('count', 1)
+            
+            if required_count == 1:
+                # Original behavior for Turbulence - check if THIS spell resolved before
+                for event in gs.event_log:
+                    if (event['type'] == 'spell_resolved' and
+                        event['player'] == caster.name and
+                        event['card_id'] == current_card.id and
+                        event['clash'] < gs.clash_num): # Must be from a previous clash
+                        return True
+                return False
+            else:
+                # For Impact - check if this spell resolved at least 'count' times
+                resolve_count = 0
+                for event in gs.event_log:
+                    if (event['type'] == 'spell_resolved' and
+                        event['player'] == caster.name and
+                        event['card_id'] == current_card.id):
+                        resolve_count += 1
+                return resolve_count >= required_count
 
         active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s and s.status == 'active']
         if cond_type == 'if_caster_has_active_spell_of_type':
-            params = condition_data['parameters']; count = 0
-            for spell in active_spells_this_clash:
-                if spell.owner == caster and params['spell_type'] in spell.card.types:
-                    if params.get('exclude_self', False) and spell.card.id == current_card.id: continue
-                    count += 1
-            return count >= params.get('count', 1)
+            params = condition_data['parameters']
+            spell_type = params['spell_type']
+            exclude_self = params.get('exclude_self', False)
+            required_count = params.get('count', 1)
+            
+            # Special handling for advance phase conditions - check event log for spells that WERE active
+            # This is for cards like Bolts that check "if you had other active spells this clash"
+            in_advance_phase = any(event['type'] == 'spell_resolved' for event in gs.event_log if event['clash'] == gs.clash_num)
+            
+            if in_advance_phase:
+                # Check event log for spells that were active at the start of resolve phase
+                count = 0
+                for event in gs.event_log:
+                    if (event['type'] == 'spell_active_in_clash' and 
+                        event['clash'] == gs.clash_num and
+                        event['player'] == caster.name):
+                        # Need to check if this spell matches the type
+                        if exclude_self and event['card_id'] == current_card.id:
+                            continue
+                        # Check spell type by finding the card
+                        card = gs.all_cards.get(event['card_id'])
+                        if card and (spell_type == 'any' or spell_type in card.types):
+                            count += 1
+                return count >= required_count
+            else:
+                # During resolve phase, check currently active spells
+                count = 0
+                for spell in active_spells_this_clash:
+                    if spell.owner == caster and (spell_type == 'any' or spell_type in spell.card.types):
+                        if exclude_self and spell.card.id == current_card.id: 
+                            continue
+                        count += 1
+                return count >= required_count
         
         if cond_type == 'if_enemy_has_active_spell_of_type':
-            params = condition_data['parameters']; count = 0
+            params = condition_data['parameters']
+            required_count = params.get('count', 1)
+            spell_type = params['spell_type']
             enemies = [p for p in gs.players if p != caster]
-            for spell in active_spells_this_clash:
-                if spell.owner in enemies and params['spell_type'] in spell.card.types:
-                    count += 1
-            return count >= params.get('count', 1)
+            
+            # For Clap - check if ANY enemy has 2+ spells
+            if spell_type == 'any' and required_count >= 2:
+                for enemy in enemies:
+                    enemy_spell_count = 0
+                    for spell in active_spells_this_clash:
+                        if spell.owner == enemy:
+                            enemy_spell_count += 1
+                    if enemy_spell_count >= required_count:
+                        return True
+                return False
+            else:
+                # Original behavior - total count across all enemies
+                count = 0
+                for spell in active_spells_this_clash:
+                    if spell.owner in enemies and (spell_type == 'any' or spell_type in spell.card.types):
+                        count += 1
+                return count >= required_count
         
         if cond_type == 'if_board_has_active_spell_of_type':
             params = condition_data['parameters']; count = 0
@@ -1226,6 +442,24 @@ class ConditionChecker:
             return count >= params.get('count', 1)
         
         if cond_type == 'if_not': return not self.check(condition_data['sub_condition'], gs, caster, current_card)
+        
+        if cond_type == 'if_spell_advanced_this_turn':
+            # Check if any spell has advanced this turn (round)
+            for event in gs.event_log:
+                if event['type'] == 'spell_advanced':
+                    return True
+            return False
+        
+        if cond_type == 'if_resolve_condition_was_met':
+            # For spells like Clap and Enfeeble that should only advance if resolve succeeded
+            # Find the PlayedCard for this spell
+            for player in gs.players:
+                for clash_list in player.board:
+                    for spell in clash_list:
+                        if spell.card.id == current_card.id and spell.owner == caster:
+                            return spell.resolve_condition_met
+            return False
+        
         return False
 # +++ START: REPLACE THE ENTIRE ActionHandler CLASS WITH THIS +++
 class ActionHandler:
@@ -1235,7 +469,7 @@ class ActionHandler:
     def _fire_event(self, event_type: str, gs: 'GameState', **kwargs: Any) -> None:
         event = {"clash": gs.clash_num, "type": event_type}; event.update(kwargs); gs.event_log.append(event)
 
-    def execute_effects(self, effects: list[dict], gs: 'GameState', caster: 'Player', current_card: 'Card') -> None:
+    def execute_effects(self, effects: list[dict], gs: 'GameState', caster: 'Player', current_card: 'Card', played_card: 'PlayedCard' = None) -> None:
         a_condition_was_met = False
         is_sequential = all(eff['condition'].get('type') == 'always' for eff in effects)
 
@@ -1252,18 +486,216 @@ class ActionHandler:
                 elif not a_condition_was_met:
                     if self.engine.condition_checker.check(effect['condition'], gs, caster, current_card):
                         a_condition_was_met = True
+                        # Mark that the resolve condition was met for this spell
+                        if played_card:
+                            played_card.resolve_condition_met = True
                         self._execute_action(effect['action'], gs, caster, current_card)
 
-    def _execute_action(self, action_data: dict, gs: 'GameState', caster: 'Player', current_card: 'Card') -> None:
+    def _execute_action(self, action_data, gs: 'GameState', caster: 'Player', current_card: 'Card') -> None:
+        # Handle case where action_data is a list of actions
+        if isinstance(action_data, list):
+            # For action arrays, we need to handle each action completely with its own targets
+            # This is used by spells like Stupefy, Familiar, and Absorb
+            for i, action in enumerate(action_data):
+                # Process each action in the array
+                self._execute_single_action(action, gs, caster, current_card)
+                # Pause after each action except the last one
+                if i < len(action_data) - 1:
+                    self.engine._pause()
+            return
+        
+        # For single actions, delegate to the single action handler
+        self._execute_single_action(action_data, gs, caster, current_card)
+    
+    def _execute_single_action(self, action_data, gs: 'GameState', caster: 'Player', current_card: 'Card') -> None:
         action_type = action_data.get('type')
         params = action_data.get('parameters', {})
-        targets = self._resolve_target(action_data, gs, caster, current_card)
         
-        if not targets:
-            gs.action_log.append(f"{Colors.GREY}No valid targets for {action_type}.{Colors.ENDC}"); self.engine._pause()
-            return
+        # Handle actions that don't use standard targeting first
+        if action_type == 'recall_from_enemy_hand':
+            # First, reveal a card from each enemy's hand
+            enemies = [p for p in gs.players if p != caster and p.hand]
+            revealed_cards = []
+            
+            for enemy in enemies:
+                if enemy.hand:
+                    # For AI enemies, reveal a random card
+                    revealed_card = random.choice(enemy.hand)
+                    gs.action_log.append(f"Revealed from {enemy.name}'s hand: [{revealed_card.name}]")
+                    revealed_cards.append((enemy, revealed_card))
+            
+            # Let the caster choose which card to recall
+            if revealed_cards:
+                if caster.is_human:
+                    if len(revealed_cards) == 1:
+                        # Auto-select if only one option
+                        enemy, card = revealed_cards[0]
+                        enemy.hand.remove(card)
+                        caster.hand.append(card)
+                        gs.action_log.append(f"{caster.name} recalled [{card.name}] from {enemy.name}'s hand!")
+                    else:
+                        # Let player choose
+                        options = {}
+                        for i, (enemy, card) in enumerate(revealed_cards):
+                            options[i+1] = (enemy, card)
+                        
+                        prompt = "Choose a revealed card to recall:"
+                        self.engine.display.draw(gs, gs.players.index(caster), prompt=prompt)
+                        for key, (enemy, card) in options.items():
+                            emoji = ELEMENT_EMOJIS.get(card.element, '')
+                            print(f"  [{key}] {emoji} {card.name} from {enemy.name}")
+                        
+                        choice = input("\nYour choice: ").strip()
+                        try:
+                            choice_idx = int(choice)
+                            if choice_idx in options:
+                                enemy, card = options[choice_idx]
+                                enemy.hand.remove(card)
+                                caster.hand.append(card)
+                                gs.action_log.append(f"{caster.name} recalled [{card.name}] from {enemy.name}'s hand!")
+                        except ValueError:
+                            gs.action_log.append(f"{Colors.FAIL}Invalid choice.{Colors.ENDC}")
+                else:
+                    # AI just takes the first revealed card
+                    enemy, card = revealed_cards[0]
+                    enemy.hand.remove(card)
+                    caster.hand.append(card)
+                    gs.action_log.append(f"{caster.name} recalled [{card.name}] from {enemy.name}'s hand!")
+            else:
+                gs.action_log.append("No cards to recall from enemy hands.")
+            return True
+            
+        elif action_type == 'move_clash_to_clash':
+            # Let player choose source and destination clashes
+            if caster.is_human:
+                # First, choose source clash
+                clash_options = {}
+                for i in range(4):
+                    spells_in_clash = []
+                    for p in gs.players:
+                        spells_in_clash.extend([s for s in p.board[i] if s.status == 'active'])
+                    if spells_in_clash:
+                        clash_options[i+1] = (i, spells_in_clash)
+                
+                if not clash_options:
+                    gs.action_log.append("No active spells to move.")
+                    return True
+                
+                # Choose source clash
+                prompt = "Choose a clash to move spells FROM:"
+                self.engine.display.draw(gs, gs.players.index(caster), prompt=prompt)
+                for key, (clash_idx, spells) in clash_options.items():
+                    spell_names = [s.card.name for s in spells]
+                    print(f"  [{key}] Clash {clash_idx + 1}: {', '.join(spell_names)}")
+                
+                source_choice = input("\nYour choice: ").strip()
+                try:
+                    source_key = int(source_choice)
+                    if source_key in clash_options:
+                        source_clash_idx, source_spells = clash_options[source_key]
+                        
+                        # Choose destination clash
+                        dest_options = {i+1: i for i in range(4) if i != source_clash_idx}
+                        prompt = "Choose a clash to move spells TO:"
+                        self.engine.display.draw(gs, gs.players.index(caster), prompt=prompt)
+                        for key, clash_idx in dest_options.items():
+                            print(f"  [{key}] Clash {clash_idx + 1}")
+                        
+                        dest_choice = input("\nYour choice: ").strip()
+                        dest_key = int(dest_choice)
+                        if dest_key in dest_options:
+                            dest_clash_idx = dest_options[dest_key]
+                            
+                            # Move all spells
+                            moved_count = 0
+                            for spell in source_spells:
+                                owner = spell.owner
+                                owner.board[source_clash_idx].remove(spell)
+                                owner.board[dest_clash_idx].append(spell)
+                                moved_count += 1
+                                
+                                # If moving to current clash, add to resolution queue
+                                if dest_clash_idx == gs.clash_num - 1:
+                                    self.engine.add_to_resolution_queue(spell)
+                            
+                            gs.action_log.append(f"Moved {moved_count} spell(s) from Clash {source_clash_idx + 1} to Clash {dest_clash_idx + 1}!")
+                            self.engine._pause()
+                except ValueError:
+                    gs.action_log.append(f"{Colors.FAIL}Invalid choice.{Colors.ENDC}")
+            else:
+                # AI logic - move from current clash to next clash if possible
+                for i in range(gs.clash_num - 1, 3):
+                    spells_in_clash = []
+                    for p in gs.players:
+                        spells_in_clash.extend([s for s in p.board[i] if s.status == 'active'])
+                    if spells_in_clash and i < 3:
+                        # Move to next clash
+                        for spell in spells_in_clash:
+                            owner = spell.owner
+                            owner.board[i].remove(spell)
+                            owner.board[i+1].append(spell)
+                            
+                            # If moving to current clash, add to resolution queue
+                            if i+1 == gs.clash_num - 1:
+                                self.engine.add_to_resolution_queue(spell)
+                        gs.action_log.append(f"Moved {len(spells_in_clash)} spell(s) from Clash {i + 1} to Clash {i + 2}!")
+                        break
+            return True
+        
+        # Handle recall separately since it needs special target resolution
+        if action_type == 'recall':
+            source = params.get('source', 'discard')
+            if source == 'friendly_past_spells' and action_data.get('target') == 'self':
+                # Constellation - let player choose from past spells
+                past_spells = []
+                for i in range(gs.clash_num - 1):  # Only past clashes
+                    for spell in caster.board[i]:
+                        if spell.status == 'active':
+                            past_spells.append(spell)
+                
+                if not past_spells:
+                    gs.action_log.append(f"{caster.name} has no spells in past clashes to recall.")
+                    return True
+                
+                if caster.is_human:
+                    if len(past_spells) == 1:
+                        target = past_spells[0]
+                    else:
+                        options = {i+1: s for i, s in enumerate(past_spells)}
+                        prompt = "Choose a spell to recall from past clashes:"
+                        choice = self.engine._prompt_for_choice(caster, options, prompt, view_key='card.name')
+                        if choice is None:
+                            return True
+                        target = options[choice]
+                else:
+                    target = random.choice(past_spells)
+                
+                # Process the recall
+                targets = [target]
+            else:
+                # Standard targeting for other recall types
+                targets = self._resolve_target(action_data, gs, caster, current_card)
+                if not targets:
+                    gs.action_log.append(f"{Colors.GREY}No valid targets for recall.{Colors.ENDC}")
+                    self.engine._pause()
+                    return True
+        else:
+            # Standard targeting for other actions
+            targets = self._resolve_target(action_data, gs, caster, current_card)
+            
+            if not targets:
+                gs.action_log.append(f"{Colors.GREY}No valid targets for {action_type}.{Colors.ENDC}"); self.engine._pause()
+                return
 
         if action_type == 'player_choice':
+            # Check if Coalesce is active for this player
+            has_coalesce = False
+            active_spells = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'active']
+            for spell in active_spells:
+                if spell.owner == caster and spell.card.name == 'Coalesce':
+                    has_coalesce = True
+                    break
+            
             # First, check if each option is actually valid
             valid_options = []
             for option in action_data.get('options', []):
@@ -1274,19 +706,37 @@ class ActionHandler:
             
             if not valid_options:
                 gs.action_log.append(f"{Colors.GREY}No valid options available.{Colors.ENDC}")
-                return
+                return True
+            
+            # If Coalesce is active, execute ALL valid options
+            if has_coalesce:
+                gs.action_log.append(f"{caster.name}'s [Coalesce] changes 'Choose one' to 'Do both'!")
+                for option in valid_options:
+                    self._execute_action(option, gs, caster, current_card)
+                    self.engine._pause()
+                return True
             
             # If only one valid option, execute it automatically
             if len(valid_options) == 1:
                 gs.action_log.append(f"Only one valid option - executing automatically.")
                 self._execute_action(valid_options[0], gs, caster, current_card)
-                return
+                return True
             
             if caster.is_human:
                 # Build options dictionary with labels
                 options_dict = {}
                 for i, option in enumerate(valid_options):
-                    label = option.get('label', f"Option {i+1}")
+                    # Generate a descriptive label for each option
+                    if option.get('type') == 'sequence':
+                        # For sequence actions, describe all actions
+                        action_descriptions = []
+                        for act in option.get('actions', []):
+                            action_descriptions.append(current_card._format_action(act))
+                        label = " then ".join(action_descriptions)
+                    elif option.get('type') == 'pass':
+                        label = "Pass (do nothing)"
+                    else:
+                        label = current_card._format_action(option)
                     options_dict[i+1] = {'label': label, 'action': option}
                 
                 # Display options to player
@@ -1304,23 +754,127 @@ class ActionHandler:
                 except ValueError:
                     gs.action_log.append(f"{Colors.FAIL}Invalid choice.{Colors.ENDC}")
             else:
-                # AI just picks the first valid option
-                self._execute_action(valid_options[0], gs, caster, current_card)
-            return
+                # AI logic - pick based on game state
+                # For attack/remedy choices, pick based on health
+                attack_options = []
+                remedy_options = []
+                safe_options = []
+                risky_options = []
+                
+                for option in valid_options:
+                    # Check if option involves self-damage
+                    has_self_damage = False
+                    if option.get('type') == 'sequence':
+                        # Check sequence for self-damage
+                        for act in option.get('actions', []):
+                            if act.get('type') == 'damage' and act.get('target') == 'self':
+                                has_self_damage = True
+                                break
+                    elif option.get('type') == 'damage' and option.get('target') == 'self':
+                        has_self_damage = True
+                    
+                    if has_self_damage:
+                        risky_options.append(option)
+                    elif option.get('type') == 'damage' or option.get('type') == 'weaken':
+                        attack_options.append(option)
+                    elif option.get('type') == 'heal' or option.get('type') == 'bolster':
+                        remedy_options.append(option)
+                    elif option.get('type') == 'pass':
+                        safe_options.append(option)
+                    else:
+                        safe_options.append(option)
+                
+                # AI decision making
+                if caster.health <= 1:
+                    # At 1 health - NEVER choose self-damage options
+                    if remedy_options:
+                        self._execute_action(remedy_options[0], gs, caster, current_card)
+                    elif safe_options:
+                        self._execute_action(safe_options[0], gs, caster, current_card)
+                    elif attack_options:
+                        self._execute_action(attack_options[0], gs, caster, current_card)
+                    else:
+                        # No safe options - just pass if possible
+                        for opt in valid_options:
+                            if opt.get('type') == 'pass':
+                                self._execute_action(opt, gs, caster, current_card)
+                                return
+                        # Forced to take damage
+                        self._execute_action(valid_options[0], gs, caster, current_card)
+                elif caster.health <= 2:
+                    # Low health - avoid risky options unless they're very powerful
+                    if remedy_options:
+                        self._execute_action(remedy_options[0], gs, caster, current_card)
+                    elif attack_options:
+                        self._execute_action(attack_options[0], gs, caster, current_card)
+                    elif safe_options:
+                        self._execute_action(safe_options[0], gs, caster, current_card)
+                    else:
+                        # Forced to take risky option
+                        self._execute_action(valid_options[0], gs, caster, current_card)
+                elif caster.health >= 4 and risky_options:
+                    # High health - willing to take risks for powerful effects
+                    # Blood spells often have powerful effects worth the self-damage
+                    self._execute_action(risky_options[0], gs, caster, current_card)
+                elif attack_options:
+                    # Mid health - prefer attacking
+                    self._execute_action(attack_options[0], gs, caster, current_card)
+                elif safe_options:
+                    # Fallback to other safe options
+                    self._execute_action(safe_options[0], gs, caster, current_card)
+                elif risky_options and caster.health >= 3:
+                    # Mid health - consider risky options if no other choice
+                    self._execute_action(risky_options[0], gs, caster, current_card)
+                else:
+                    # Ultimate fallback
+                    self._execute_action(valid_options[0], gs, caster, current_card)
+            return True
         
         if action_type == 'cast_extra_spell':
+            num_to_cast = params.get('value', 1)
+            
             if caster.is_human:
-                if not caster.hand: gs.action_log.append(f"{caster.name} has no cards to cast."); self.engine._pause(); return
-                options = {i+1: c for i, c in enumerate(caster.hand)}
-                choice = self.engine._prompt_for_choice(caster, options, "Choose an extra spell to cast:")
-                if choice is not None:
-                    card_to_cast = caster.hand.pop(choice-1)
-                    newly_played_card = PlayedCard(card_to_cast, caster)
-                    newly_played_card.status = 'active'  # Set to active since it's cast mid-resolution
-                    gs.players[gs.players.index(caster)].board[gs.clash_num - 1].append(newly_played_card)
-                    self.engine.add_to_resolution_queue(newly_played_card)
-                    gs.action_log.append(f"{caster.name} casts an extra spell: [{card_to_cast.name}]!")
+                if not caster.hand: 
+                    gs.action_log.append(f"{caster.name} has no cards to cast.")
                     self.engine._pause()
+                    return
+                
+                spells_cast = 0
+                for spell_num in range(min(num_to_cast, len(caster.hand))):
+                    if not caster.hand:
+                        break
+                    options = {i+1: c for i, c in enumerate(caster.hand)}
+                    # Make it clear that casting is optional
+                    if spell_num == 0:
+                        prompt = f"Choose a spell to cast (or 'done' to cast no spells):"
+                    else:
+                        prompt = f"Choose spell {spell_num + 1} of up to {num_to_cast} to cast (or 'done'):"
+                    choice = self.engine._prompt_for_choice(caster, options, prompt)
+                    if choice == 'done':
+                        break
+                    if choice is not None:
+                        card_to_cast = caster.hand.pop(choice-1)
+                        newly_played_card = PlayedCard(card_to_cast, caster)
+                        newly_played_card.status = 'active'  # Set to active since it's cast mid-resolution
+                        gs.players[gs.players.index(caster)].board[gs.clash_num - 1].append(newly_played_card)
+                        self.engine.add_to_resolution_queue(newly_played_card)
+                        gs.action_log.append(f"{caster.name} casts an extra spell: [{card_to_cast.name}]!")
+                        spells_cast += 1
+                        self.engine._pause()
+                
+                if spells_cast == 0:
+                    gs.action_log.append(f"{caster.name} chose not to cast any extra spells.")
+                    self.engine._pause()
+            else:
+                # AI casts up to num_to_cast spells
+                for _ in range(min(num_to_cast, len(caster.hand))):
+                    if caster.hand:
+                        card_to_cast = caster.hand.pop(0)
+                        newly_played_card = PlayedCard(card_to_cast, caster)
+                        newly_played_card.status = 'active'
+                        gs.players[gs.players.index(caster)].board[gs.clash_num - 1].append(newly_played_card)
+                        self.engine.add_to_resolution_queue(newly_played_card)
+                        gs.action_log.append(f"{caster.name} casts an extra spell: [{card_to_cast.name}]!")
             return
 
         for target in targets:
@@ -1340,7 +894,7 @@ class ActionHandler:
                      if isinstance(t, Player):
                          if not t.is_invulnerable:
                             damage = params.get('value', 1); original_health = t.health; t.health = max(0, t.health - damage)
-                            gs.action_log.append(f"{caster.name}'s [{current_card.name}] dealt {damage} damage to {t.name}. ({t.health}/{t.max_health})")
+                            gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage} damage to {t.name}. ({t.health}/{t.max_health}){Colors.ENDC}")
                             self._fire_event('player_damaged', gs, player=caster.name, target=t.name, value=damage, card_id=current_card.id)
                             if original_health > 0 and t.health <= 0:
                                 if self.engine._handle_trunk_loss(t) == 'round_over': raise RoundOverException()
@@ -1379,7 +933,7 @@ class ActionHandler:
                         damage = count
                         original_health = target.health
                         target.health = max(0, target.health - damage)
-                        gs.action_log.append(f"{caster.name}'s [{current_card.name}] dealt {damage} damage to {target.name} ({count} spell(s)). ({target.health}/{target.max_health})")
+                        gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage} damage to {target.name} ({count} spell(s)). ({target.health}/{target.max_health}){Colors.ENDC}")
                         self._fire_event('player_damaged', gs, player=caster.name, target=target.name, value=damage, card_id=current_card.id)
                         if original_health > 0 and target.health <= 0:
                             if self.engine._handle_trunk_loss(target) == 'round_over': raise RoundOverException()
@@ -1415,6 +969,7 @@ class ActionHandler:
                 if isinstance(target, Player) and target.hand:
                     num_to_discard = min(params.get('value', 1), len(target.hand))
                     if num_to_discard > 0:
+                        discarded_count = 0
                         if target.is_human:
                             for i in range(num_to_discard):
                                 prompt = f"Choose a card to discard ({i+1}/{num_to_discard}):"
@@ -1424,6 +979,7 @@ class ActionHandler:
                                     discarded = target.hand.pop(choice-1)
                                     target.discard_pile.append(discarded)
                                     gs.action_log.append(f"{target.name} discarded [{discarded.name}].")
+                                    discarded_count += 1
                         else:
                             # AI discards randomly
                             for i in range(num_to_discard):
@@ -1432,28 +988,292 @@ class ActionHandler:
                                     target.hand.remove(discarded)
                                     target.discard_pile.append(discarded)
                                     gs.action_log.append(f"{target.name} discarded [{discarded.name}].")
+                                    discarded_count += 1
+                        # Log if we couldn't discard the required number
+                        if discarded_count < num_to_discard:
+                            gs.action_log.append(f"Only discarded {discarded_count} of {num_to_discard} required cards.")
                 else:
                     gs.action_log.append(f"{target.name} has no cards to discard.")
             
             elif action_type == 'advance':
-                # Check if this advance action has a per-round limit
-                if 'limit' in params:
-                    advance_limit = params['limit']
-                    if target.advances_this_round >= advance_limit:
-                        gs.action_log.append(f"[{target.card.name}] can only advance {advance_limit} time(s) per round and has already advanced {target.advances_this_round} time(s).")
-                        continue
-                
-                owner = target.owner; next_clash_idx = gs.clash_num
-                if next_clash_idx < 4:
-                    found_and_moved = False
+                # Handle multiple targets (for Clap's advance effect)
+                if isinstance(target, list):
+                    # Advance multiple spells
+                    for spell_to_advance in target:
+                        if isinstance(spell_to_advance, PlayedCard):
+                            self._advance_single_spell(spell_to_advance, gs, caster, current_card, action_data)
+                else:
+                    # Single spell advance
+                    self._advance_single_spell(target, gs, caster, current_card, action_data)
+            
+            
+            elif action_type == 'discard':
+                if action_data.get('target') == 'this_spell':
+                    # Find and discard this spell
+                    for clash_list in caster.board:
+                        for spell in clash_list:
+                            if spell.card.id == current_card.id:
+                                spell.status = 'cancelled'
+                                clash_list.remove(spell)
+                                caster.discard_pile.append(spell.card)
+                                gs.action_log.append(f"{Colors.GREY}{ACTION_EMOJIS['discard']} [{spell.card.name}] was discarded.{Colors.ENDC}")
+                                return
+                elif isinstance(target, PlayedCard):
+                    # Discard a specific spell (used by Electrocute, Daybreak)
+                    owner = target.owner
+                    for clash_list in owner.board:
+                        if target in clash_list:
+                            clash_list.remove(target)
+                            break
+                    # Important: For Daybreak, put enemy spell in caster's discard
+                    if owner != caster:
+                        caster.discard_pile.append(target.card)
+                        gs.action_log.append(f"{caster.name} discarded [{target.card.name}] from {owner.name}'s past spells into their own discard pile!")
+                    else:
+                        owner.discard_pile.append(target.card)
+                        gs.action_log.append(f"{caster.name} discarded [{target.card.name}] from past spells!")
+                else:
+                    gs.action_log.append(f"No valid target to discard.")
+            
+            elif action_type == 'copy_spell':
+                # Imitate - copy an enemy spell
+                if isinstance(target, PlayedCard):
+                    # Create a copy of the spell and add it to the resolution queue
+                    copied_card = PlayedCard(target.card, caster)
+                    copied_card.status = 'active'
+                    caster.board[gs.clash_num - 1].append(copied_card)
+                    self.engine.add_to_resolution_queue(copied_card)
+                    gs.action_log.append(f"{caster.name} copies [{target.card.name}] from {target.owner.name}!")
+                    self.engine._pause()
+            
+            elif action_type == 'recall_from_board':
+                # Sap - recall an enemy boost spell from the board to your hand
+                if isinstance(target, PlayedCard) and 'boost' in target.card.types:
+                    owner = target.owner
+                    
+                    # Check if Root is protecting this spell in the current clash
+                    for spell in owner.board[gs.clash_num - 1]:
+                        if spell.status == 'active' and spell.card.name == 'Root':
+                            gs.action_log.append(f"[{target.card.name}] is protected by {owner.name}'s [Root] and cannot be recalled!")
+                            return
+                    
+                    # Remove from board
+                    clash_num = -1
                     for i, clash_list in enumerate(owner.board):
                         if target in clash_list:
-                            owner.board[i].remove(target); owner.board[next_clash_idx].append(target)
-                            target.advances_this_round += 1  # Increment advance count
-                            gs.action_log.append(f"{Colors.GREEN}{ACTION_EMOJIS['advance']} {owner.name}'s [{target.card.name}] advanced from Clash {i+1} to Clash {next_clash_idx + 1}.{Colors.ENDC}")
-                            self._fire_event('spell_advanced', gs, player=owner.name, card_id=target.card.id); found_and_moved = True; break
-                    if not found_and_moved: gs.action_log.append(f"Error: Could not find [{target.card.name}] to advance.")
-                else: gs.action_log.append(f"[{target.card.name}] could not advance past Clash 4.")
+                            clash_list.remove(target)
+                            clash_num = i + 1
+                            break
+                    # Add to caster's hand
+                    caster.hand.append(target.card)
+                    gs.action_log.append(f"{Colors.YELLOW}{caster.name} used Sap to steal [{target.card.name}] from {owner.name}'s Clash {clash_num}!{Colors.ENDC}")
+                    self._fire_event('spell_recalled_from_board', gs, player=caster.name, target=owner.name, card_id=target.card.id)
+            
+            elif action_type == 'damage_per_enemy_spell_type':
+                # Dominion - damage based on enemy boost spells
+                spell_type = params.get('spell_type', 'any')
+                enemies = [p for p in gs.players if p != caster]
+                
+                for enemy in enemies:
+                    count = 0
+                    # Count active spells of the specified type for this enemy in current clash
+                    for spell in enemy.board[gs.clash_num - 1]:
+                        if spell.status == 'active' and spell_type in spell.card.types:
+                            count += 1
+                    
+                    if count > 0 and not enemy.is_invulnerable:
+                        damage = count
+                        original_health = enemy.health
+                        enemy.health = max(0, enemy.health - damage)
+                        gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage} damage to {enemy.name} ({count} {spell_type} spell(s)). ({enemy.health}/{enemy.max_health}){Colors.ENDC}")
+                        self._fire_event('player_damaged', gs, player=caster.name, target=enemy.name, value=damage, card_id=current_card.id)
+                        if original_health > 0 and enemy.health <= 0:
+                            if self.engine._handle_trunk_loss(enemy) == 'round_over': 
+                                raise RoundOverException()
+            
+            elif action_type == 'cancel':
+                # Cancel spells (used by Encumber, Stupefy, etc.)
+                if isinstance(target, PlayedCard):
+                    # Check if Root is protecting this spell in the current clash
+                    owner = target.owner
+                    for spell in owner.board[gs.clash_num - 1]:
+                        if spell.status == 'active' and spell.card.name == 'Root':
+                            gs.action_log.append(f"[{target.card.name}] is protected by {owner.name}'s [Root] and cannot be cancelled!")
+                            return
+                    
+                    target.status = 'cancelled'
+                    gs.action_log.append(f"{caster.name}'s [{current_card.name}] cancelled {target.owner.name}'s [{target.card.name}]!")
+                elif isinstance(target, list):
+                    # For mass cancel effects
+                    for spell in target:
+                        if isinstance(spell, PlayedCard):
+                            # Check if Root is protecting this spell in the current clash
+                            owner = spell.owner
+                            protected = False
+                            for root_spell in owner.board[gs.clash_num - 1]:
+                                if root_spell.status == 'active' and root_spell.card.name == 'Root':
+                                    gs.action_log.append(f"[{spell.card.name}] is protected by {owner.name}'s [Root] and cannot be cancelled!")
+                                    protected = True
+                                    break
+                            
+                            if not protected:
+                                spell.status = 'cancelled'
+                                gs.action_log.append(f"{caster.name}'s [{current_card.name}] cancelled {spell.owner.name}'s [{spell.card.name}]!")
+            
+            elif action_type == 'move_to_future_clash':
+                # Gravitate - move a spell to a future clash
+                if isinstance(target, PlayedCard):
+                    owner = target.owner
+                    current_clash = -1
+                    
+                    # Find which clash the spell is in
+                    for i, clash_list in enumerate(owner.board):
+                        if target in clash_list:
+                            current_clash = i
+                            break
+                    
+                    if current_clash >= 0 and current_clash < 3:
+                        # Let player choose which future clash
+                        available_clashes = list(range(current_clash + 1, 4))
+                        
+                        if caster.is_human and len(available_clashes) > 1:
+                            # Player chooses which future clash
+                            options = {i+1: clash_idx for i, clash_idx in enumerate(available_clashes)}
+                            prompt = f"Choose which clash to move [{target.card.name}] to:"
+                            self.engine.display.draw(gs, gs.players.index(caster), prompt=prompt)
+                            for key, clash_idx in options.items():
+                                print(f"  [{key}] Clash {clash_idx + 1}")
+                            
+                            choice = input("\nYour choice: ").strip()
+                            try:
+                                choice_idx = int(choice)
+                                if choice_idx in options:
+                                    target_clash = options[choice_idx]
+                                else:
+                                    target_clash = current_clash + 1  # Default to next clash
+                            except ValueError:
+                                target_clash = current_clash + 1  # Default to next clash
+                        else:
+                            # AI or only one option - move to next clash
+                            target_clash = current_clash + 1
+                        
+                        # Move the spell
+                        owner.board[current_clash].remove(target)
+                        owner.board[target_clash].append(target)
+                        gs.action_log.append(f"{caster.name} moved [{target.card.name}] from Clash {current_clash + 1} to Clash {target_clash + 1}!")
+                        self.engine._pause()
+                    else:
+                        gs.action_log.append(f"Cannot move [{target.card.name}] to a future clash.")
+            
+            elif action_type == 'recall':
+                # Constellation - recall a spell from past clashes
+                source = params.get('source', 'discard')
+                if source == 'friendly_past_spells' and isinstance(target, PlayedCard):
+                    # Remove from board
+                    owner = target.owner
+                    for clash_list in owner.board:
+                        if target in clash_list:
+                            clash_list.remove(target)
+                            break
+                    # Add to hand
+                    caster.hand.append(target.card)
+                    gs.action_log.append(f"{caster.name} recalled [{target.card.name}] from past clashes!")
+                    self._fire_event('spell_recalled', gs, player=caster.name, card_id=target.card.id)
+            
+            elif action_type == 'advance_from_hand':
+                # Gleam - play spells from hand to future clashes
+                num_to_play = params.get('value', 1)
+                
+                if not caster.hand:
+                    gs.action_log.append(f"{caster.name} has no cards in hand to advance.")
+                    return
+                
+                # Check if we can advance to next clash
+                if gs.clash_num >= 4:
+                    gs.action_log.append(f"Cannot advance from hand - no future clashes remaining.")
+                    return
+                
+                target_clash = gs.clash_num  # Advance always goes to the next clash
+                
+                cards_advanced = 0
+                max_to_advance = min(num_to_play, len(caster.hand))
+                
+                for i in range(max_to_advance):
+                    if caster.is_human:
+                        if not caster.hand:
+                            break
+                        options = {j+1: c for j, c in enumerate(caster.hand)}
+                        prompt = f"Choose a card to advance to Clash {target_clash + 1} (up to {num_to_play} total, {cards_advanced} chosen) or 'done':"
+                        choice = self.engine._prompt_for_choice(caster, options, prompt)
+                        if choice == 'done':
+                            break
+                        if choice is not None and isinstance(choice, int):
+                            card = caster.hand.pop(choice-1)
+                            cards_advanced += 1
+                            # Add to board
+                            played_card = PlayedCard(card, caster)
+                            played_card.status = 'prepared'  # Will be revealed in that clash
+                            caster.board[target_clash].append(played_card)
+                            gs.action_log.append(f"{caster.name} advanced [{card.name}] from hand to Clash {target_clash + 1}!")
+                    else:
+                        # AI just plays first card to next clash
+                        if caster.hand:
+                            card = caster.hand.pop(0)
+                            played_card = PlayedCard(card, caster)
+                            played_card.status = 'prepared'
+                            caster.board[target_clash].append(played_card)
+                            gs.action_log.append(f"{caster.name} advanced [{card.name}] from hand to Clash {target_clash + 1}!")
+            
+            elif action_type == 'sequence':
+                # Execute a sequence of actions in order
+                actions = action_data.get('actions', [])
+                for i, act in enumerate(actions):
+                    # Special handling for actions that might fail
+                    if act.get('type') == 'discard' and i == 0:
+                        # For Electrocute's sequence, check if we can actually discard
+                        targets = self._resolve_target(act, gs, caster, current_card)
+                        if not targets:
+                            gs.action_log.append(f"Sequence stopped - no valid targets for discard.")
+                            break
+                    elif act.get('type') == 'discard_from_hand' and act.get('target') == 'self' and i == 0:
+                        # For Surge's sequence, check if caster has cards to discard
+                        if not caster.hand:
+                            gs.action_log.append(f"Sequence stopped - no cards to discard.")
+                            break
+                    
+                    self._execute_action(act, gs, caster, current_card)
+                    self.engine._pause()
+            
+            elif action_type == 'weaken_per_spell':
+                # Count active spells matching criteria (similar to damage_per_spell)
+                active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'active']
+                spell_type = params.get('spell_type', 'any')
+                exclude_self = params.get('exclude_self', False)
+                
+                count = 0
+                for spell in active_spells_this_clash:
+                    if spell.owner == caster:
+                        if exclude_self and spell.card.id == current_card.id:
+                            continue
+                        if spell_type == 'any' or spell_type in spell.card.types:
+                            count += 1
+                
+                if count > 0 and isinstance(target, Player):
+                    target.max_health = max(0, target.max_health - count)
+                    target.health = min(target.health, target.max_health)
+                    gs.action_log.append(f"{caster.name}'s [{current_card.name}] weakened {target.name} by {count} ({count} {spell_type} spell(s)). Max health now {target.max_health}.")
+                else:
+                    gs.action_log.append(f"{caster.name} has no active {spell_type} spells to boost the weakening.")
+            
+            elif action_type == 'advance_from_past_clash':
+                # This is used by Blow spell - advance a spell from a past clash
+                # For now, this is handled separately in the spell's definition
+                # The actual implementation would need to prompt for which past clash
+                gs.action_log.append(f"[advance_from_past_clash not yet implemented]")
+            
+            elif action_type == 'pass':
+                # Do nothing
+                gs.action_log.append(f"{caster.name} chose to pass.")
 
     def _resolve_target(self, action_data: dict, gs: 'GameState', caster: 'Player', current_card: 'Card') -> list[Any]:
         target_str = action_data.get('target')
@@ -1465,8 +1285,22 @@ class ActionHandler:
                     if spell.card.id == current_card.id: return [spell]
             return []
         enemies = [p for p in gs.players if p != caster]; valid_enemies = [p for p in enemies if not p.is_invulnerable]
-        active_conjuries = [s for p in gs.players for clash_list in p.board for s in clash_list if s and s.card.is_conjury and s.status == 'active']
-        if target_str == 'prompt_enemy' or target_str == 'prompt_player_or_conjury':
+        # Only look for active conjuries in the current clash
+        active_conjuries = [s for p in gs.players for s in p.board[gs.clash_num-1] if s and s.card.is_conjury and s.status == 'active']
+        if target_str == 'prompt_enemy' or target_str == 'prompt_player':
+            # prompt_enemy and prompt_player both target enemies only
+            if not valid_enemies: return []
+            if caster.is_human:
+                if len(valid_enemies) == 1: return valid_enemies
+                options = {i+1: e for i, e in enumerate(valid_enemies)}
+                choice = self.engine._prompt_for_choice(caster, options, "Choose an enemy:")
+                if choice is not None: return [options[choice]]
+                else: return []
+            else:
+                # AI picks lowest health enemy
+                return [min(valid_enemies, key=lambda p: p.health)]
+        
+        if target_str == 'prompt_player_or_conjury':
             all_possible_targets = valid_enemies + [c for c in active_conjuries if c.owner in valid_enemies]
             if not all_possible_targets: return []
             if caster.is_human:
@@ -1504,61 +1338,535 @@ class ActionHandler:
                 else: return []
             else: return [random.choice(past_spells)]
         
+        if target_str == 'prompt_friendly_past_or_active_spell':
+            # For Electrocute - can discard past spells (any status) or active spells in current clash
+            all_board_spells = []
+            # Add all past spells (regardless of status)
+            for i in range(gs.clash_num - 1):  # Only past clashes
+                for spell in caster.board[i]:
+                    all_board_spells.append(spell)
+            # Add active spells from current clash
+            for spell in caster.board[gs.clash_num - 1]:
+                if spell.status == 'active':
+                    all_board_spells.append(spell)
+            
+            if not all_board_spells: return []
+            if len(all_board_spells) == 1: return all_board_spells
+            if caster.is_human:
+                options = {i+1: s for i, s in enumerate(all_board_spells)}
+                choice = self.engine._prompt_for_choice(caster, options, "Choose one of your past or active spells to discard:", view_key='card.name')
+                if choice is not None: return [options[choice]]
+                else: return []
+            else: return [random.choice(all_board_spells)]
+        
         if target_str == 'all_enemies_who_met_condition':
             # This is a special target that needs to work with condition checking
-            # We need to find enemies who have attack spells (for Reflect)
+            # We need to find enemies who meet the condition from the action's parent effect
             enemies = [p for p in gs.players if p != caster and not p.is_invulnerable]
-            enemies_with_attack_spells = []
+            enemies_who_met_condition = []
             active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'active']
             
-            for enemy in enemies:
-                for spell in active_spells_this_clash:
-                    if spell.owner == enemy and 'attack' in spell.card.types:
-                        enemies_with_attack_spells.append(enemy)
-                        break  # Only need to find one attack spell per enemy
+            # Determine which spell type to check based on the spell using this
+            # For Reflect, it's attack spells. For Enfeeble, it's boost spells.
+            spell_type_to_check = None
+            if current_card.name == 'Reflect' or current_card.name == 'Familiar' or current_card.name == 'Stupefy':
+                spell_type_to_check = 'attack'
+            elif current_card.name == 'Enfeeble':
+                spell_type_to_check = 'boost'
             
-            return enemies_with_attack_spells
+            if spell_type_to_check:
+                for enemy in enemies:
+                    for spell in active_spells_this_clash:
+                        if spell.owner == enemy and spell_type_to_check in spell.card.types:
+                            enemies_who_met_condition.append(enemy)
+                            break  # Only need to find one spell per enemy
+            
+            return enemies_who_met_condition
+        
+        if target_str == 'prompt_enemy_boost_spell':
+            # For Sap - find enemy active boost spells in the current clash only
+            enemy_boost_spells = []
+            for enemy in enemies:
+                # Only check current clash
+                for spell in enemy.board[gs.clash_num - 1]:
+                    if spell.status == 'active' and 'boost' in spell.card.types:
+                        enemy_boost_spells.append(spell)
+            
+            if not enemy_boost_spells: return []
+            if caster.is_human:
+                if len(enemy_boost_spells) == 1: return enemy_boost_spells
+                options = {i+1: s for i, s in enumerate(enemy_boost_spells)}
+                choice = self.engine._prompt_for_choice(caster, options, "Choose an enemy boost spell to recall:", view_key='card.name')
+                if choice is not None: return [options[choice]]
+                else: return []
+            else:
+                return [random.choice(enemy_boost_spells)]
+        
+        if target_str == 'prompt_enemy_active_spell':
+            # For Imitate - find enemy active spells in current clash only
+            enemy_spells = []
+            for enemy in enemies:
+                for spell in enemy.board[gs.clash_num - 1]:
+                    if spell.status == 'active':
+                        enemy_spells.append(spell)
+            
+            if not enemy_spells: return []
+            if caster.is_human:
+                if len(enemy_spells) == 1: return enemy_spells
+                options = {i+1: s for i, s in enumerate(enemy_spells)}
+                choice = self.engine._prompt_for_choice(caster, options, "Choose an enemy spell to copy:", view_key='card.name')
+                if choice is not None: return [options[choice]]
+                else: return []
+            else:
+                return [random.choice(enemy_spells)]
+        
+        if target_str == 'each_enemy':
+            # For Dominion - target all enemies
+            return valid_enemies
+        
+        if target_str == 'all_enemy_remedy_spells':
+            # For Encumber - all enemy remedy spells in current clash
+            enemy_remedy_spells = []
+            for enemy in enemies:
+                for spell in enemy.board[gs.clash_num - 1]:
+                    if spell.status == 'active' and 'remedy' in spell.card.types:
+                        enemy_remedy_spells.append(spell)
+            return enemy_remedy_spells
+        
+        if target_str == 'all_enemy_attack_spells':
+            # For Stupefy - all enemy attack spells in current clash
+            enemy_attack_spells = []
+            for enemy in enemies:
+                for spell in enemy.board[gs.clash_num - 1]:
+                    if spell.status == 'active' and 'attack' in spell.card.types:
+                        enemy_attack_spells.append(spell)
+            return enemy_attack_spells
+        
+        if target_str == 'prompt_any_active_spell':
+            # Any active spell - by default only in current clash
+            all_active_spells = []
+            
+            # For Gravitate, only include spells from the current clash that can move forward
+            if action_data.get('type') == 'move_to_future_clash':
+                # Only spells in the current clash can be moved to future clashes
+                if gs.clash_num < 4:  # Can't move from clash 4
+                    for player in gs.players:
+                        for spell in player.board[gs.clash_num - 1]:
+                            if spell.status == 'active':
+                                all_active_spells.append(spell)
+            else:
+                # For other actions (like cancel), check current clash only
+                for player in gs.players:
+                    for spell in player.board[gs.clash_num - 1]:
+                        if spell.status == 'active':
+                            all_active_spells.append(spell)
+            
+            if not all_active_spells: return []
+            if caster.is_human:
+                if len(all_active_spells) == 1: return all_active_spells
+                options = {i+1: s for i, s in enumerate(all_active_spells)}
+                
+                # Different prompts based on action
+                if action_data.get('type') == 'cancel':
+                    prompt = "Choose a spell to cancel:"
+                else:
+                    prompt = "Choose a spell:"
+                    
+                choice = self.engine._prompt_for_choice(caster, options, prompt, view_key='card.name')
+                if choice is not None: return [options[choice]]
+                else: return []
+            else:
+                # AI logic - for cancel, prefer enemy spells
+                if action_data.get('type') == 'cancel':
+                    enemy_spells = [s for s in all_active_spells if s.owner != caster]
+                    if enemy_spells:
+                        # Prefer high priority enemy spells
+                        priority_spells = sorted(enemy_spells, key=lambda s: int(s.card.priority) if str(s.card.priority).isdigit() else 99)
+                        return [priority_spells[0]]
+                    # If no enemy spells, might cancel own low-value spell
+                    own_spells = [s for s in all_active_spells if s.owner == caster]
+                    if own_spells:
+                        # Only cancel own spell if it's low priority/value
+                        low_priority = [s for s in own_spells if (int(s.card.priority) if str(s.card.priority).isdigit() else 99) >= 4]
+                        if low_priority:
+                            return [low_priority[0]]
+                    return []
+                else:
+                    # For non-cancel actions, pick any spell
+                    return [random.choice(all_active_spells)]
+        
+        if target_str == 'self' and action_data.get('type') == 'recall':
+            # For Constellation - let player choose from past spells
+            source = action_data.get('parameters', {}).get('source', 'discard')
+            if source == 'friendly_past_spells':
+                past_spells = []
+                for i in range(gs.clash_num - 1):  # Only past clashes
+                    for spell in caster.board[i]:
+                        if spell.status == 'active':
+                            past_spells.append(spell)
+                
+                if not past_spells: return []
+                if caster.is_human:
+                    if len(past_spells) == 1: return past_spells
+                    options = {i+1: s for i, s in enumerate(past_spells)}
+                    choice = self.engine._prompt_for_choice(caster, options, "Choose a spell to recall from past clashes:", view_key='card.name')
+                    if choice is not None: return [options[choice]]
+                    else: return []
+                else:
+                    return [random.choice(past_spells)] if past_spells else []
+        
+        if target_str == 'prompt_enemy_past_spell':
+            # For Daybreak - find enemy past spells
+            enemy_past_spells = []
+            for enemy in enemies:
+                for i in range(gs.clash_num - 1):  # Only past clashes
+                    for spell in enemy.board[i]:
+                        # Past spells don't need to be active
+                        enemy_past_spells.append(spell)
+            
+            if not enemy_past_spells: return []
+            if caster.is_human:
+                if len(enemy_past_spells) == 1: return enemy_past_spells
+                options = {i+1: s for i, s in enumerate(enemy_past_spells)}
+                choice = self.engine._prompt_for_choice(caster, options, "Choose an enemy past spell to discard:", view_key='card.name')
+                if choice is not None: return [options[choice]]
+                else: return []
+            else:
+                return [random.choice(enemy_past_spells)]
+        
+        if target_str == 'prompt_one_spell_from_each_enemy_who_met_condition':
+            # For Clap - cancel one spell from each enemy who has 2+ active spells
+            enemies = [p for p in gs.players if p != caster]
+            targets_to_cancel = []
+            
+            # Find which enemies have 2+ active spells
+            for enemy in enemies:
+                enemy_spells = []
+                for spell in active_spells_this_clash:
+                    if spell.owner == enemy and spell.status == 'active':
+                        enemy_spells.append(spell)
+                
+                if len(enemy_spells) >= 2:
+                    # This enemy meets the condition - choose one spell to cancel
+                    if caster.is_human:
+                        if len(enemy_spells) == 2:
+                            # Only 2 spells, pick one
+                            options = {i+1: s for i, s in enumerate(enemy_spells)}
+                            prompt = f"Choose which of {enemy.name}'s spells to cancel:"
+                            choice = self.engine._prompt_for_choice(caster, options, prompt, view_key='card.name')
+                            if choice is not None:
+                                targets_to_cancel.append(options[choice])
+                        else:
+                            # More than 2 spells, let player choose
+                            options = {i+1: s for i, s in enumerate(enemy_spells)}
+                            prompt = f"Choose which of {enemy.name}'s spells to cancel:"
+                            choice = self.engine._prompt_for_choice(caster, options, prompt, view_key='card.name')
+                            if choice is not None:
+                                targets_to_cancel.append(options[choice])
+                    else:
+                        # AI picks the highest priority spell
+                        priority_spells = sorted(enemy_spells, key=lambda s: int(s.card.priority) if str(s.card.priority).isdigit() else 99)
+                        targets_to_cancel.append(priority_spells[0])
+            
+            return targets_to_cancel
+        
+        if target_str == 'all_friendly_active_spells':
+            # For Clap's advance effect - all friendly active spells in current clash
+            friendly_spells = []
+            for spell in active_spells_this_clash:
+                if spell.owner == caster and spell.status == 'active':
+                    friendly_spells.append(spell)
+            return friendly_spells
         
         return []
-class AI_Player:
-    def choose_card_to_play(self, player, gs):
-        # --- Filter by clash rules ---
-        valid_plays_indices = list(range(len(player.hand))) # Start with all indices as valid
-        if gs.clash_num == 1:
-            valid_plays_indices = [i for i in valid_plays_indices if player.hand[i].notfirst < 2]
-        if gs.clash_num == 4:
-            valid_plays_indices = [i for i in valid_plays_indices if player.hand[i].notlast < 2]
+    
+    def _advance_single_spell(self, target: 'PlayedCard', gs: 'GameState', caster: 'Player', current_card: 'Card', action_data: dict) -> None:
+        """Helper method to advance a single spell."""
+        # Check if Break is preventing enemy advances
+        if target.owner != caster:
+            # Check if any opponent has Break active in the current clash
+            for player in gs.players:
+                if player != target.owner:
+                    for spell in player.board[gs.clash_num - 1]:
+                        if spell.status == 'active' and spell.card.name == 'Break':
+                            gs.action_log.append(f"[{target.card.name}] cannot advance because {player.name}'s [Break] prevents it!")
+                            return  # Prevent the advance from happening
         
-        if not valid_plays_indices:
-            return None # No valid card to play
+        # Check if this is a self-advance with a limit
+        params = action_data.get('parameters', {})
+        if target.card.id == current_card.id and action_data.get('target') == 'this_spell':
+            # This spell is trying to advance itself - check for limits
+            advance_params = params
+            if 'limit' in advance_params and target.advances_this_round >= advance_params['limit']:
+                gs.action_log.append(f"[{target.card.name}] can only advance itself {advance_params['limit']} time(s) per round and has already advanced {target.advances_this_round} time(s).")
+                return
+        
+        owner = target.owner
+        next_clash_idx = gs.clash_num
+        if next_clash_idx < 4:
+            found_and_moved = False
+            for i, clash_list in enumerate(owner.board):
+                if target in clash_list:
+                    owner.board[i].remove(target)
+                    owner.board[next_clash_idx].append(target)
+                    target.advances_this_round += 1  # Increment advance count
+                    gs.action_log.append(f"{Colors.GREEN}{ACTION_EMOJIS['advance']} {owner.name}'s [{target.card.name}] advanced from Clash {i+1} to Clash {next_clash_idx + 1}.{Colors.ENDC}")
+                    self._fire_event('spell_advanced', gs, player=owner.name, card_id=target.card.id)
+                    found_and_moved = True
+                    break
+            if not found_and_moved:
+                gs.action_log.append(f"Error: Could not find [{target.card.name}] to advance.")
+        else:
+            gs.action_log.append(f"[{target.card.name}] could not advance past Clash 4.")
+
+# AI classes moved to ai/ module
+
+# --- MAIN GAME ENGINE ---
+    
+    def choose_card_to_play(self, player, gs):
+        # Get valid cards considering clash restrictions
+        valid_indices = self._get_valid_card_indices(player, gs)
+        if not valid_indices:
+            return None
+            
+        # Strategy-specific selection
+        return self._select_card(player, gs, valid_indices)
+    
+    def _get_valid_card_indices(self, player, gs):
+        """Common method to filter cards by clash rules"""
+        valid = list(range(len(player.hand)))
+        if gs.clash_num == 1:
+            valid = [i for i in valid if player.hand[i].notfirst < 2]
+        if gs.clash_num == 4:
+            valid = [i for i in valid if player.hand[i].notlast < 2]
+        return valid
+    
+    def _select_card(self, player, gs, valid_indices):
+        """Override in subclasses"""
+        raise NotImplementedError
+
+class AI_Player(BaseAI):
+    """Current AI logic - medium difficulty"""
+    
+    def _select_card(self, player, gs, valid_indices):
+        if DEBUG_AI and self.engine:
+            self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-MEDIUM] {player.name} analyzed options{Colors.ENDC}")
+        
+        # --- Categorize cards by preference based on clash timing ---
+        preferred_indices = []
+        acceptable_indices = []
+        
+        for i in valid_indices:
+            card = player.hand[i]
+            # Cards with notfirst/notlast = 1 are less preferred in those clashes
+            if gs.clash_num == 1 and card.notfirst == 1:
+                acceptable_indices.append(i)
+            elif gs.clash_num == 4 and card.notlast == 1:
+                acceptable_indices.append(i)
+            else:
+                preferred_indices.append(i)
+        
+        # Use preferred cards if available, otherwise use acceptable ones
+        candidate_indices = preferred_indices if preferred_indices else acceptable_indices
 
         # --- High-level situational logic ---
         low_health_enemies = [p for p in gs.players if p != player and p.health <= 2]
+        empty_hand_enemies = [p for p in gs.players if p != player and len(p.hand) == 0]
         
-        # Survival: Find the best heal card among valid plays
+        # Survival: Find the best heal card among candidates
         if player.health <= 2:
-            heal_options = [(i, player.hand[i]) for i in valid_plays_indices if 'remedy' in player.hand[i].types]
+            heal_options = [(i, player.hand[i]) for i in candidate_indices if 'remedy' in player.hand[i].types]
             if heal_options:
                 # Sort by priority (lower is better)
                 heal_options.sort(key=lambda x: int(x[1].priority) if str(x[1].priority).isdigit() else 99)
-                return heal_options[0][0] # Return the index of the best heal card
+                chosen = heal_options[0]
+                if DEBUG_AI and self.engine:
+                    self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-MEDIUM] {player.name} chose healing due to low health ({player.health}): {chosen[1].name}{Colors.ENDC}")
+                return chosen[0] # Return the index of the best heal card
 
-        # Finisher: Find the best damage card among valid plays
+        # Finisher: Find the best damage card among candidates
         if low_health_enemies:
-            damage_options = [(i, player.hand[i]) for i in valid_plays_indices if 'attack' in player.hand[i].types]
+            damage_options = [(i, player.hand[i]) for i in candidate_indices if 'attack' in player.hand[i].types]
             if damage_options:
-                # Sort by priority (higher is better for attacks)
-                damage_options.sort(key=lambda x: int(x[1].priority) if str(x[1].priority).isdigit() else 0, reverse=True)
-                return damage_options[0][0] # Return the index of the best damage card
+                # Sort by priority (lower is better for faster resolution)
+                damage_options.sort(key=lambda x: int(x[1].priority) if str(x[1].priority).isdigit() else 99)
+                chosen = damage_options[0]
+                enemy_names = ", ".join([e.name for e in low_health_enemies])
+                if DEBUG_AI and self.engine:
+                    self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-MEDIUM] {player.name} chose attack (enemy low health): {chosen[1].name}{Colors.ENDC}")
+                return chosen[0] # Return the index of the best damage card
         
-        # Default to a random valid card index
-        return random.choice(valid_plays_indices)
+        # Aggression: Be aggressive when enemy has empty hand
+        if empty_hand_enemies:
+            # Prefer attack or control spells when enemy can't respond
+            aggressive_options = [(i, player.hand[i]) for i in candidate_indices 
+                                if 'attack' in player.hand[i].types or 
+                                   'discard' in str(player.hand[i].resolve_effects) or
+                                   'cancel' in str(player.hand[i].resolve_effects)]
+            if aggressive_options:
+                aggressive_options.sort(key=lambda x: int(x[1].priority) if str(x[1].priority).isdigit() else 99)
+                chosen = aggressive_options[0]
+                if DEBUG_AI and self.engine:
+                    self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-MEDIUM] {player.name} chose aggressive play (enemy hand empty): {chosen[1].name}{Colors.ENDC}")
+                return chosen[0]
+        
+        # Default to a random candidate card
+        choice = random.choice(candidate_indices)
+        if DEBUG_AI and self.engine:
+            self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-MEDIUM] {player.name} chose: {player.hand[choice].name}{Colors.ENDC}")
+        return choice
+
+class EasyAI(BaseAI):
+    """Easy AI - completely random decisions"""
+    
+    def __init__(self):
+        super().__init__()
+        print(f"{Colors.GREY}[EasyAI initialized]{Colors.ENDC}")
+    
+    def _select_card(self, player, gs, valid_indices):
+        """Just pick a random valid card"""
+        if not valid_indices:
+            return None
+        choice = random.choice(valid_indices)
+        if DEBUG_AI and self.engine:
+            self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-EASY] {player.name} randomly picked: {player.hand[choice].name}{Colors.ENDC}")
+        return choice
+
+class HardAI(BaseAI):
+    """Hard AI - strategic play with card evaluation"""
+    
+    def _select_card(self, player, gs, valid_indices):
+        """Evaluate each card and pick the best one"""
+        if not valid_indices:
+            return None
+            
+        if DEBUG_AI and self.engine:
+            self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-HARD] {player.name} evaluated {len(valid_indices)} options{Colors.ENDC}")
+        
+        # Evaluate each valid card
+        scores = {}
+        for idx in valid_indices:
+            card = player.hand[idx]
+            score = self._evaluate_card(card, player, gs)
+            scores[idx] = score
+            if DEBUG_AI and self.engine:
+                self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-HARD]   {card.name}: score = {score}{Colors.ENDC}")
+        
+        # Return highest scoring card
+        best = max(scores.items(), key=lambda x: x[1])
+        if DEBUG_AI and self.engine:
+            self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-HARD] {player.name} chose: {player.hand[best[0]].name} (score: {best[1]}){Colors.ENDC}")
+        return best[0]
+    
+    def _evaluate_card(self, card, player, gs):
+        """Score a card based on game state"""
+        score = 0
+        
+        # Priority scoring - faster is better early game
+        if gs.clash_num <= 2 and card.priority != 'A':
+            score += (5 - int(card.priority)) * 10
+        
+        # Critical health - prioritize healing
+        if player.health <= 2 and 'remedy' in card.types:
+            score += 150
+        elif player.health <= 3 and 'remedy' in card.types:
+            score += 80
+            
+        # Enemy at low health - prioritize damage
+        low_health_enemies = [p for p in gs.players if p != player and p.health <= 2]
+        if low_health_enemies and 'attack' in card.types:
+            score += 120
+            
+        # Enemy with empty hand - huge advantage
+        empty_hand_enemies = [p for p in gs.players if p != player and len(p.hand) == 0]
+        if empty_hand_enemies:
+            # They can't play spells next clash - be very aggressive
+            if 'attack' in card.types:
+                score += 100  # High priority to damage
+            if 'cancel' in str(card.resolve_effects) or 'discard' in str(card.resolve_effects):
+                score += 80  # Control spells are also great
+            # Boost spells are good when enemy can't interfere
+            if 'boost' in card.types:
+                score += 70
+            
+        # Boost spells when we have other spells
+        if 'boost' in card.types and len([c for c in player.hand if 'boost' not in c.types]) >= 2:
+            score += 60
+            
+        # Response spells based on round state
+        if 'response' in card.types:
+            if gs.round_num > 1:  # More likely to trigger
+                score += 50
+            else:
+                score -= 20  # Less useful early
+                
+        # Conjury spells - good for board control
+        if card.is_conjury:
+            score += 40
+            
+        # Cancel/Discard when enemies have multiple spells
+        if 'cancel' in str(card.resolve_effects) or 'discard' in str(card.resolve_effects):
+            # This is a rough heuristic - in later clashes enemies have more spells
+            if gs.clash_num >= 2:
+                score += 70
+                
+        # Avoid cards with restrictions at wrong times
+        if gs.clash_num == 1 and card.notfirst == 1:
+            score -= 50
+        elif gs.clash_num == 4 and card.notlast == 1:
+            score -= 50
+            
+        # Element synergy (if we played same element before)
+        if gs.clash_num > 1:
+            for past_clash in range(gs.clash_num - 1):
+                for spell in player.board[past_clash]:
+                    if spell.card.element == card.element:
+                        score += 15
+                        
+        # Hand size considerations
+        if len(player.hand) <= 2:
+            # Running low on cards - be more conservative
+            if 'remedy' in card.types:
+                score += 30  # Prioritize survival
+            if card.priority == 'A':  # Advance priority cards can come back
+                score += 25
+                
+        # Random factor to prevent predictability
+        score += random.randint(-10, 10)
+        
+        return score
+
 # --- MAIN GAME ENGINE ---
 class GameEngine:
-    def __init__(self, player_names):
+    def __init__(self, player_names, ai_difficulty='medium'):
         self.gs = GameState(player_names); self.display = DashboardDisplay()
         self.condition_checker = ConditionChecker(); self.action_handler = ActionHandler(self)
-        self.ai_player = AI_Player()
+        self.ai_decision_logs = []  # Store AI logs to show after reveal
+        
+        # Create AI strategies based on difficulty
+        self.ai_strategies = {}
+        for i, name in enumerate(player_names):
+            if i > 0:  # AI players (not the human player)
+                if ai_difficulty == 'easy':
+                    ai = EasyAI()
+                    if DEBUG_AI:
+                        print(f"Created EasyAI for player {i}: {name}")
+                elif ai_difficulty == 'hard':
+                    ai = HardAI()
+                    if DEBUG_AI:
+                        print(f"Created HardAI for player {i}: {name}")
+                else:  # medium (default)
+                    ai = AI_Player()
+                    if DEBUG_AI:
+                        print(f"Created MediumAI for player {i}: {name}")
+                
+                ai.engine = self  # Set engine reference
+                self.ai_strategies[i] = ai
+        
+        # Keep backward compatibility
+        self.ai_player = self.ai_strategies.get(1, AI_Player())
+        if self.ai_player and not hasattr(self.ai_player, 'engine'):
+            self.ai_player.engine = self
     def _pause(self, message=""): prompt = f"{message} {Colors.GREY}[Press Enter to continue...]{Colors.ENDC}"; self.display.draw(self.gs, prompt=prompt); input()
     def _prompt_for_choice(self, player, options, prompt_message, view_key='name'):
         while True:
@@ -1612,10 +1920,10 @@ class GameEngine:
         self._check_and_rebuild_deck()
         self.gs.action_log.clear(); self.gs.action_log.append("--- Game Setup ---")
         for _ in range(2):
-            for i, p in enumerate(self.gs.players):
+            for p in self.gs.players:
                 self._check_and_rebuild_deck()
                 if p.is_human:
-                    options = {i+1: s for i, s in enumerate(self.gs.main_deck) if s}; choice = self._prompt_for_choice(p, options, f"{p.name}, choose a spell set to draft:")
+                    options = {idx+1: s for idx, s in enumerate(self.gs.main_deck) if s}; choice = self._prompt_for_choice(p, options, f"{p.name}, choose a spell set to draft:")
                     drafted_set = options[choice]; self.gs.main_deck.remove(drafted_set)
                 else: 
                     # AI picks randomly from available sets
@@ -1693,7 +2001,11 @@ class GameEngine:
                     if choice is not None:
                         card_to_play = player.hand.pop(choice-1)
             else: # AI logic
-                chosen_index = self.ai_player.choose_card_to_play(player, self.gs)
+                # Get the AI strategy for this player
+                ai_strategy = self.ai_strategies.get(player_index, self.ai_player)
+                if DEBUG_AI:
+                    print(f"\n{Colors.GREY}[DEBUG] Using AI strategy for player {player_index}: {type(ai_strategy).__name__}{Colors.ENDC}")
+                chosen_index = ai_strategy.choose_card_to_play(player, self.gs)
                 if chosen_index is not None:
                     card_to_play = player.hand.pop(chosen_index)
 
@@ -1730,6 +2042,13 @@ class GameEngine:
                     conjury_str = " [CONJURY]" if spell.card.is_conjury else ""
                     self.gs.action_log.append(f"  {p.name}: {emoji} [{spell.card.name}]{conjury_str} (P:{spell.card.priority}, {type_str})")
                     self.gs.action_log.append(f"    {Colors.GREY}> {spell.card.get_instructions_text()}{Colors.ENDC}")
+        
+        # Show AI decision logs after reveal
+        if DEBUG_AI and self.ai_decision_logs:
+            self.gs.action_log.append(f"\n{Colors.BOLD}AI Decision Analysis:{Colors.ENDC}")
+            for log in self.ai_decision_logs:
+                self.gs.action_log.append(log)
+            self.ai_decision_logs.clear()  # Clear for next clash
         
         self._pause("All spells are revealed simultaneously!")
     
@@ -1792,9 +2111,34 @@ class GameEngine:
         
         active_spells = [s for p in self.gs.players for s in p.board[self.gs.clash_num-1] if s.status == 'active']
         self.gs.resolution_queue = []
+        
+        # Fire events for all spells that are active at the start of resolve phase
+        # This is needed for conditions like Bolts that check "if you had other active spells this clash"
+        for spell in active_spells:
+            self.action_handler._fire_event('spell_active_in_clash', self.gs, 
+                                          player=spell.owner.name, 
+                                          card_id=spell.card.id,
+                                          clash=self.gs.clash_num)
+        
+        # Check for Accelerator effects
+        priority_modifiers = {}
+        for player in self.gs.players:
+            modifier = 0
+            for spell in active_spells:
+                if spell.owner == player and spell.card.name == 'Accelerator' and spell.status == 'active':
+                    # Accelerator reduces priority by 2 for other friendly spells
+                    modifier -= 2
+            if modifier != 0:
+                priority_modifiers[player] = modifier
+        
         for spell in active_spells:
             p_val = 99 if spell.card.priority == 'A' else int(spell.card.priority)
             caster_idx = self.gs.players.index(spell.owner)
+            
+            # Apply Accelerator modifier if this isn't Accelerator itself
+            if spell.card.name != 'Accelerator' and spell.owner in priority_modifiers:
+                p_val = max(1, p_val + priority_modifiers[spell.owner])  # Minimum priority of 1
+            
             self.gs.resolution_queue.append({'p_val': p_val, 'caster_idx': caster_idx, 'played_card': spell})
         
         self.gs.resolution_queue.sort(key=lambda x: (x['p_val'], x['caster_idx']))
@@ -1812,13 +2156,25 @@ class GameEngine:
             
             if played_card in processed_this_phase or played_card.status != 'active':
                 continue
+            
+            # Check if spell is still in the current clash (it might have been moved by Gravitate)
+            spell_still_in_current_clash = False
+            for spell in caster.board[self.gs.clash_num - 1]:
+                if spell == played_card:
+                    spell_still_in_current_clash = True
+                    break
+            
+            if not spell_still_in_current_clash:
+                self.gs.action_log.append(f"[{played_card.card.name}] was moved to a future clash and will not resolve now.")
+                self._pause()
+                continue
 
             self.gs.action_log.clear()
             self.gs.action_log.append(f"--> Resolving {caster.name}'s [{Colors.BOLD}{played_card.card.name}{Colors.ENDC}] (P:{played_card.card.priority})")
             self.gs.action_log.append(f"    {Colors.GREY}{played_card.card.get_instructions_text()}{Colors.ENDC}")
             self._pause("Executing effect...")
 
-            self.action_handler.execute_effects(played_card.card.resolve_effects, self.gs, caster, played_card.card)
+            self.action_handler.execute_effects(played_card.card.resolve_effects, self.gs, caster, played_card.card, played_card)
             
             played_card.has_resolved = True
             self.action_handler._fire_event('spell_resolved', self.gs, player=caster.name, card_id=played_card.card.id)
@@ -1838,7 +2194,8 @@ class GameEngine:
         self._check_for_round_end()
 
     def _run_advance_phase(self) -> None:
-        self.gs.action_log.clear(); self.gs.action_log.append(f"--- Clash {self.gs.clash_num}: ADVANCE ---"); self._pause()
+        # Don't clear logs here - we want to see damage from the last resolved spell
+        self.gs.action_log.append(f"--- Clash {self.gs.clash_num}: ADVANCE ---"); self._pause()
         
         # We need to copy the list as the underlying board state can change
         advancing_spells = [s for p in self.gs.players for s in p.board[self.gs.clash_num - 1] if s.status == 'active' and s.card.advance_effects]
@@ -1850,9 +2207,20 @@ class GameEngine:
         for played_card in advancing_spells:
             if self.gs.game_over: return
             if played_card.status != 'active': continue # Skip if cancelled mid-phase
-
+            
+            # Check if spell is still in the current clash (it might have been moved)
             caster = played_card.owner
-            prompt = f"--> Advancing {caster.name}'s [{played_card.card.name}]..."; self._pause(prompt)
+            spell_still_in_current_clash = False
+            for spell in caster.board[self.gs.clash_num - 1]:
+                if spell == played_card:
+                    spell_still_in_current_clash = True
+                    break
+            
+            if not spell_still_in_current_clash:
+                continue  # Skip spells that were moved to future clashes
+            self.gs.action_log.clear()
+            self.gs.action_log.append(f"--> Advancing {caster.name}'s [{played_card.card.name}]...")
+            self._pause()
             for effect in played_card.card.advance_effects:
                 # Call the correct method: _execute_action for a single effect
                 if self.condition_checker.check(effect['condition'], self.gs, caster, played_card.card):
@@ -1870,6 +2238,8 @@ class GameEngine:
         self.gs.action_log.append(f"Board cleared. The new Ringleader is {self.gs.players[self.gs.ringleader_index].name}."); self._pause()
         
         for p in self.gs.players:
+            drew_new_set = False  # Track if player drew a new set this turn
+            
             # Step 1: Check for empty hand FIRST
             if not p.hand:
                 self.gs.action_log.append(f"{p.name}'s hand is empty. They get a new spell set!"); self._pause()
@@ -1885,6 +2255,7 @@ class GameEngine:
                         self.gs.main_deck.remove(new_set)
                     p.hand.extend(new_set)
                     self.gs.action_log.append(f"{p.name} drafted the '{new_set[0].elephant}' ({new_set[0].element}) set.")
+                    drew_new_set = True
             else:
                 # Step 2: Handle Keep/Discard phase (only if hand not empty)
                 if p.is_human:
@@ -1895,30 +2266,60 @@ class GameEngine:
                         if choice is not None: kept_cards.append(options.pop(choice))
                     for card in options.values(): p.discard_pile.append(card)
                     p.hand = kept_cards
+                    
+                    # If they discarded everything, they can get a new set
+                    if not p.hand and self.gs.main_deck:
+                        self.gs.action_log.append(f"{p.name} discarded their entire hand and can draft a new spell set!")
+                        self._pause()
+                        options = {i+1: s for i, s in enumerate(self.gs.main_deck) if s}
+                        choice = self._prompt_for_choice(p, options, f"{p.name}, choose a new spell set:")
+                        new_set = options[choice]; self.gs.main_deck.remove(new_set)
+                        p.hand.extend(new_set)
+                        self.gs.action_log.append(f"{p.name} drafted the '{new_set[0].elephant}' ({new_set[0].element}) set.")
+                        self.gs.action_log.append(f"{Colors.WARNING}Note: You cannot discard cards from this newly drafted set!{Colors.ENDC}")
+                        drew_new_set = True
                 else: # AI Logic
                     discards = [c for c in p.hand if 'remedy' not in c.types and p.health/p.max_health > 0.7]
                     p.discard_pile.extend(discards); p.hand = [c for c in p.hand if c not in discards]
 
-            # Step 3: Handle Recall phase
+            # Step 3: Handle Recall phase - MUST fill to max if drew new set
             max_hand_size = 4 + (3 - p.trunks)
-            while len(p.hand) < max_hand_size:
-                if not p.discard_pile: break
-                if p.is_human:
-                    prompt = f"Recall up to {max_hand_size - len(p.hand)} more card(s). Choose from discard (or 'done'):"
-                    options = {i+1: c for i, c in enumerate(p.discard_pile)}; choice = self._prompt_for_choice(p, options, prompt, view_key='name');
-                    if choice == 'done': break
-                    if choice is not None: 
-                        recalled_card = p.discard_pile.pop(choice - 1)
+            
+            if drew_new_set:
+                # Must fill hand to max size from discard
+                while len(p.hand) < max_hand_size and p.discard_pile:
+                    if p.is_human:
+                        prompt = f"You must recall cards to fill your hand ({len(p.hand)}/{max_hand_size}). Choose from discard:"
+                        options = {i+1: c for i, c in enumerate(p.discard_pile)}
+                        choice = self._prompt_for_choice(p, options, prompt, view_key='name')
+                        if choice is not None:
+                            recalled_card = p.discard_pile.pop(choice - 1)
+                            p.hand.append(recalled_card)
+                            self.action_handler._fire_event('spell_recalled', self.gs, player=p.name, card_id=recalled_card.id)
+                    else:
+                        recalled_card = p.discard_pile.pop(0)
                         p.hand.append(recalled_card)
                         self.action_handler._fire_event('spell_recalled', self.gs, player=p.name, card_id=recalled_card.id)
-                else: 
-                    recalled_card = p.discard_pile.pop(0)
-                    p.hand.append(recalled_card)
-                    self.action_handler._fire_event('spell_recalled', self.gs, player=p.name, card_id=recalled_card.id)
+            else:
+                # Normal optional recall
+                while len(p.hand) < max_hand_size:
+                    if not p.discard_pile: break
+                    if p.is_human:
+                        prompt = f"Recall up to {max_hand_size - len(p.hand)} more card(s). Choose from discard (or 'done'):"
+                        options = {i+1: c for i, c in enumerate(p.discard_pile)}; choice = self._prompt_for_choice(p, options, prompt, view_key='name');
+                        if choice == 'done': break
+                        if choice is not None: 
+                            recalled_card = p.discard_pile.pop(choice - 1)
+                            p.hand.append(recalled_card)
+                            self.action_handler._fire_event('spell_recalled', self.gs, player=p.name, card_id=recalled_card.id)
+                    else: 
+                        recalled_card = p.discard_pile.pop(0)
+                        p.hand.append(recalled_card)
+                        self.action_handler._fire_event('spell_recalled', self.gs, player=p.name, card_id=recalled_card.id)
             
-            # Step 4: Final check for hand size and force draft if needed
-            if len(p.hand) < 4:
-                self.gs.action_log.append(f"{p.name}'s hand is below 4 cards. They must draft a new set."); self._pause()
+            # Step 4: Final check - only if they didn't draw a set and still below 4 cards with empty discard
+            if not drew_new_set and len(p.hand) < 4 and not p.discard_pile:
+                self.gs.action_log.append(f"{p.name}'s hand is below 4 cards and discard pile is empty. They must draft a new set."); self._pause()
                 self._check_and_rebuild_deck()
                 if self.gs.main_deck:
                     if p.is_human:
@@ -1927,15 +2328,22 @@ class GameEngine:
                     else: new_set = self.gs.main_deck.pop(0)
                     p.hand.extend(new_set)
                     self.gs.action_log.append(f"{p.name} drafted the '{new_set[0].elephant}' set.")
+                    drew_new_set = True
                     
-                    # Discard down if necessary
-                    while len(p.hand) > max_hand_size:
-                        self.gs.action_log.append(f"{p.name}'s hand is over max size ({max_hand_size}).")
-                        self._pause()
+                    # Must fill to max from discard if available
+                    while len(p.hand) < max_hand_size and p.discard_pile:
                         if p.is_human:
-                            prompt = f"Choose a card to discard:"; options = {i+1: c for i, c in enumerate(p.hand)}; choice = self._prompt_for_choice(p, options, prompt)
-                            p.discard_pile.append(p.hand.pop(choice-1))
-                        else: p.discard_pile.append(p.hand.pop())
+                            prompt = f"You must recall cards to fill your hand ({len(p.hand)}/{max_hand_size}). Choose from discard:"
+                            options = {i+1: c for i, c in enumerate(p.discard_pile)}
+                            choice = self._prompt_for_choice(p, options, prompt, view_key='name')
+                            if choice is not None:
+                                recalled_card = p.discard_pile.pop(choice - 1)
+                                p.hand.append(recalled_card)
+                                self.action_handler._fire_event('spell_recalled', self.gs, player=p.name, card_id=recalled_card.id)
+                        else:
+                            recalled_card = p.discard_pile.pop(0)
+                            p.hand.append(recalled_card)
+                            self.action_handler._fire_event('spell_recalled', self.gs, player=p.name, card_id=recalled_card.id)
         self._pause("All players have managed their hands. The next round will begin.")
 
     def _handle_trunk_loss(self, player: Player) -> str:
@@ -1986,7 +2394,31 @@ class GameEngine:
 
 if __name__ == "__main__":
     try:
-        player_names = ["Human Player", "AI Opponent"]; engine = GameEngine(player_names); engine.run_game()
+        clear_screen()
+        print(f"DEBUG_AI is set to: {DEBUG_AI}")  # Debug check
+        print(f"{Colors.HEADER}{'='*25}[ ELEMENTAL ELEPHANTS ]{'='*25}{Colors.ENDC}")
+        print("\nChoose AI Difficulty:")
+        print("[1] Easy (Random play)")
+        print("[2] Medium (Balanced)")
+        print("[3] Hard (Strategic)")
+        
+        difficulty_choice = input("\nYour choice (1-3): ").strip()
+        
+        difficulty_map = {
+            '1': 'easy',
+            '2': 'medium',
+            '3': 'hard'
+        }
+        
+        ai_difficulty = difficulty_map.get(difficulty_choice, 'medium')
+        
+        player_names = ["Human Player", "AI Opponent"]
+        engine = GameEngine(player_names, ai_difficulty=ai_difficulty)
+        
+        print(f"\nStarting game with {ai_difficulty.upper()} difficulty AI...")
+        input("Press Enter to begin...")
+        
+        engine.run_game()
     except KeyboardInterrupt: print("\n\nGame exited by user. Goodbye!")
     except Exception:
         clear_screen(); print("\n\n--- A CRITICAL ERROR OCCURRED ---")

@@ -5,10 +5,11 @@ This document provides a high-level overview of the architecture for the Python-
 ## Core Design Philosophy
 
 The engine is built on a few key principles:
-1.  **Data-Driven:** All card logic (effects, conditions, targets) is defined in a single `SPELL_JSON_DATA` string. The code is a generic interpreter for this data. To change a card, you only need to change the JSON.
+1.  **Data-Driven:** All card logic (effects, conditions, targets) is defined in `spells.json`. The code is a generic interpreter for this data. To change a card, you only need to change the JSON.
 2.  **State-View Separation:** The `GameState` object holds all the raw data of the game. The `DashboardDisplay` class is solely responsible for reading that state and drawing it to the screen. They are kept separate.
 3.  **Event-Driven Logic:** For complex conditional effects (like `Response` spells), the engine uses an `event_log`. The `ActionHandler` fires events (e.g., `player_damaged`), and the `ConditionChecker` queries this log to see if conditions are met. This decouples rules from the immediate board state.
 4.  **Turn-Based Loop:** The game is managed by a main `GameEngine` that progresses through a structured loop: `Game -> Round -> Clash -> Phase`.
+5.  **Modular AI System:** AI logic is separated into its own module (`ai/`) with different difficulty levels implemented as distinct classes inheriting from a common base.
 
 ## Key Classes and Their Responsibilities
 
@@ -42,26 +43,77 @@ These are the "worker" classes that the `GameEngine` delegates tasks to.
 
 ### 4. AI System (Modular Architecture)
 
-The AI system now uses a modular architecture with different difficulty levels:
+The AI system is organized in a separate `ai/` module with the following structure:
 
--   **`BaseAI`**: Abstract base class that all AI strategies inherit from. Provides common methods like `_get_valid_card_indices()` for filtering cards by clash restrictions.
--   **`EasyAI`**: Simplest AI that makes completely random decisions. Good for beginners or testing.
--   **`AI_Player`**: The medium difficulty AI (formerly the only AI). Uses basic heuristics like prioritizing healing when low on health and attacking when enemies are weak.
--   **`HardAI`**: Strategic AI that evaluates each card based on multiple factors (health state, enemy threats, card synergies, timing) and picks the highest-scoring option.
+#### Module Structure:
+```
+ai/
+├── __init__.py      # Module exports
+├── base.py          # BaseAI abstract class
+├── easy.py          # Random AI implementation
+├── medium.py        # Basic strategic AI
+└── hard.py          # Advanced strategic AI
+```
 
-The `GameEngine` now accepts an `ai_difficulty` parameter ('easy', 'medium', 'hard') that determines which AI strategy to use for computer players.
+#### AI Classes:
+-   **`BaseAI`** (`ai/base.py`): Abstract base class that all AI strategies inherit from. Provides:
+    - `choose_card_to_play()`: Main entry point for card selection
+    - `_get_valid_card_indices()`: Filters cards by clash restrictions (notfirst/notlast)
+    - `_select_card()`: Abstract method that subclasses must implement
+    
+-   **`EasyAI`** (`ai/easy.py`): Random decision making for beginners
+    - Picks randomly from valid cards
+    - No strategic consideration
+    
+-   **`MediumAI`** (`ai/medium.py`): Basic heuristics-based AI
+    - Prioritizes healing when health ≤ 2
+    - Attacks when enemy health ≤ 2
+    - Plays aggressively when enemy hand is empty
+    - Considers clash timing restrictions
+    
+-   **`HardAI`** (`ai/hard.py`): Advanced strategic AI with card scoring
+    - Evaluates each card with a scoring system
+    - Considers: health states, enemy threats, card synergies, element matching
+    - Adapts strategy based on hand size and game state
+    - Includes randomness to prevent predictability
+
+#### Integration:
+- The `GameEngine` accepts an `ai_difficulty` parameter ('easy', 'medium', 'hard')
+- AI decision logs are stored during the prepare phase and revealed after the cast phase
+- Each AI instance has a reference to the engine for logging purposes
 
 ## The Game Flow (Simplified)
 
-1.  `GameEngine.run_game()` starts.
-2.  It calls `_setup_game()` to handle the initial draft.
-3.  It enters a `while` loop that calls `_run_round()` as long as the game isn't over.
-4.  `_run_round()` sets up a `try` block and then calls `_run_clash()` four times.
-5.  `_run_clash()` calls `_run_prepare_phase()`, then `_run_cast_phase()`, `_run_resolve_phase()`, and `_run_advance_phase()`.
-6.  During the `_run_resolve_phase()`, it gets a list of active spells and sorts them by priority.
-7.  For each spell, it calls `ActionHandler.execute()` on that spell's effects.
-8.  `ActionHandler.execute()` may call `ConditionChecker.check()` to see if an effect should happen. If it does, it modifies the `GameState` and fires an event into the `event_log`.
-9.  If damage is dealt and a player's health drops to 0, `_handle_trunk_loss()` is called, which may trigger `_check_for_round_end()`, which may `raise RoundOverException`.
-10. If the exception is raised, the clash loop in `_run_round()` is broken, and the code proceeds to `_run_end_of_round()`.
-11. `_run_end_of_round()` handles hand management and prepares for the next round.
-12. The `run_game()` loop checks the win condition, and either starts another round or declares a winner.
+1.  **Game Start**: Player selects AI difficulty, then `GameEngine.run_game()` starts.
+2.  **Setup**: `_setup_game()` handles the initial draft, with AI strategies instantiated based on difficulty.
+3.  **Main Loop**: Enters a `while` loop that calls `_run_round()` as long as the game isn't over.
+4.  **Round Structure**: `_run_round()` sets up a `try` block and then calls `_run_clash()` four times.
+5.  **Clash Phases**: `_run_clash()` calls phases in order:
+    - `_run_prepare_phase()`: Players/AI select cards (AI decisions logged but hidden)
+    - `_run_cast_phase()`: All cards revealed simultaneously (AI decision logs displayed)
+    - `_run_resolve_phase()`: Spells resolve by priority order
+    - `_run_advance_phase()`: Advance effects trigger
+6.  **Resolution**: During `_run_resolve_phase()`, spells are sorted by priority and resolved.
+7.  **Effects**: `ActionHandler.execute()` processes spell effects, checking conditions and modifying game state.
+8.  **Events**: Actions fire events into the `event_log` for tracking and condition checking.
+9.  **Trunk Loss**: If health drops to 0, `_handle_trunk_loss()` may trigger `RoundOverException`.
+10. **Round End**: `_run_end_of_round()` handles hand management and ringleader rotation.
+11. **Victory**: The game loop checks win conditions and declares a winner when only one player has trunks.
+
+## File Structure
+
+```
+Elemental Elephants/
+├── elephants_prototype.py   # Main game engine
+├── ai/                      # AI module
+│   ├── __init__.py
+│   ├── base.py             # Abstract base AI class
+│   ├── easy.py             # Random AI
+│   ├── medium.py           # Heuristic-based AI
+│   └── hard.py             # Strategic scoring AI
+├── spells.json             # Card definitions
+├── HOWTOPLAY.md            # Game rules
+├── CLARIFICATIONS.md       # Rules clarifications
+├── CONTEXT.md              # This file
+└── AI_ARCHITECTURE_PLAN_V2.md  # AI design documentation
+```

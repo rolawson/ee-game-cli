@@ -6,6 +6,9 @@ import traceback
 from collections import defaultdict
 from typing import Optional, Any, Union
 
+# Import AI classes from separate module
+from ai import BaseAI, EasyAI, MediumAI, HardAI
+
 # --- CONSTANTS ---
 DEBUG_AI = True  # Set to False to disable AI decision logging
 
@@ -361,13 +364,19 @@ class ConditionChecker:
                         return True
                 return False
             else:
-                # For Impact - check if this spell resolved at least 'count' times
+                # For Impact - check if this spell PREVIOUSLY resolved at least 'count' times
+                # Don't count the current resolution (it hasn't happened yet)
                 resolve_count = 0
                 for event in gs.event_log:
                     if (event['type'] == 'spell_resolved' and
                         event['player'] == caster.name and
                         event['card_id'] == current_card.id):
                         resolve_count += 1
+                
+                # Debug logging for Impact
+                if current_card.name == "Impact" and DEBUG_AI:
+                    gs.action_log.append(f"{Colors.GREY}[DEBUG] Impact has previously resolved {resolve_count} times, needs {required_count} to trigger weaken{Colors.ENDC}")
+                
                 return resolve_count >= required_count
 
         active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s and s.status == 'active']
@@ -677,12 +686,17 @@ class ActionHandler:
                     self.engine._pause()
                     return True
         else:
-            # Standard targeting for other actions
-            targets = self._resolve_target(action_data, gs, caster, current_card)
-            
-            if not targets:
-                gs.action_log.append(f"{Colors.GREY}No valid targets for {action_type}.{Colors.ENDC}"); self.engine._pause()
-                return
+            # Special handling for advance_from_past_clash
+            if action_type == 'advance_from_past_clash':
+                # This action handles its own targeting internally
+                targets = ['execute_action']  # Dummy target to proceed
+            else:
+                # Standard targeting for other actions
+                targets = self._resolve_target(action_data, gs, caster, current_card)
+                
+                if not targets:
+                    gs.action_log.append(f"{Colors.GREY}No valid targets for {action_type}.{Colors.ENDC}"); self.engine._pause()
+                    return
 
         if action_type == 'player_choice':
             # Check if Coalesce is active for this player
@@ -772,7 +786,7 @@ class ActionHandler:
                     
                     if has_self_damage:
                         risky_options.append(option)
-                    elif option.get('type') == 'damage' or option.get('type') == 'weaken':
+                    elif option.get('type') == 'damage' or option.get('type') == 'weaken' or option.get('type') == 'damage_per_spell':
                         attack_options.append(option)
                     elif option.get('type') == 'heal' or option.get('type') == 'bolster':
                         remedy_options.append(option)
@@ -782,6 +796,46 @@ class ActionHandler:
                         safe_options.append(option)
                 
                 # AI decision making
+                
+                # Special handling for choosing between attack options
+                if len(attack_options) > 1:
+                    # Evaluate which attack option is better
+                    best_attack = None
+                    best_damage = 0
+                    
+                    for option in attack_options:
+                        if option.get('type') == 'damage':
+                            damage = option.get('parameters', {}).get('value', 0)
+                            if damage > best_damage:
+                                best_damage = damage
+                                best_attack = option
+                        elif option.get('type') == 'damage_per_spell':
+                            # Count active spells for damage_per_spell
+                            active_spells_count = len([s for s in active_spells if s.owner == caster])
+                            params = option.get('parameters', {})
+                            spell_type = params.get('spell_type', 'any')
+                            exclude_self = params.get('exclude_self', False)
+                            
+                            if spell_type == 'any':
+                                damage = active_spells_count
+                                if exclude_self:
+                                    damage -= 1  # Don't count current spell
+                            else:
+                                # Count specific spell type
+                                damage = len([s for s in active_spells if s.owner == caster and spell_type in s.card.types])
+                                if exclude_self and current_card and spell_type in current_card.types:
+                                    damage -= 1
+                            
+                            if damage > best_damage:
+                                best_damage = damage
+                                best_attack = option
+                    
+                    # Replace attack_options with just the best one if we found a clear winner
+                    if best_attack and best_damage > 0:
+                        attack_options = [best_attack]
+                        if DEBUG_AI and current_card.name == "Prickle":
+                            gs.action_log.append(f"{Colors.GREY}[DEBUG] Prickle AI chose option with {best_damage} damage{Colors.ENDC}")
+                
                 if caster.health <= 1:
                     # At 1 health - NEVER choose self-damage options
                     if remedy_options:
@@ -1263,10 +1317,85 @@ class ActionHandler:
                     gs.action_log.append(f"{caster.name} has no active {spell_type} spells to boost the weakening.")
             
             elif action_type == 'advance_from_past_clash':
-                # This is used by Blow spell - advance a spell from a past clash
-                # For now, this is handled separately in the spell's definition
-                # The actual implementation would need to prompt for which past clash
-                gs.action_log.append(f"[advance_from_past_clash not yet implemented]")
+                # Blow spell - advance a spell from a past clash
+                if gs.clash_num <= 1:
+                    gs.action_log.append(f"No past clashes to choose from.")
+                    return
+                
+                # Find all spells in past clashes
+                past_clash_spells = {}
+                for i in range(gs.clash_num - 1):  # Only past clashes
+                    clash_spells = []
+                    for player in gs.players:
+                        for spell in player.board[i]:
+                            if spell.status == 'active':  # Only active spells can be advanced
+                                clash_spells.append(spell)
+                    if clash_spells:
+                        past_clash_spells[i] = clash_spells
+                
+                if not past_clash_spells:
+                    gs.action_log.append(f"No active spells in past clashes to advance.")
+                    return
+                
+                # Choose which clash
+                if caster.is_human:
+                    if len(past_clash_spells) == 1:
+                        # Only one past clash with spells
+                        chosen_clash = list(past_clash_spells.keys())[0]
+                        spells_in_clash = past_clash_spells[chosen_clash]
+                    else:
+                        # Multiple past clashes - let player choose
+                        clash_options = {}
+                        for clash_idx, spells in past_clash_spells.items():
+                            clash_options[clash_idx + 1] = (clash_idx, spells)
+                        
+                        prompt = "Choose a past clash to advance a spell from:"
+                        self.engine.display.draw(gs, gs.players.index(caster), prompt=prompt)
+                        for key, (clash_idx, spells) in clash_options.items():
+                            spell_names = [f"{s.owner.name}'s [{s.card.name}]" for s in spells]
+                            print(f"  [{key}] Clash {key}: {', '.join(spell_names)}")
+                        
+                        choice = input("\nYour choice: ").strip()
+                        try:
+                            choice_num = int(choice)
+                            if choice_num in clash_options:
+                                chosen_clash, spells_in_clash = clash_options[choice_num]
+                            else:
+                                gs.action_log.append(f"{Colors.FAIL}Invalid choice.{Colors.ENDC}")
+                                return
+                        except ValueError:
+                            gs.action_log.append(f"{Colors.FAIL}Invalid choice.{Colors.ENDC}")
+                            return
+                    
+                    # Now choose which spell from that clash
+                    if len(spells_in_clash) == 1:
+                        spell_to_advance = spells_in_clash[0]
+                    else:
+                        spell_options = {i+1: s for i, s in enumerate(spells_in_clash)}
+                        prompt = f"Choose a spell from Clash {chosen_clash + 1} to advance:"
+                        self.engine.display.draw(gs, gs.players.index(caster), prompt=prompt)
+                        for key, spell in spell_options.items():
+                            emoji = ELEMENT_EMOJIS.get(spell.card.element, '')
+                            print(f"  [{key}] {spell.owner.name}'s {emoji} [{spell.card.name}]")
+                        
+                        choice = input("\nYour choice: ").strip()
+                        try:
+                            choice_idx = int(choice)
+                            if choice_idx in spell_options:
+                                spell_to_advance = spell_options[choice_idx]
+                            else:
+                                gs.action_log.append(f"{Colors.FAIL}Invalid choice.{Colors.ENDC}")
+                                return
+                        except ValueError:
+                            gs.action_log.append(f"{Colors.FAIL}Invalid choice.{Colors.ENDC}")
+                            return
+                else:
+                    # AI logic - advance a random spell from the earliest past clash
+                    chosen_clash = min(past_clash_spells.keys())
+                    spell_to_advance = random.choice(past_clash_spells[chosen_clash])
+                
+                # Advance the chosen spell
+                self._advance_single_spell(spell_to_advance, gs, caster, current_card, action_data)
             
             elif action_type == 'pass':
                 # Do nothing
@@ -1575,6 +1704,11 @@ class ActionHandler:
                     friendly_spells.append(spell)
             return friendly_spells
         
+        if target_str == 'prompt_choose_past_clash':
+            # Special target for Blow spell - returns a placeholder that signals
+            # the action handler to do the clash/spell selection
+            return ['past_clash_selection']
+        
         return []
     
     def _advance_single_spell(self, target: 'PlayedCard', gs: 'GameState', caster: 'Player', current_card: 'Card', action_data: dict) -> None:
@@ -1616,189 +1750,7 @@ class ActionHandler:
         else:
             gs.action_log.append(f"[{target.card.name}] could not advance past Clash 4.")
 
-class BaseAI:
-    """Base class for all AI strategies"""
-    
-    def __init__(self):
-        self.engine = None  # Will be set by GameEngine
-    
-    def choose_card_to_play(self, player, gs):
-        # Get valid cards considering clash restrictions
-        valid_indices = self._get_valid_card_indices(player, gs)
-        if not valid_indices:
-            return None
-            
-        # Strategy-specific selection
-        return self._select_card(player, gs, valid_indices)
-    
-    def _get_valid_card_indices(self, player, gs):
-        """Common method to filter cards by clash rules"""
-        valid = list(range(len(player.hand)))
-        if gs.clash_num == 1:
-            valid = [i for i in valid if player.hand[i].notfirst < 2]
-        if gs.clash_num == 4:
-            valid = [i for i in valid if player.hand[i].notlast < 2]
-        return valid
-    
-    def _select_card(self, player, gs, valid_indices):
-        """Override in subclasses"""
-        raise NotImplementedError
-
-class AI_Player(BaseAI):
-    """Current AI logic - medium difficulty"""
-    
-    def _select_card(self, player, gs, valid_indices):
-        if DEBUG_AI and self.engine:
-            self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-MEDIUM] {player.name} analyzed options{Colors.ENDC}")
-        
-        # --- Categorize cards by preference based on clash timing ---
-        preferred_indices = []
-        acceptable_indices = []
-        
-        for i in valid_indices:
-            card = player.hand[i]
-            # Cards with notfirst/notlast = 1 are less preferred in those clashes
-            if gs.clash_num == 1 and card.notfirst == 1:
-                acceptable_indices.append(i)
-            elif gs.clash_num == 4 and card.notlast == 1:
-                acceptable_indices.append(i)
-            else:
-                preferred_indices.append(i)
-        
-        # Use preferred cards if available, otherwise use acceptable ones
-        candidate_indices = preferred_indices if preferred_indices else acceptable_indices
-
-        # --- High-level situational logic ---
-        low_health_enemies = [p for p in gs.players if p != player and p.health <= 2]
-        
-        # Survival: Find the best heal card among candidates
-        if player.health <= 2:
-            heal_options = [(i, player.hand[i]) for i in candidate_indices if 'remedy' in player.hand[i].types]
-            if heal_options:
-                # Sort by priority (lower is better)
-                heal_options.sort(key=lambda x: int(x[1].priority) if str(x[1].priority).isdigit() else 99)
-                chosen = heal_options[0]
-                if DEBUG_AI and self.engine:
-                    self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-MEDIUM] {player.name} chose healing due to low health ({player.health}): {chosen[1].name}{Colors.ENDC}")
-                return chosen[0] # Return the index of the best heal card
-
-        # Finisher: Find the best damage card among candidates
-        if low_health_enemies:
-            damage_options = [(i, player.hand[i]) for i in candidate_indices if 'attack' in player.hand[i].types]
-            if damage_options:
-                # Sort by priority (lower is better for faster resolution)
-                damage_options.sort(key=lambda x: int(x[1].priority) if str(x[1].priority).isdigit() else 99)
-                chosen = damage_options[0]
-                enemy_names = ", ".join([e.name for e in low_health_enemies])
-                if DEBUG_AI and self.engine:
-                    self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-MEDIUM] {player.name} chose attack (enemy low health): {chosen[1].name}{Colors.ENDC}")
-                return chosen[0] # Return the index of the best damage card
-        
-        # Default to a random candidate card
-        choice = random.choice(candidate_indices)
-        if DEBUG_AI and self.engine:
-            self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-MEDIUM] {player.name} chose: {player.hand[choice].name}{Colors.ENDC}")
-        return choice
-
-class EasyAI(BaseAI):
-    """Easy AI - completely random decisions"""
-    
-    def __init__(self):
-        super().__init__()
-        print(f"{Colors.GREY}[EasyAI initialized]{Colors.ENDC}")
-    
-    def _select_card(self, player, gs, valid_indices):
-        """Just pick a random valid card"""
-        if not valid_indices:
-            return None
-        choice = random.choice(valid_indices)
-        if DEBUG_AI and self.engine:
-            self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-EASY] {player.name} randomly picked: {player.hand[choice].name}{Colors.ENDC}")
-        return choice
-
-class HardAI(BaseAI):
-    """Hard AI - strategic play with card evaluation"""
-    
-    def _select_card(self, player, gs, valid_indices):
-        """Evaluate each card and pick the best one"""
-        if not valid_indices:
-            return None
-            
-        if DEBUG_AI and self.engine:
-            self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-HARD] {player.name} evaluated {len(valid_indices)} options{Colors.ENDC}")
-        
-        # Evaluate each valid card
-        scores = {}
-        for idx in valid_indices:
-            card = player.hand[idx]
-            score = self._evaluate_card(card, player, gs)
-            scores[idx] = score
-            if DEBUG_AI and self.engine:
-                self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-HARD]   {card.name}: score = {score}{Colors.ENDC}")
-        
-        # Return highest scoring card
-        best = max(scores.items(), key=lambda x: x[1])
-        if DEBUG_AI and self.engine:
-            self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-HARD] {player.name} chose: {player.hand[best[0]].name} (score: {best[1]}){Colors.ENDC}")
-        return best[0]
-    
-    def _evaluate_card(self, card, player, gs):
-        """Score a card based on game state"""
-        score = 0
-        
-        # Priority scoring - faster is better early game
-        if gs.clash_num <= 2 and card.priority != 'A':
-            score += (5 - int(card.priority)) * 10
-        
-        # Critical health - prioritize healing
-        if player.health <= 2 and 'remedy' in card.types:
-            score += 150
-        elif player.health <= 3 and 'remedy' in card.types:
-            score += 80
-            
-        # Enemy at low health - prioritize damage
-        low_health_enemies = [p for p in gs.players if p != player and p.health <= 2]
-        if low_health_enemies and 'attack' in card.types:
-            score += 120
-            
-        # Boost spells when we have other spells
-        if 'boost' in card.types and len([c for c in player.hand if 'boost' not in c.types]) >= 2:
-            score += 60
-            
-        # Response spells based on round state
-        if 'response' in card.types:
-            if gs.round_num > 1:  # More likely to trigger
-                score += 50
-            else:
-                score -= 20  # Less useful early
-                
-        # Conjury spells - good for board control
-        if card.is_conjury:
-            score += 40
-            
-        # Cancel/Discard when enemies have multiple spells
-        if 'cancel' in str(card.resolve_effects) or 'discard' in str(card.resolve_effects):
-            # This is a rough heuristic - in later clashes enemies have more spells
-            if gs.clash_num >= 2:
-                score += 70
-                
-        # Avoid cards with restrictions at wrong times
-        if gs.clash_num == 1 and card.notfirst == 1:
-            score -= 50
-        elif gs.clash_num == 4 and card.notlast == 1:
-            score -= 50
-            
-        # Element synergy (if we played same element before)
-        if gs.clash_num > 1:
-            for past_clash in range(gs.clash_num - 1):
-                for spell in player.board[past_clash]:
-                    if spell.card.element == card.element:
-                        score += 15
-                        
-        # Random factor to prevent predictability
-        score += random.randint(-10, 10)
-        
-        return score
+# AI classes moved to ai/ module
 
 # --- MAIN GAME ENGINE ---
 class GameEngine:
@@ -1820,7 +1772,7 @@ class GameEngine:
                     if DEBUG_AI:
                         print(f"Created HardAI for player {i}: {name}")
                 else:  # medium (default)
-                    ai = AI_Player()
+                    ai = MediumAI()
                     if DEBUG_AI:
                         print(f"Created MediumAI for player {i}: {name}")
                 
@@ -1828,7 +1780,7 @@ class GameEngine:
                 self.ai_strategies[i] = ai
         
         # Keep backward compatibility
-        self.ai_player = self.ai_strategies.get(1, AI_Player())
+        self.ai_player = self.ai_strategies.get(1, MediumAI())
         if self.ai_player and not hasattr(self.ai_player, 'engine'):
             self.ai_player.engine = self
     def _pause(self, message=""): prompt = f"{message} {Colors.GREY}[Press Enter to continue...]{Colors.ENDC}"; self.display.draw(self.gs, prompt=prompt); input()
