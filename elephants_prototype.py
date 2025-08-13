@@ -106,6 +106,9 @@ class Card:
             count_str = p.get('count', 1)
             return f"If an enemy has {count_str} active {p['spell_type']} spell(s): "
         if cond_type == 'if_spell_previously_resolved_this_round': return "If this spell resolved in a past clash: "
+        if cond_type == 'if_spell_was_active_in_other_clashes':
+            count = cond.get('parameters', {}).get('count', 2)
+            return f"If this spell was active in at least {count} other clashes: "
         if cond_type == 'if_not': return f"Otherwise: "
         if cond_type == 'if_board_has_active_spell_of_type':
             p = cond['parameters']
@@ -465,6 +468,26 @@ class ConditionChecker:
                         if spell.card.id == current_card.id and spell.owner == caster:
                             return spell.resolve_condition_met
             return False
+        
+        if cond_type == 'if_spell_was_active_in_other_clashes':
+            # For Impact - check if this spell was active in at least 'count' other clashes
+            params = condition_data.get('parameters', {})
+            required_count = params.get('count', 2)
+            
+            # Count how many OTHER clashes this spell was active in
+            active_clash_count = 0
+            for event in gs.event_log:
+                if (event['type'] == 'spell_active_in_clash' and
+                    event['player'] == caster.name and
+                    event['card_id'] == current_card.id and
+                    event['clash'] != gs.clash_num):  # Don't count current clash
+                    active_clash_count += 1
+            
+            # Debug logging for Impact
+            if current_card.name == "Impact" and DEBUG_AI:
+                gs.action_log.append(f"{Colors.GREY}[DEBUG] Impact was active in {active_clash_count} other clashes, needs {required_count} to trigger weaken{Colors.ENDC}")
+            
+            return active_clash_count >= required_count
         
         return False
 # +++ START: REPLACE THE ENTIRE ActionHandler CLASS WITH THIS +++

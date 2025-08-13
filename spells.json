@@ -957,17 +957,17 @@
     "base_set": false,
     "resolve_effects": [
       {
-        "condition": {
-          "type": "if_spell_previously_resolved_this_round",
-          "parameters": {
-            "count": 2
-          }
+    "condition": {
+      "type": "if_spell_was_active_in_other_clashes",
+      "parameters": {
+        "count": 2
+      }
         },
         "action": {
           "type": "weaken",
           "target": "prompt_player",
           "parameters": {
-            "value": 1
+            "value": 2
           }
         }
       },
