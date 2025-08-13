@@ -100,6 +100,32 @@ ai/
 10. **Round End**: `_run_end_of_round()` handles hand management and ringleader rotation.
 11. **Victory**: The game loop checks win conditions and declares a winner when only one player has trunks.
 
+## Condition Types
+
+The `ConditionChecker` class evaluates various condition types used in spell effects:
+
+### Basic Conditions
+- **`always`**: Always returns true (unconditional effects)
+- **`if_not`**: Negates a sub-condition (used for "Otherwise" effects)
+
+### Spell State Conditions
+- **`if_caster_has_active_spell_of_type`**: Checks if the caster has active spells of a specific type
+  - Parameters: `spell_type` (e.g., "attack", "boost", "any"), `count` (default 1), `exclude_self` (default false)
+- **`if_enemy_has_active_spell_of_type`**: Checks if any enemy has active spells of a specific type
+  - Parameters: `spell_type`, `count` (default 1)
+- **`if_board_has_active_spell_of_type`**: Checks if there are active spells of a type on the entire board
+  - Parameters: `spell_type`, `count` (default 1), `exclude_self` (default false)
+
+### Historical Conditions
+- **`if_spell_previously_resolved_this_round`**: Checks if this spell resolved in a past clash
+  - Parameters: `count` (1 = any past clash, 2+ = specific number of times)
+- **`if_spell_was_active_in_other_clashes`**: Checks if this spell was active in other clashes (Impact)
+  - Parameters: `count` (number of other clashes required)
+- **`if_spell_advanced_this_turn`**: Checks if any spell has advanced this round
+
+### Special Conditions
+- **`if_resolve_condition_was_met`**: Checks if the resolve condition succeeded (for advance effects)
+
 ## File Structure
 
 ```
