@@ -1619,6 +1619,9 @@ class ActionHandler:
 class BaseAI:
     """Base class for all AI strategies"""
     
+    def __init__(self):
+        self.engine = None  # Will be set by GameEngine
+    
     def choose_card_to_play(self, player, gs):
         # Get valid cards considering clash restrictions
         valid_indices = self._get_valid_card_indices(player, gs)
@@ -1645,8 +1648,8 @@ class AI_Player(BaseAI):
     """Current AI logic - medium difficulty"""
     
     def _select_card(self, player, gs, valid_indices):
-        if DEBUG_AI:
-            print(f"\n{Colors.GREY}[AI-MEDIUM] {player.name} analyzing options...{Colors.ENDC}")
+        if DEBUG_AI and self.engine:
+            self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-MEDIUM] {player.name} analyzed options{Colors.ENDC}")
         
         # --- Categorize cards by preference based on clash timing ---
         preferred_indices = []
@@ -1675,8 +1678,8 @@ class AI_Player(BaseAI):
                 # Sort by priority (lower is better)
                 heal_options.sort(key=lambda x: int(x[1].priority) if str(x[1].priority).isdigit() else 99)
                 chosen = heal_options[0]
-                if DEBUG_AI:
-                    print(f"{Colors.GREY}[AI-MEDIUM] Low health ({player.health}), choosing healing: {chosen[1].name}{Colors.ENDC}")
+                if DEBUG_AI and self.engine:
+                    self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-MEDIUM] {player.name} chose healing due to low health ({player.health}): {chosen[1].name}{Colors.ENDC}")
                 return chosen[0] # Return the index of the best heal card
 
         # Finisher: Find the best damage card among candidates
@@ -1687,26 +1690,30 @@ class AI_Player(BaseAI):
                 damage_options.sort(key=lambda x: int(x[1].priority) if str(x[1].priority).isdigit() else 99)
                 chosen = damage_options[0]
                 enemy_names = ", ".join([e.name for e in low_health_enemies])
-                if DEBUG_AI:
-                    print(f"{Colors.GREY}[AI-MEDIUM] Enemy low health ({enemy_names}), choosing attack: {chosen[1].name}{Colors.ENDC}")
+                if DEBUG_AI and self.engine:
+                    self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-MEDIUM] {player.name} chose attack (enemy low health): {chosen[1].name}{Colors.ENDC}")
                 return chosen[0] # Return the index of the best damage card
         
         # Default to a random candidate card
         choice = random.choice(candidate_indices)
-        if DEBUG_AI:
-            print(f"{Colors.GREY}[AI-MEDIUM] No special situation, picked: {player.hand[choice].name}{Colors.ENDC}")
+        if DEBUG_AI and self.engine:
+            self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-MEDIUM] {player.name} chose: {player.hand[choice].name}{Colors.ENDC}")
         return choice
 
 class EasyAI(BaseAI):
     """Easy AI - completely random decisions"""
+    
+    def __init__(self):
+        super().__init__()
+        print(f"{Colors.GREY}[EasyAI initialized]{Colors.ENDC}")
     
     def _select_card(self, player, gs, valid_indices):
         """Just pick a random valid card"""
         if not valid_indices:
             return None
         choice = random.choice(valid_indices)
-        if DEBUG_AI:
-            print(f"\n{Colors.GREY}[AI-EASY] {player.name}: Randomly picked {player.hand[choice].name}{Colors.ENDC}")
+        if DEBUG_AI and self.engine:
+            self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-EASY] {player.name} randomly picked: {player.hand[choice].name}{Colors.ENDC}")
         return choice
 
 class HardAI(BaseAI):
@@ -1717,8 +1724,8 @@ class HardAI(BaseAI):
         if not valid_indices:
             return None
             
-        if DEBUG_AI:
-            print(f"\n{Colors.GREY}[AI-HARD] {player.name} evaluating {len(valid_indices)} options...{Colors.ENDC}")
+        if DEBUG_AI and self.engine:
+            self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-HARD] {player.name} evaluated {len(valid_indices)} options{Colors.ENDC}")
         
         # Evaluate each valid card
         scores = {}
@@ -1726,13 +1733,13 @@ class HardAI(BaseAI):
             card = player.hand[idx]
             score = self._evaluate_card(card, player, gs)
             scores[idx] = score
-            if DEBUG_AI:
-                print(f"{Colors.GREY}[AI-HARD]   {card.name}: score = {score}{Colors.ENDC}")
+            if DEBUG_AI and self.engine:
+                self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-HARD]   {card.name}: score = {score}{Colors.ENDC}")
         
         # Return highest scoring card
         best = max(scores.items(), key=lambda x: x[1])
-        if DEBUG_AI:
-            print(f"{Colors.GREY}[AI-HARD] Best choice: {player.hand[best[0]].name} (score: {best[1]}){Colors.ENDC}")
+        if DEBUG_AI and self.engine:
+            self.engine.ai_decision_logs.append(f"{Colors.GREY}[AI-HARD] {player.name} chose: {player.hand[best[0]].name} (score: {best[1]}){Colors.ENDC}")
         return best[0]
     
     def _evaluate_card(self, card, player, gs):
@@ -1798,20 +1805,32 @@ class GameEngine:
     def __init__(self, player_names, ai_difficulty='medium'):
         self.gs = GameState(player_names); self.display = DashboardDisplay()
         self.condition_checker = ConditionChecker(); self.action_handler = ActionHandler(self)
+        self.ai_decision_logs = []  # Store AI logs to show after reveal
         
         # Create AI strategies based on difficulty
         self.ai_strategies = {}
         for i, name in enumerate(player_names):
             if i > 0:  # AI players (not the human player)
                 if ai_difficulty == 'easy':
-                    self.ai_strategies[i] = EasyAI()
+                    ai = EasyAI()
+                    if DEBUG_AI:
+                        print(f"Created EasyAI for player {i}: {name}")
                 elif ai_difficulty == 'hard':
-                    self.ai_strategies[i] = HardAI()
+                    ai = HardAI()
+                    if DEBUG_AI:
+                        print(f"Created HardAI for player {i}: {name}")
                 else:  # medium (default)
-                    self.ai_strategies[i] = AI_Player()
+                    ai = AI_Player()
+                    if DEBUG_AI:
+                        print(f"Created MediumAI for player {i}: {name}")
+                
+                ai.engine = self  # Set engine reference
+                self.ai_strategies[i] = ai
         
         # Keep backward compatibility
         self.ai_player = self.ai_strategies.get(1, AI_Player())
+        if self.ai_player and not hasattr(self.ai_player, 'engine'):
+            self.ai_player.engine = self
     def _pause(self, message=""): prompt = f"{message} {Colors.GREY}[Press Enter to continue...]{Colors.ENDC}"; self.display.draw(self.gs, prompt=prompt); input()
     def _prompt_for_choice(self, player, options, prompt_message, view_key='name'):
         while True:
@@ -1948,6 +1967,8 @@ class GameEngine:
             else: # AI logic
                 # Get the AI strategy for this player
                 ai_strategy = self.ai_strategies.get(player_index, self.ai_player)
+                if DEBUG_AI:
+                    print(f"\n{Colors.GREY}[DEBUG] Using AI strategy for player {player_index}: {type(ai_strategy).__name__}{Colors.ENDC}")
                 chosen_index = ai_strategy.choose_card_to_play(player, self.gs)
                 if chosen_index is not None:
                     card_to_play = player.hand.pop(chosen_index)
@@ -1985,6 +2006,13 @@ class GameEngine:
                     conjury_str = " [CONJURY]" if spell.card.is_conjury else ""
                     self.gs.action_log.append(f"  {p.name}: {emoji} [{spell.card.name}]{conjury_str} (P:{spell.card.priority}, {type_str})")
                     self.gs.action_log.append(f"    {Colors.GREY}> {spell.card.get_instructions_text()}{Colors.ENDC}")
+        
+        # Show AI decision logs after reveal
+        if DEBUG_AI and self.ai_decision_logs:
+            self.gs.action_log.append(f"\n{Colors.BOLD}AI Decision Analysis:{Colors.ENDC}")
+            for log in self.ai_decision_logs:
+                self.gs.action_log.append(log)
+            self.ai_decision_logs.clear()  # Clear for next clash
         
         self._pause("All spells are revealed simultaneously!")
     
@@ -2331,6 +2359,7 @@ class GameEngine:
 if __name__ == "__main__":
     try:
         clear_screen()
+        print(f"DEBUG_AI is set to: {DEBUG_AI}")  # Debug check
         print(f"{Colors.HEADER}{'='*25}[ ELEMENTAL ELEPHANTS ]{'='*25}{Colors.ENDC}")
         print("\nChoose AI Difficulty:")
         print("[1] Easy (Random play)")
