@@ -4,10 +4,10 @@ import sys
 import random
 import traceback
 from collections import defaultdict
-from typing import Optional, Any, Union
+from typing import Any
 
 # Import AI classes from separate module
-from ai import BaseAI, EasyAI, MediumAI, HardAI
+from ai import EasyAI, MediumAI, HardAI
 
 # --- CONSTANTS ---
 DEBUG_AI = True  # Set to False to disable AI decision logging
@@ -788,120 +788,135 @@ class ActionHandler:
                 except ValueError:
                     gs.action_log.append(f"{Colors.FAIL}Invalid choice.{Colors.ENDC}")
             else:
-                # AI logic - pick based on game state
-                # For attack/remedy choices, pick based on health
-                attack_options = []
-                remedy_options = []
-                safe_options = []
-                risky_options = []
+                # Use the AI strategy system to make the choice
+                # Find the AI strategy for this player
+                player_idx = gs.players.index(caster)
+                ai_strategy = self.engine.ai_strategies.get(player_idx)
                 
-                for option in valid_options:
-                    # Check if option involves self-damage
-                    has_self_damage = False
-                    if option.get('type') == 'sequence':
-                        # Check sequence for self-damage
-                        for act in option.get('actions', []):
-                            if act.get('type') == 'damage' and act.get('target') == 'self':
-                                has_self_damage = True
-                                break
-                    elif option.get('type') == 'damage' and option.get('target') == 'self':
-                        has_self_damage = True
-                    
-                    if has_self_damage:
-                        risky_options.append(option)
-                    elif option.get('type') == 'damage' or option.get('type') == 'weaken' or option.get('type') == 'damage_per_spell':
-                        attack_options.append(option)
-                    elif option.get('type') == 'heal' or option.get('type') == 'bolster':
-                        remedy_options.append(option)
-                    elif option.get('type') == 'pass':
-                        safe_options.append(option)
+                if ai_strategy:
+                    # Use the new AI system
+                    chosen_option = ai_strategy.make_choice(valid_options, caster, gs, current_card)
+                    if chosen_option:
+                        self._execute_action(chosen_option, gs, caster, current_card)
                     else:
-                        safe_options.append(option)
-                
-                # AI decision making
-                
-                # Special handling for choosing between attack options
-                if len(attack_options) > 1:
-                    # Evaluate which attack option is better
-                    best_attack = None
-                    best_damage = 0
-                    
-                    for option in attack_options:
-                        if option.get('type') == 'damage':
-                            damage = option.get('parameters', {}).get('value', 0)
-                            if damage > best_damage:
-                                best_damage = damage
-                                best_attack = option
-                        elif option.get('type') == 'damage_per_spell':
-                            # Count active spells for damage_per_spell
-                            active_spells_count = len([s for s in active_spells if s.owner == caster])
-                            params = option.get('parameters', {})
-                            spell_type = params.get('spell_type', 'any')
-                            exclude_self = params.get('exclude_self', False)
-                            
-                            if spell_type == 'any':
-                                damage = active_spells_count
-                                if exclude_self:
-                                    damage -= 1  # Don't count current spell
-                            else:
-                                # Count specific spell type
-                                damage = len([s for s in active_spells if s.owner == caster and spell_type in s.card.types])
-                                if exclude_self and current_card and spell_type in current_card.types:
-                                    damage -= 1
-                            
-                            if damage > best_damage:
-                                best_damage = damage
-                                best_attack = option
-                    
-                    # Replace attack_options with just the best one if we found a clear winner
-                    if best_attack and best_damage > 0:
-                        attack_options = [best_attack]
-                        if DEBUG_AI and current_card.name == "Prickle":
-                            gs.action_log.append(f"{Colors.GREY}[DEBUG] Prickle AI chose option with {best_damage} damage{Colors.ENDC}")
-                
-                if caster.health <= 1:
-                    # At 1 health - NEVER choose self-damage options
-                    if remedy_options:
-                        self._execute_action(remedy_options[0], gs, caster, current_card)
-                    elif safe_options:
-                        self._execute_action(safe_options[0], gs, caster, current_card)
-                    elif attack_options:
-                        self._execute_action(attack_options[0], gs, caster, current_card)
-                    else:
-                        # No safe options - just pass if possible
-                        for opt in valid_options:
-                            if opt.get('type') == 'pass':
-                                self._execute_action(opt, gs, caster, current_card)
-                                return
-                        # Forced to take damage
+                        # Fallback if AI returns None
                         self._execute_action(valid_options[0], gs, caster, current_card)
-                elif caster.health <= 2:
-                    # Low health - avoid risky options unless they're very powerful
-                    if remedy_options:
-                        self._execute_action(remedy_options[0], gs, caster, current_card)
-                    elif attack_options:
-                        self._execute_action(attack_options[0], gs, caster, current_card)
-                    elif safe_options:
-                        self._execute_action(safe_options[0], gs, caster, current_card)
-                    else:
-                        # Forced to take risky option
-                        self._execute_action(valid_options[0], gs, caster, current_card)
-                elif caster.health >= 4 and risky_options:
-                    # High health - willing to take risks for powerful effects
-                    # Blood spells often have powerful effects worth the self-damage
-                    self._execute_action(risky_options[0], gs, caster, current_card)
-                elif attack_options:
-                    # Mid health - prefer attacking
-                    self._execute_action(attack_options[0], gs, caster, current_card)
-                elif safe_options:
-                    # Fallback to other safe options
-                    self._execute_action(safe_options[0], gs, caster, current_card)
-                elif risky_options and caster.health >= 3:
-                    # Mid health - consider risky options if no other choice
-                    self._execute_action(risky_options[0], gs, caster, current_card)
                 else:
-                    # Ultimate fallback
-                    self._execute_action(valid_options[0], gs, caster, current_card)
+                    # Fallback to original hardcoded logic if no AI strategy found
+                    # This ensures backwards compatibility
+                    # For attack/remedy choices, pick based on health
+                    attack_options = []
+                    remedy_options = []
+                    safe_options = []
+                    risky_options = []
+                    
+                    for option in valid_options:
+                        # Check if option involves self-damage
+                        has_self_damage = False
+                        if option.get('type') == 'sequence':
+                            # Check sequence for self-damage
+                            for act in option.get('actions', []):
+                                if act.get('type') == 'damage' and act.get('target') == 'self':
+                                    has_self_damage = True
+                                    break
+                        elif option.get('type') == 'damage' and option.get('target') == 'self':
+                            has_self_damage = True
+                        
+                        if has_self_damage:
+                            risky_options.append(option)
+                        elif option.get('type') == 'damage' or option.get('type') == 'weaken' or option.get('type') == 'damage_per_spell':
+                            attack_options.append(option)
+                        elif option.get('type') == 'heal' or option.get('type') == 'bolster':
+                            remedy_options.append(option)
+                        elif option.get('type') == 'pass':
+                            safe_options.append(option)
+                        else:
+                            safe_options.append(option)
+                    
+                    # AI decision making
+                    
+                    # Special handling for choosing between attack options
+                    if len(attack_options) > 1:
+                        # Evaluate which attack option is better
+                        best_attack = None
+                        best_damage = 0
+                        
+                        for option in attack_options:
+                            if option.get('type') == 'damage':
+                                damage = option.get('parameters', {}).get('value', 0)
+                                if damage > best_damage:
+                                    best_damage = damage
+                                    best_attack = option
+                            elif option.get('type') == 'damage_per_spell':
+                                # Count active spells for damage_per_spell
+                                active_spells_count = len([s for s in active_spells if s.owner == caster])
+                                params = option.get('parameters', {})
+                                spell_type = params.get('spell_type', 'any')
+                                exclude_self = params.get('exclude_self', False)
+                                
+                                if spell_type == 'any':
+                                    damage = active_spells_count
+                                    if exclude_self:
+                                        damage -= 1  # Don't count current spell
+                                else:
+                                    # Count specific spell type
+                                    damage = len([s for s in active_spells if s.owner == caster and spell_type in s.card.types])
+                                    if exclude_self and current_card and spell_type in current_card.types:
+                                        damage -= 1
+                                
+                                if damage > best_damage:
+                                    best_damage = damage
+                                    best_attack = option
+                        
+                        # Replace attack_options with just the best one if we found a clear winner
+                        if best_attack and best_damage > 0:
+                            attack_options = [best_attack]
+                            if DEBUG_AI and current_card.name == "Prickle":
+                                gs.action_log.append(f"{Colors.GREY}[DEBUG] Prickle AI chose option with {best_damage} damage{Colors.ENDC}")
+                    
+                    if caster.health <= 1:
+                        # At 1 health - NEVER choose self-damage options
+                        if remedy_options:
+                            self._execute_action(remedy_options[0], gs, caster, current_card)
+                        elif safe_options:
+                            self._execute_action(safe_options[0], gs, caster, current_card)
+                        elif attack_options:
+                            self._execute_action(attack_options[0], gs, caster, current_card)
+                        else:
+                            # No safe options - just pass if possible
+                            for opt in valid_options:
+                                if opt.get('type') == 'pass':
+                                    self._execute_action(opt, gs, caster, current_card)
+                                    return
+                            # Forced to take damage
+                            self._execute_action(valid_options[0], gs, caster, current_card)
+                    elif caster.health <= 2:
+                        # Low health - avoid risky options unless they're very powerful
+                        if remedy_options:
+                            self._execute_action(remedy_options[0], gs, caster, current_card)
+                        elif attack_options:
+                            self._execute_action(attack_options[0], gs, caster, current_card)
+                        elif safe_options:
+                            self._execute_action(safe_options[0], gs, caster, current_card)
+                        else:
+                            # Forced to take risky option
+                            self._execute_action(valid_options[0], gs, caster, current_card)
+                    elif caster.health >= 4 and risky_options:
+                        # High health - willing to take risks for powerful effects
+                        # Blood spells often have powerful effects worth the self-damage
+                        self._execute_action(risky_options[0], gs, caster, current_card)
+                    elif attack_options:
+                        # Mid health - prefer attacking
+                        self._execute_action(attack_options[0], gs, caster, current_card)
+                    elif safe_options:
+                        # Fallback to other safe options
+                        self._execute_action(safe_options[0], gs, caster, current_card)
+                    elif risky_options and caster.health >= 3:
+                        # Mid health - consider risky options if no other choice
+                        self._execute_action(risky_options[0], gs, caster, current_card)
+                    else:
+                        # Ultimate fallback
+                        self._execute_action(valid_options[0], gs, caster, current_card)
             return True
         
         if action_type == 'cast_extra_spell':

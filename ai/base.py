@@ -32,3 +32,18 @@ class BaseAI(ABC):
     def _select_card(self, player, gs, valid_indices):
         """Override in subclasses to implement selection strategy"""
         raise NotImplementedError
+    
+    @abstractmethod
+    def make_choice(self, valid_options, caster, gs, current_card):
+        """Make decisions for player_choice actions
+        
+        Args:
+            valid_options: List of valid action options to choose from
+            caster: The player making the choice
+            gs: Current game state
+            current_card: The card with the player_choice effect
+            
+        Returns:
+            The chosen option from valid_options
+        """
+        raise NotImplementedError
