@@ -71,8 +71,10 @@ class Card:
         self.resolve_effects: list[dict] = card_data.get('resolve_effects', [])
         self.advance_effects: list[dict] = card_data.get('advance_effects', [])
         self.passive_effects: list[dict] = card_data.get('passive_effects', [])
+        self.instruction: str = card_data.get('instruction', '')
     def __repr__(self) -> str: return f"Card({self.name})"
     def get_instructions_text(self) -> str:
+        # Generate the original text from effects
         texts = []
         if self.passive_effects:
             for effect in self.passive_effects:
@@ -87,7 +89,14 @@ class Card:
         if self.advance_effects:
             adv_texts = [self._format_action(eff['action']) for eff in self.advance_effects]
             texts.append(f"Advance Phase: {', '.join(adv_texts)}")
-        return "; ".join(texts) if texts else "No effect."
+        generated_text = "; ".join(texts) if texts else "No effect."
+        
+        # If we have a cleaned instruction, show both
+        if self.instruction:
+            return f"{self.instruction}\n    {Colors.GREY}(Generated: {generated_text}){Colors.ENDC}"
+        
+        # Otherwise just return the generated text
+        return generated_text
     def _format_condition(self, cond: dict) -> str:
         cond_type = cond.get('type')
         if cond_type == 'always': return ""
