@@ -85,15 +85,15 @@ class AutoPlayEngine(GameEngine):
                     # Fallback to first available
                     chosen_set = available_sets[0]
                 self.gs.main_deck.remove(chosen_set)
-                    
-                    # Add to discard pile
-                    for card in chosen_set:
-                        player.discard_pile.append(card)
-                    
-                    self.gs.action_log.append(f"{player.name} drafted the '{chosen_set[0].elephant}' ({chosen_set[0].element}) set.")
-                    
-                    if self.verbose:
-                        self._pause()
+                
+                # Add to discard pile
+                for card in chosen_set:
+                    player.discard_pile.append(card)
+                
+                self.gs.action_log.append(f"{player.name} drafted the '{chosen_set[0].elephant}' ({chosen_set[0].element}) set.")
+                
+                if self.verbose:
+                    self._pause()
         
         # Shuffle discard piles into hands
         for player in self.gs.players:

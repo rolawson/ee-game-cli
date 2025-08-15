@@ -57,7 +57,7 @@ The AI uses these categories for:
 
 ### 5. AI System (Modular Architecture)
 
-The AI system is organized in a separate `ai/` module with the following structure:
+The AI system is organized in a separate `ai/` module with sophisticated strategic capabilities. For detailed AI architecture information, see `AI_ARCHITECTURE.md`.
 
 #### Module Structure:
 ```
