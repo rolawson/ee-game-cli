@@ -41,7 +41,21 @@ These are the "worker" classes that the `GameEngine` delegates tasks to.
 -   **`ConditionChecker`**: The "rules lawyer." Its `check()` method takes a condition from a spell's JSON and evaluates it against the current `GameState` (primarily the `event_log`) to see if it's `True` or `False`. This is how `Turbulence` and other `Response` spells work.
 -   **`ActionHandler`**: The "muscle" of the engine. Its `execute()` method takes an action from a spell's JSON and makes the corresponding changes to the `GameState` (e.g., reducing a `Player`'s `health`). It is also responsible for firing events into the `event_log`.
 
-### 4. AI System (Modular Architecture)
+### 4. Element Category System
+
+The game uses a data-driven element categorization system defined in `element_categories.json`:
+
+- **Offense Elements**: Fire, Lightning, Venom, Earth, Shadow, Sunbeam, Blood - focused on damage and debilitation
+- **Defense Elements**: Water, Ichor, Thunder, Moonshine, Metal, Nectar - focused on healing and protection  
+- **Mobility Elements**: Wind, Space, Time, Aster - focused on movement and spell positioning
+- **Balanced Elements**: Wood, Twilight - equal focus on offense and defense
+
+The AI uses these categories for:
+- Strategic drafting decisions (balancing offense/defense/mobility)
+- Element-spell type synergy evaluation
+- Situational play decisions based on element strengths
+
+### 5. AI System (Modular Architecture)
 
 The AI system is organized in a separate `ai/` module with the following structure:
 

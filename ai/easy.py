@@ -62,3 +62,37 @@ class EasyAI(BaseAI):
                 return f"{action_type} {target}"
             else:
                 return action_type
+    
+    def choose_draft_set(self, player, gs, available_sets):
+        """Easy AI drafting - very simple heuristics"""
+        if not available_sets:
+            return None
+        
+        # Easy AI uses simple preferences
+        set_scores = {}
+        
+        for idx, spell_set in enumerate(available_sets):
+            score = random.randint(0, 50)  # High randomness
+            
+            # Simple preferences
+            has_damage = False
+            has_healing = False
+            
+            for spell in spell_set:
+                effects_str = str(spell.resolve_effects)
+                if 'damage' in effects_str:
+                    has_damage = True
+                if 'heal' in effects_str:
+                    has_healing = True
+            
+            # Easy AI likes damage and healing
+            if has_damage:
+                score += 30
+            if has_healing:
+                score += 20
+            
+            set_scores[idx] = score
+        
+        # Pick highest scoring (but still quite random)
+        best_idx = max(set_scores.items(), key=lambda x: x[1])[0]
+        return available_sets[best_idx]

@@ -1944,8 +1944,14 @@ class GameEngine:
                     options = {idx+1: s for idx, s in enumerate(self.gs.main_deck) if s}; choice = self._prompt_for_choice(p, options, f"{p.name}, choose a spell set to draft:")
                     drafted_set = options[choice]; self.gs.main_deck.remove(drafted_set)
                 else: 
-                    # AI picks randomly from available sets
-                    drafted_set = random.choice(self.gs.main_deck)
+                    # AI uses strategic drafting
+                    ai_index = self.gs.players.index(p)
+                    ai = self.ai_strategies.get(ai_index)
+                    if ai and hasattr(ai, 'choose_draft_set'):
+                        drafted_set = ai.choose_draft_set(p, self.gs, self.gs.main_deck)
+                    else:
+                        # Fallback to random if AI doesn't have drafting method
+                        drafted_set = random.choice(self.gs.main_deck)
                     self.gs.main_deck.remove(drafted_set)
                 p.discard_pile.extend(drafted_set); 
                 emoji = ELEMENT_EMOJIS.get(drafted_set[0].element, '')

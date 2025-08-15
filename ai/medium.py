@@ -276,3 +276,85 @@ class MediumAI(BaseAI):
                 return f"{action_type} {target}"
             else:
                 return action_type
+    
+    def choose_draft_set(self, player, gs, available_sets):
+        """Medium AI drafting - balanced approach with some strategy"""
+        if not available_sets:
+            return None
+        
+        # Analyze what we already have (if this is second draft)
+        current_cards = player.discard_pile
+        
+        set_scores = {}
+        
+        for idx, spell_set in enumerate(available_sets):
+            score = random.randint(0, 20)  # Some randomness
+            
+            # Count spell types in this set
+            type_counts = {}
+            has_conjury = False
+            priority_variety = set()
+            
+            for spell in spell_set:
+                # Count types
+                for spell_type in spell.types:
+                    type_counts[spell_type] = type_counts.get(spell_type, 0) + 1
+                
+                # Track priorities
+                priority_variety.add(spell.priority)
+                
+                # Check for conjury
+                if spell.is_conjury:
+                    has_conjury = True
+            
+            # Medium AI likes balanced sets
+            if 'attack' in type_counts:
+                score += 40  # Need damage
+            if 'remedy' in type_counts:
+                score += 35  # Need healing
+            if 'response' in type_counts:
+                score += 25  # Responses are good
+            if has_conjury:
+                score += 20  # Conjuries are powerful
+            
+            # Variety is good
+            score += len(type_counts) * 15
+            score += len(priority_variety) * 10
+            
+            # Element category bonus
+            element = spell_set[0].element
+            category = self.get_element_category(element)
+            
+            # Simple category preferences
+            if category == 'offense':
+                score += 25  # Good for damage
+            elif category == 'defense':
+                score += 30  # Always useful
+            elif category == 'mobility':
+                score += 35  # Flexibility is great
+            elif category == 'balanced':
+                score += 20  # Solid choice
+            
+            # If second draft, consider what we have
+            if current_cards:
+                # Check if this fills gaps
+                current_has_attack = any('attack' in c.types for c in current_cards)
+                current_has_remedy = any('remedy' in c.types for c in current_cards)
+                
+                if not current_has_attack and 'attack' in type_counts:
+                    score += 50  # Really need damage
+                if not current_has_remedy and 'remedy' in type_counts:
+                    score += 40  # Really need healing
+            
+            set_scores[idx] = score
+        
+        # Pick highest scoring set
+        best_idx = max(set_scores.items(), key=lambda x: x[1])[0]
+        chosen_set = available_sets[best_idx]
+        
+        if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+            self.engine.ai_decision_logs.append(
+                f"\\033[90m[AI-MEDIUM] Drafted {chosen_set[0].elephant} ({chosen_set[0].element})\\033[0m"
+            )
+        
+        return chosen_set

@@ -1,14 +1,20 @@
 """Base AI class for all AI strategies"""
 
 from abc import ABC, abstractmethod
+import json
+import os
 
 
 class BaseAI(ABC):
     """Base class for all AI strategies"""
     
+    # Class variable to store element categories (loaded once)
+    _element_categories = None
+    
     def __init__(self):
         self.engine = None  # Will be set by GameEngine
         self.opponent_history = {}  # Track what opponents have played
+        self._load_element_categories()
     
     def choose_card_to_play(self, player, gs):
         """Main entry point for AI card selection"""
@@ -169,3 +175,67 @@ class BaseAI(ABC):
                 if played_spell_name in remaining:
                     remaining.remove(played_spell_name)
                     break
+    
+    def _load_element_categories(self):
+        """Load element category data from JSON file"""
+        if BaseAI._element_categories is None:
+            try:
+                # Try to find the element categories file
+                current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                categories_path = os.path.join(current_dir, 'element_categories.json')
+                
+                if os.path.exists(categories_path):
+                    with open(categories_path, 'r') as f:
+                        BaseAI._element_categories = json.load(f)
+                else:
+                    # Fallback if file not found
+                    BaseAI._element_categories = {"categories": {}}
+            except Exception as e:
+                # If loading fails, use empty categories
+                BaseAI._element_categories = {"categories": {}}
+                if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                    self.engine.ai_decision_logs.append(
+                        f"\\033[90m[AI-WARNING] Could not load element categories: {e}\\033[0m"
+                    )
+    
+    def get_element_category(self, element):
+        """Get the strategic category of an element"""
+        for category_name, category_data in BaseAI._element_categories.get('categories', {}).items():
+            if element in category_data.get('elements', []):
+                return category_name
+        return 'unknown'
+    
+    def get_element_synergy(self, element, spell_type):
+        """Get synergy multiplier for element-spell type combination"""
+        category = self.get_element_category(element)
+        if category == 'unknown':
+            return 1.0
+        
+        category_data = BaseAI._element_categories['categories'].get(category, {})
+        synergies = category_data.get('synergies', {})
+        return synergies.get(spell_type, 1.0)
+    
+    def get_element_draft_priority(self, element):
+        """Get draft priority multiplier for an element's category"""
+        category = self.get_element_category(element)
+        if category == 'unknown':
+            return 1.0
+            
+        category_data = BaseAI._element_categories['categories'].get(category, {})
+        return category_data.get('draft_priority', 1.0)
+    
+    def choose_draft_set(self, player, gs, available_sets):
+        """Choose a spell set during drafting phase
+        
+        Args:
+            player: The AI player drafting
+            gs: Current game state
+            available_sets: List of available spell sets to draft from
+            
+        Returns:
+            The chosen spell set
+        """
+        # Default implementation - random choice
+        # Subclasses should override with strategic choices
+        import random
+        return random.choice(available_sets)

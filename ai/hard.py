@@ -74,16 +74,36 @@ class HardAI(BaseAI):
         if 'boost' in card.types and len([c for c in player.hand if 'boost' not in c.types]) >= 2:
             score += 60
             
-        # Response spells based on round state
+        # Response spells - counter-play potential
         if 'response' in card.types:
-            if gs.round_num > 1:  # More likely to trigger
-                score += 50
-            else:
-                score -= 20  # Less useful early
+            response_value = self._evaluate_response_counterplay(card, player, gs)
+            score += response_value
                 
-        # Conjury spells - good for board control
+        # Conjury spells - powerful but vulnerable
         if card.is_conjury:
-            score += 40
+            # Base value is high
+            score += 60
+            
+            # But check for cancel threats
+            cancel_risk = 0
+            for opponent in gs.players:
+                if opponent != player:
+                    # Check opponent's hand and remaining spells
+                    remaining = self.get_remaining_spells(opponent.name)
+                    if any('cancel' in spell.lower() for spell in remaining):
+                        cancel_risk += 30
+                    
+                    # Check if opponent typically plays attack spells (can cancel conjuries)
+                    analysis = self.analyze_opponent_patterns(opponent.name)
+                    if analysis and analysis.get('aggression_level', 0) > 0.4:
+                        cancel_risk += 20
+            
+            score -= cancel_risk
+            
+            if self.engine and hasattr(self.engine, 'ai_decision_logs') and cancel_risk > 0:
+                self.engine.ai_decision_logs.append(
+                    f"\033[90m[AI-RISK] {card.name} conjury has {cancel_risk} cancel risk\033[0m"
+                )
             
         # Cancel/Discard when enemies have multiple spells
         if 'cancel' in str(card.resolve_effects) or 'discard' in str(card.resolve_effects):
@@ -131,7 +151,238 @@ class HardAI(BaseAI):
         counting_score = self._evaluate_card_counting(card, player, gs)
         score += counting_score
         
+        # Hand synergy evaluation
+        hand_synergy_score = self._evaluate_hand_synergies(card, player, gs)
+        score += hand_synergy_score
+        
+        # Card mobility evaluation
+        mobility_score = self._evaluate_card_mobility(card, player, gs)
+        score += mobility_score
+        
+        # Element category bonus during play
+        element_play_score = self._evaluate_element_play(card, player, gs)
+        score += element_play_score
+        
         return score
+    
+    def _evaluate_card_mobility(self, card, player, gs):
+        """Evaluate cards based on their movement/positioning capabilities"""
+        score = 0
+        
+        # Check card's own mobility features
+        effects_str = str(card.resolve_effects) + str(card.advance_effects)
+        
+        # Self-advancing cards (like Flow)
+        if 'advance' in effects_str and 'this_spell' in effects_str:
+            if gs.clash_num < 3:  # Can advance at least once
+                score += 40
+                if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                    self.engine.ai_decision_logs.append(
+                        f"\033[90m[AI-MOBILITY] {card.name} can self-advance for future value\033[0m"
+                    )
+        
+        # Cards that move other spells (like Gravitate)
+        if 'move_to_future_clash' in effects_str:
+            # Valuable for disrupting enemy plans or saving own spells
+            score += 35
+            if gs.clash_num < 3:  # More valuable early
+                score += 20
+        
+        # Cards that recall spells
+        if 'recall' in effects_str:
+            if 'from_board' in effects_str:
+                # Can steal enemy spells from board
+                score += 45
+            elif 'friendly_past_spells' in effects_str:
+                # Can reuse own spells - check if we have valid targets
+                past_spells_count = self._count_past_spells(player, gs, include_cancelled=True)
+                if past_spells_count > 0:
+                    score += 30 + (10 * min(past_spells_count, 3))
+                else:
+                    score -= 50  # No targets - bad play
+                    if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                        self.engine.ai_decision_logs.append(
+                            f"\033[90m[AI-MOBILITY] {card.name} has no past spells to recall!\033[0m"
+                        )
+            elif 'from_enemy_hand' in effects_str:
+                # Hand disruption + gain
+                score += 50
+        
+        # Cards that allow extra spell casting
+        if 'cast_extra_spell' in effects_str:
+            extra_cards = len(player.hand) - 1
+            if extra_cards > 0:
+                score += 30 * min(extra_cards, 2)  # Value capped at 2 extra
+                if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                    self.engine.ai_decision_logs.append(
+                        f"\033[90m[AI-MOBILITY] {card.name} enables spell burst with {extra_cards} options\033[0m"
+                    )
+        
+        # Cards that advance other spells
+        if 'advance' in effects_str and 'prompt' in effects_str:
+            # Check if we have good targets to advance
+            advance_targets = 0
+            for i in range(gs.clash_num):
+                for spell in player.board[i]:
+                    if spell.status == 'revealed':
+                        # High-value advance targets
+                        if spell.card.is_conjury or 'boost' in spell.card.types:
+                            advance_targets += 1
+            
+            if advance_targets > 0:
+                score += 25 * advance_targets
+                if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                    self.engine.ai_decision_logs.append(
+                        f"\033[90m[AI-MOBILITY] {card.name} can advance {advance_targets} high-value targets\033[0m"
+                    )
+        
+        # Evaluate positioning strategy
+        position_score = self._evaluate_positioning(card, player, gs)
+        score += position_score
+        
+        return score
+    
+    def _evaluate_positioning(self, card, player, gs):
+        """Evaluate strategic positioning of this card"""
+        score = 0
+        
+        # Cards that benefit from being in future clashes
+        if card.advance_effects and gs.clash_num < 4:
+            # This card wants to advance
+            if 'advance_from_hand' in str(card.resolve_effects):
+                # Can place itself in future - very flexible
+                score += 30
+            
+        # Cards vulnerable to movement/cancellation
+        if card.is_conjury:
+            # Conjuries are vulnerable to being moved/cancelled
+            # Less valuable if opponent has movement cards
+            for opponent in gs.players:
+                if opponent != player:
+                    remaining = self.get_remaining_spells(opponent.name)
+                    if any('gravitate' in spell.lower() or 'move' in spell.lower() 
+                          for spell in remaining):
+                        score -= 20
+                        if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                            self.engine.ai_decision_logs.append(
+                                f"\033[90m[AI-MOBILITY] {card.name} vulnerable to opponent's movement spells\033[0m"
+                            )
+        
+        # Priority-based positioning
+        if card.priority == 'A':
+            # Advance priority cards benefit from early placement
+            if gs.clash_num <= 2:
+                score += 20  # Can advance multiple times
+        elif card.priority in ['1', '2']:
+            # Fast cards good for getting effects off early
+            score += 10
+        
+        return score
+    
+    def _count_past_spells(self, player, gs, include_cancelled=False):
+        """Count spells in past clashes that could be recalled"""
+        count = 0
+        for i in range(gs.clash_num - 1):  # Only past clashes
+            for spell in player.board[i]:
+                if spell.status == 'revealed' or (include_cancelled and spell.status == 'cancelled'):
+                    count += 1
+        return count
+    
+    def _evaluate_hand_synergies(self, card, player, gs):
+        """Evaluate synergies between cards in hand for multi-turn planning"""
+        score = 0
+        other_cards = [c for c in player.hand if c != card]
+        
+        if not other_cards:
+            return 0
+        
+        # Check if this card enables future cards
+        future_enablement_score = 0
+        for future_card in other_cards:
+            if future_card.resolve_effects:
+                for effect in future_card.resolve_effects:
+                    condition = effect.get('condition', {})
+                    if condition.get('type') == 'if_caster_has_active_spell_of_type':
+                        params = condition.get('parameters', {})
+                        spell_type = params.get('spell_type', 'any')
+                        
+                        # This card enables the future card
+                        if spell_type == 'any' or spell_type in card.types:
+                            future_enablement_score += 50
+                            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                                self.engine.ai_decision_logs.append(
+                                    f"\033[90m[AI-SYNERGY] {card.name} enables {future_card.name} next turn!\033[0m"
+                                )
+                    
+                    elif condition.get('type') == 'if_spell_previously_resolved_this_round':
+                        # Playing this card early enables the condition later
+                        if gs.clash_num <= 2:
+                            future_enablement_score += 40
+        
+        # Check if holding this card enables better combos later
+        hold_value = 0
+        if card.resolve_effects:
+            for effect in card.resolve_effects:
+                condition = effect.get('condition', {})
+                if condition.get('type') == 'if_caster_has_active_spell_of_type':
+                    # This card needs other spells - check if we can play them first
+                    params = condition.get('parameters', {})
+                    spell_type = params.get('spell_type', 'any')
+                    required_count = params.get('count', 1)
+                    
+                    enablers_in_hand = sum(1 for c in other_cards 
+                                         if spell_type == 'any' or spell_type in c.types)
+                    
+                    if enablers_in_hand >= required_count and gs.clash_num < 3:
+                        # We have enablers - maybe wait to play this card
+                        hold_value -= 30  # Negative score encourages waiting
+                        if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                            self.engine.ai_decision_logs.append(
+                                f"\033[90m[AI-SYNERGY] {card.name} could wait for {spell_type} enablers\033[0m"
+                            )
+        
+        # Multi-card combo detection
+        combo_chains = self._detect_combo_chains(card, other_cards, gs)
+        chain_score = len(combo_chains) * 40
+        if combo_chains and self.engine and hasattr(self.engine, 'ai_decision_logs'):
+            chain_names = [c.name for c in combo_chains]
+            self.engine.ai_decision_logs.append(
+                f"\033[90m[AI-SYNERGY] Combo chain detected: {card.name} -> {' -> '.join(chain_names)}\033[0m"
+            )
+        
+        # Element/type clustering bonus
+        same_element_count = sum(1 for c in other_cards if c.element == card.element)
+        same_type_overlap = 0
+        for c in other_cards:
+            same_type_overlap += len(set(card.types) & set(c.types))
+        
+        clustering_score = (same_element_count * 10) + (same_type_overlap * 15)
+        
+        return future_enablement_score + hold_value + chain_score + clustering_score
+    
+    def _detect_combo_chains(self, start_card, other_cards, gs):
+        """Detect multi-card combo chains starting with this card"""
+        chains = []
+        
+        # Simple 2-card chains for now
+        for next_card in other_cards:
+            # Check if start_card enables next_card
+            enables = False
+            
+            if next_card.resolve_effects:
+                for effect in next_card.resolve_effects:
+                    condition = effect.get('condition', {})
+                    if condition.get('type') == 'if_caster_has_active_spell_of_type':
+                        params = condition.get('parameters', {})
+                        spell_type = params.get('spell_type', 'any')
+                        if spell_type == 'any' or spell_type in start_card.types:
+                            enables = True
+                            break
+            
+            if enables:
+                chains.append(next_card)
+        
+        return chains
     
     def _evaluate_card_counting(self, card, player, gs):
         """Use card counting to make strategic decisions"""
@@ -311,6 +562,59 @@ class HardAI(BaseAI):
                                 return True
         
         return False
+    
+    def _evaluate_response_counterplay(self, card, player, gs):
+        """Evaluate response spells for counter-play potential"""
+        score = 0
+        
+        # Check what this response counters
+        for effect in card.resolve_effects:
+            condition = effect.get('condition', {})
+            cond_type = condition.get('type', '')
+            
+            # Damage-based responses (like Reflect)
+            if cond_type == 'if_caster_damaged_last_turn':
+                # Check if we've been taking damage
+                if gs.round_num > 1 or gs.clash_num > 1:
+                    score += 40  # Likely to trigger
+                    
+                    # Extra value if opponent is aggressive
+                    for opponent in gs.players:
+                        if opponent != player:
+                            analysis = self.analyze_opponent_patterns(opponent.name)
+                            if analysis and analysis.get('aggression_level', 0) > 0.5:
+                                score += 30
+                                if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                                    self.engine.ai_decision_logs.append(
+                                        f"\033[90m[AI-COUNTER] {card.name} counters aggressive opponent\033[0m"
+                                    )
+                else:
+                    score -= 30  # Early game, less likely
+            
+            # Enemy spell responses
+            elif cond_type == 'if_enemy_has_active_spell_of_type':
+                params = condition.get('parameters', {})
+                spell_type = params.get('spell_type', 'any')
+                
+                # Check if enemies are likely to play this type
+                likely_to_trigger = False
+                for opponent in gs.players:
+                    if opponent != player:
+                        remaining = self.get_remaining_spells(opponent.name)
+                        type_count = sum(1 for spell in remaining 
+                                       if spell_type == 'any' or spell_type in str(spell).lower())
+                        if type_count > 0:
+                            likely_to_trigger = True
+                            score += 20
+                
+                if not likely_to_trigger:
+                    score -= 40  # Won't trigger
+        
+        # Response spells are great for baiting
+        if gs.clash_num >= 2:
+            score += 20  # More value as game progresses
+        
+        return score
     
     def _score_against_opponents(self, card, player, gs):
         """Score card based on opponent analysis"""
@@ -719,3 +1023,451 @@ class HardAI(BaseAI):
                 return f"{action_type} {target}"
             else:
                 return action_type
+    
+    def choose_draft_set(self, player, gs, available_sets):
+        """Strategic drafting for Hard AI
+        
+        Evaluates each available set based on:
+        - Spell type balance
+        - Element synergies
+        - Priority distribution
+        - Combo potential
+        - Counter-play options
+        """
+        if not available_sets:
+            return None
+        
+        # Analyze what we already have (if this is second draft)
+        current_cards = player.discard_pile  # Cards from first draft
+        
+        set_scores = {}
+        
+        for set_idx, spell_set in enumerate(available_sets):
+            score = 0
+            
+            # Analyze the set
+            set_analysis = self._analyze_spell_set(spell_set, gs)
+            
+            # 1. Type balance scoring
+            type_balance_score = self._evaluate_type_balance(set_analysis, current_cards)
+            score += type_balance_score
+            
+            # 2. Priority distribution
+            priority_score = self._evaluate_priority_distribution(set_analysis, current_cards)
+            score += priority_score
+            
+            # 3. Combo potential within set
+            combo_score = self._evaluate_set_combos(spell_set, gs)
+            score += combo_score
+            
+            # 4. Element synergy with existing cards
+            if current_cards:
+                element_score = self._evaluate_element_synergy(spell_set, current_cards)
+                score += element_score
+            
+            # 5. Counter-play potential
+            counter_score = self._evaluate_counter_potential(set_analysis)
+            score += counter_score
+            
+            # 6. Special abilities and unique effects
+            special_score = self._evaluate_special_abilities(spell_set)
+            score += special_score
+            
+            # 7. Element category evaluation
+            element_category_score = self._evaluate_element_category(spell_set, current_cards, gs)
+            score += element_category_score
+            
+            # Add some randomness to prevent predictability
+            score += random.randint(-20, 20)
+            
+            set_scores[set_idx] = score
+            
+            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                self.engine.ai_decision_logs.append(
+                    f"\\033[90m[AI-DRAFT] {spell_set[0].elephant} ({spell_set[0].element}): "
+                    f"score = {score} (types: {type_balance_score}, priority: {priority_score}, "
+                    f"combos: {combo_score}, counter: {counter_score})\\033[0m"
+                )
+        
+        # Choose the highest scoring set
+        best_idx = max(set_scores.items(), key=lambda x: x[1])[0]
+        chosen_set = available_sets[best_idx]
+        
+        if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+            self.engine.ai_decision_logs.append(
+                f"\\033[90m[AI-DRAFT] Chose {chosen_set[0].elephant} ({chosen_set[0].element}) "
+                f"with score {set_scores[best_idx]}\\033[0m"
+            )
+        
+        return chosen_set
+    
+    def _analyze_spell_set(self, spell_set, gs):
+        """Analyze a spell set's composition"""
+        analysis = {
+            'types': {},
+            'priorities': {},
+            'has_conjury': False,
+            'element': spell_set[0].element if spell_set else None,
+            'elephant': spell_set[0].elephant if spell_set else None,
+            'effects': []
+        }
+        
+        for spell in spell_set:
+            # Count types
+            for spell_type in spell.types:
+                analysis['types'][spell_type] = analysis['types'].get(spell_type, 0) + 1
+            
+            # Count priorities
+            priority = spell.priority
+            analysis['priorities'][priority] = analysis['priorities'].get(priority, 0) + 1
+            
+            # Check for conjury
+            if spell.is_conjury:
+                analysis['has_conjury'] = True
+            
+            # Collect effects
+            effects_str = str(spell.resolve_effects) + str(spell.advance_effects)
+            if 'damage' in effects_str:
+                analysis['effects'].append('damage')
+            if 'heal' in effects_str:
+                analysis['effects'].append('heal')
+            if 'cancel' in effects_str:
+                analysis['effects'].append('cancel')
+            if 'discard' in effects_str:
+                analysis['effects'].append('discard')
+            if 'advance' in effects_str:
+                analysis['effects'].append('advance')
+            if 'recall' in effects_str:
+                analysis['effects'].append('recall')
+        
+        return analysis
+    
+    def _evaluate_type_balance(self, set_analysis, current_cards):
+        """Evaluate type balance for a well-rounded deck"""
+        score = 0
+        
+        # Count current types
+        current_types = {}
+        for card in current_cards:
+            for spell_type in card.types:
+                current_types[spell_type] = current_types.get(spell_type, 0) + 1
+        
+        # Ideal distribution (rough guidelines)
+        ideal_ratios = {
+            'attack': 0.3,    # 30% damage dealers
+            'response': 0.2,  # 20% counter-play
+            'remedy': 0.2,    # 20% healing/defense
+            'boost': 0.15,    # 15% support
+            'conjury': 0.15   # 15% persistent effects
+        }
+        
+        # Calculate how this set helps balance
+        total_cards = len(current_cards) + 6  # Assuming 6 cards per set
+        
+        for spell_type, count in set_analysis['types'].items():
+            current_count = current_types.get(spell_type, 0)
+            new_ratio = (current_count + count) / total_cards
+            ideal_ratio = ideal_ratios.get(spell_type, 0.1)
+            
+            # Score based on how close to ideal
+            deviation = abs(new_ratio - ideal_ratio)
+            if deviation < 0.1:
+                score += 50  # Very close to ideal
+            elif deviation < 0.2:
+                score += 30  # Reasonably close
+            else:
+                score += 10  # Still adds diversity
+        
+        # Penalty for missing important types
+        combined_types = set(current_types.keys()) | set(set_analysis['types'].keys())
+        if 'attack' not in combined_types:
+            score -= 100  # Need damage
+        if 'remedy' not in combined_types:
+            score -= 80   # Need healing
+        if 'response' not in combined_types:
+            score -= 40   # Responses are valuable
+        
+        return score
+    
+    def _evaluate_priority_distribution(self, set_analysis, current_cards):
+        """Evaluate priority distribution for tactical flexibility"""
+        score = 0
+        
+        # Count current priorities
+        current_priorities = {}
+        for card in current_cards:
+            priority = card.priority
+            current_priorities[priority] = current_priorities.get(priority, 0) + 1
+        
+        # Good to have mix of speeds
+        priorities = set_analysis['priorities']
+        
+        # Reward variety
+        unique_priorities = len(priorities)
+        score += unique_priorities * 20
+        
+        # Check for good distribution
+        if 'A' in priorities:
+            score += 40  # Advance priority is valuable
+        if '1' in priorities or '2' in priorities:
+            score += 30  # Fast spells are good
+        if '4' in priorities or '5' in priorities:
+            score += 20  # Some slow spells for power
+        
+        # Penalty for too many of same priority
+        for priority, count in priorities.items():
+            if count > 3:
+                score -= (count - 3) * 20
+        
+        return score
+    
+    def _evaluate_set_combos(self, spell_set, gs):
+        """Evaluate internal combo potential within the set"""
+        score = 0
+        
+        # Check each spell against others in set
+        for i, spell1 in enumerate(spell_set):
+            for j, spell2 in enumerate(spell_set):
+                if i >= j:
+                    continue
+                
+                # Check if spell1 enables spell2
+                if spell2.resolve_effects:
+                    for effect in spell2.resolve_effects:
+                        condition = effect.get('condition', {})
+                        if condition.get('type') == 'if_caster_has_active_spell_of_type':
+                            params = condition.get('parameters', {})
+                            spell_type = params.get('spell_type', 'any')
+                            if spell_type == 'any' or spell_type in spell1.types:
+                                score += 60  # Strong combo
+                
+                # Element synergy
+                if spell1.element == spell2.element:
+                    score += 10
+                
+                # Type synergy
+                shared_types = set(spell1.types) & set(spell2.types)
+                score += len(shared_types) * 15
+        
+        # Check for self-sufficient combos
+        has_enablers = False
+        has_payoffs = False
+        
+        for spell in spell_set:
+            effects_str = str(spell.resolve_effects)
+            if 'if_caster_has_active_spell' in effects_str:
+                has_payoffs = True
+            if any(t in spell.types for t in ['boost', 'remedy']):
+                has_enablers = True
+        
+        if has_enablers and has_payoffs:
+            score += 80  # Self-sufficient combo potential
+        
+        return score
+    
+    def _evaluate_element_synergy(self, spell_set, current_cards):
+        """Evaluate element synergy with existing cards"""
+        score = 0
+        
+        set_element = spell_set[0].element
+        
+        # Count elements in current cards
+        element_counts = {}
+        for card in current_cards:
+            element = card.element
+            element_counts[element] = element_counts.get(element, 0) + 1
+        
+        # Some diversity is good, but some concentration enables combos
+        if set_element in element_counts:
+            # Adding to existing element
+            current_count = element_counts[set_element]
+            if current_count <= 3:
+                score += 40  # Good concentration
+            else:
+                score += 20  # Still okay but diminishing returns
+        else:
+            # New element
+            if len(element_counts) < 2:
+                score += 60  # First diversity is valuable
+            else:
+                score += 30  # More diversity still good
+        
+        return score
+    
+    def _evaluate_counter_potential(self, set_analysis):
+        """Evaluate ability to counter opponent strategies"""
+        score = 0
+        
+        # Response spells are great counters
+        if 'response' in set_analysis['types']:
+            score += set_analysis['types']['response'] * 40
+        
+        # Disruption effects
+        if 'cancel' in set_analysis['effects']:
+            score += 60
+        if 'discard' in set_analysis['effects']:
+            score += 50
+        
+        # Conjury disruption
+        if set_analysis['has_conjury']:
+            score += 30  # Conjuries can be disruptive
+        
+        # Fast spells can disrupt timing
+        fast_count = (set_analysis['priorities'].get('1', 0) + 
+                     set_analysis['priorities'].get('2', 0))
+        if fast_count > 0:
+            score += fast_count * 20
+        
+        return score
+    
+    def _evaluate_special_abilities(self, spell_set):
+        """Evaluate unique and powerful abilities"""
+        score = 0
+        
+        for spell in spell_set:
+            effects_str = str(spell.resolve_effects) + str(spell.advance_effects)
+            
+            # Movement abilities
+            if 'move_to_future_clash' in effects_str:
+                score += 40
+            if 'recall' in effects_str:
+                score += 50
+            if 'advance' in effects_str:
+                score += 35
+            
+            # Card advantage
+            if 'cast_extra_spell' in effects_str:
+                score += 60
+            if 'draw' in effects_str:
+                score += 40
+            
+            # Powerful effects
+            if 'damage_per_spell' in effects_str:
+                score += 45
+            if 'modify_spell_logic' in str(spell.passive_effects):
+                score += 80  # Very powerful
+            
+            # Flexibility
+            if 'player_choice' in effects_str:
+                score += 30
+        
+        return score
+    
+    def _evaluate_element_category(self, spell_set, current_cards, gs):
+        """Evaluate spell set based on element category strategy"""
+        score = 0
+        
+        if not spell_set:
+            return 0
+            
+        set_element = spell_set[0].element
+        set_category = self.get_element_category(set_element)
+        
+        # Base score from element draft priority
+        draft_priority = self.get_element_draft_priority(set_element)
+        score += (draft_priority - 1.0) * 100  # Convert multiplier to score
+        
+        # Evaluate synergies with spell types in the set
+        type_synergy_score = 0
+        for spell in spell_set:
+            for spell_type in spell.types:
+                synergy = self.get_element_synergy(set_element, spell_type)
+                if synergy > 1.0:
+                    type_synergy_score += (synergy - 1.0) * 50
+        score += type_synergy_score
+        
+        # Check current deck composition
+        if current_cards:
+            current_categories = {}
+            for card in current_cards:
+                category = self.get_element_category(card.element)
+                current_categories[category] = current_categories.get(category, 0) + 1
+            
+            # Strategic category balancing
+            if set_category == 'offense':
+                # Offense is good, but needs defense backup
+                if current_categories.get('defense', 0) == 0:
+                    score -= 30  # Penalty for all offense
+                else:
+                    score += 40  # Good to have offense
+                    
+            elif set_category == 'defense':
+                # Defense is valuable but needs offense
+                if current_categories.get('offense', 0) == 0:
+                    score -= 20  # Need some offense
+                else:
+                    score += 50  # Defense is valuable
+                    
+            elif set_category == 'mobility':
+                # Mobility is excellent for flexibility
+                score += 60
+                # Even better if we have good offense/defense base
+                if current_categories.get('offense', 0) > 0 and current_categories.get('defense', 0) > 0:
+                    score += 30  # Great complement
+                    
+            elif set_category == 'balanced':
+                # Balanced elements are always solid choices
+                score += 45
+                # Especially good for first pick
+                if len(current_cards) == 0:
+                    score += 20
+        
+        # Log decision
+        if self.engine and hasattr(self.engine, 'ai_decision_logs') and type_synergy_score > 0:
+            self.engine.ai_decision_logs.append(
+                f"\\033[90m[AI-DRAFT] {set_element} ({set_category}): "
+                f"priority={draft_priority:.1f}, synergy_score={type_synergy_score}\\033[0m"
+            )
+        
+        return score
+    
+    def _evaluate_element_play(self, card, player, gs):
+        """Evaluate card based on element category during gameplay"""
+        score = 0
+        
+        element = card.element
+        category = self.get_element_category(element)
+        
+        # Situational bonuses based on element category
+        if category == 'offense':
+            # Offense elements excel when enemies are vulnerable
+            enemies = [p for p in gs.players if p != player]
+            for enemy in enemies:
+                if enemy.health <= 3:
+                    score += 15  # Push advantage
+                if len(enemy.hand) <= 1:
+                    score += 10  # They can't defend well
+                    
+        elif category == 'defense':
+            # Defense elements shine when we need protection
+            if player.health <= 3:
+                score += 20  # Critical timing
+            # Also good when enemies are aggressive
+            for opponent in gs.players:
+                if opponent != player:
+                    analysis = self.analyze_opponent_patterns(opponent.name)
+                    if analysis and analysis.get('aggression_level', 0) > 0.6:
+                        score += 15
+                        
+        elif category == 'mobility':
+            # Mobility excels in mid-game for positioning
+            if 2 <= gs.clash_num <= 3:
+                score += 15
+            # Extra value if we have cards to move/advance
+            if len(player.hand) >= 2:
+                score += 10
+                
+        elif category == 'balanced':
+            # Balanced elements are consistently good
+            score += 10
+            # Especially in early game
+            if gs.clash_num == 1:
+                score += 10
+        
+        # Check for element-type synergies
+        for spell_type in card.types:
+            synergy = self.get_element_synergy(element, spell_type)
+            if synergy > 1.0:
+                score += (synergy - 1.0) * 30
+        
+        return score
