@@ -59,7 +59,9 @@ class BaseAI(ABC):
                     'spell_types_used': {},
                     'total_damage_dealt': 0,
                     'total_healing_done': 0,
-                    'cards_discarded': 0
+                    'cards_discarded': 0,
+                    'known_sets': [],  # Track which complete sets they have
+                    'remaining_spells': {}  # Track unplayed spells by elephant
                 }
             
             # Track spells revealed this clash
@@ -73,9 +75,13 @@ class BaseAI(ABC):
                         'element': spell.card.element,
                         'types': spell.card.types,
                         'round': gs.round_num,
-                        'clash': gs.clash_num
+                        'clash': gs.clash_num,
+                        'elephant': spell.card.elephant  # Add elephant for card counting
                     }
                     history['spells_played'].append(spell_info)
+                    
+                    # Update card counting
+                    self.update_card_counting(player.name, spell.card.name)
                     
                     # Track element usage
                     element = spell.card.element
@@ -84,6 +90,17 @@ class BaseAI(ABC):
                     # Track spell type usage
                     for spell_type in spell.card.types:
                         history['spell_types_used'][spell_type] = history['spell_types_used'].get(spell_type, 0) + 1
+                    
+                    # Card counting - identify complete sets
+                    elephant = spell.card.elephant
+                    if elephant not in history['known_sets']:
+                        # Check if we've seen enough spells from this elephant to confirm they have the set
+                        elephant_spells_seen = [s for s in history['spells_played'] 
+                                               if 'elephant' in s and s['elephant'] == elephant]
+                        if len(elephant_spells_seen) >= 2:  # Seen 2+ spells = they have the whole set
+                            history['known_sets'].append(elephant)
+                            # Initialize remaining spells for this set
+                            self._initialize_remaining_spells(history, elephant, gs)
     
     def analyze_opponent_patterns(self, opponent_name):
         """Analyze an opponent's play patterns"""
@@ -110,3 +127,45 @@ class BaseAI(ABC):
         }
         
         return analysis
+    
+    def _initialize_remaining_spells(self, history, elephant, gs):
+        """Initialize the list of remaining spells for a known elephant set"""
+        # Get all spells from this elephant from the game data
+        all_spells_in_set = []
+        for card_id, card in gs.all_cards.items():
+            if card.elephant == elephant:
+                all_spells_in_set.append(card.name)
+        
+        # Track which spells have been played
+        played_spells = [s['name'] for s in history['spells_played'] 
+                        if s.get('elephant') == elephant]
+        
+        # Calculate remaining spells
+        history['remaining_spells'][elephant] = [spell for spell in all_spells_in_set 
+                                                if spell not in played_spells]
+    
+    def get_remaining_spells(self, opponent_name, elephant=None):
+        """Get list of spells opponent hasn't played yet"""
+        if opponent_name not in self.opponent_history:
+            return []
+        
+        history = self.opponent_history[opponent_name]
+        
+        if elephant:
+            return history['remaining_spells'].get(elephant, [])
+        else:
+            # Return all remaining spells
+            all_remaining = []
+            for spells in history['remaining_spells'].values():
+                all_remaining.extend(spells)
+            return all_remaining
+    
+    def update_card_counting(self, opponent_name, played_spell_name):
+        """Update card counting when a spell is played"""
+        if opponent_name in self.opponent_history:
+            history = self.opponent_history[opponent_name]
+            # Remove from remaining spells
+            for elephant, remaining in history['remaining_spells'].items():
+                if played_spell_name in remaining:
+                    remaining.remove(played_spell_name)
+                    break

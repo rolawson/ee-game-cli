@@ -127,7 +127,98 @@ class HardAI(BaseAI):
         timing_score = self._evaluate_timing(card, player, gs)
         score += timing_score
         
+        # Card counting strategy
+        counting_score = self._evaluate_card_counting(card, player, gs)
+        score += counting_score
+        
         return score
+    
+    def _evaluate_card_counting(self, card, player, gs):
+        """Use card counting to make strategic decisions"""
+        score = 0
+        
+        for opponent in gs.players:
+            if opponent == player:
+                continue
+            
+            # Get remaining spells for this opponent
+            remaining_spells = self.get_remaining_spells(opponent.name)
+            history = self.opponent_history.get(opponent.name, {})
+            known_sets = history.get('known_sets', [])
+            
+            if not known_sets:
+                continue
+                
+            # Analyze threats in opponent's remaining cards
+            remaining_threats = self._analyze_remaining_threats(remaining_spells, gs)
+            
+            # Adjust strategy based on what's coming
+            if remaining_threats['high_damage_count'] > 0:
+                # Opponent has big damage spells left
+                if 'remedy' in card.types:
+                    score += 40
+                if 'response' in card.types and 'damage' in str(card.resolve_effects):
+                    score += 35  # Retaliation is good
+                if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                    self.engine.ai_decision_logs.append(
+                        f"\033[90m[AI-COUNTING] {opponent.name} has {remaining_threats['high_damage_count']} high damage spells remaining\033[0m"
+                    )
+            
+            if remaining_threats['cancel_count'] > 0:
+                # Opponent has cancellation left
+                if card.is_conjury:
+                    score -= 20  # Conjuries are risky
+                if 'response' in card.types:
+                    score += 15  # Responses are harder to cancel
+                    
+            if remaining_threats['discard_count'] > 0 and len(player.hand) <= 3:
+                # Low on cards and opponent has discard
+                if card.priority == 'A':
+                    score += 20  # Play cards that can come back
+                    
+            # Element-specific strategies
+            for elephant in known_sets:
+                remaining_for_set = self.get_remaining_spells(opponent.name, elephant)
+                if len(remaining_for_set) == 1:
+                    # We know their last card from this set!
+                    if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                        self.engine.ai_decision_logs.append(
+                            f"\033[90m[AI-COUNTING] {opponent.name}'s last {elephant} spell must be: {remaining_for_set[0]}\033[0m"
+                        )
+                    # Could add specific counters here
+        
+        return score
+    
+    def _analyze_remaining_threats(self, spell_names, gs):
+        """Analyze what threats remain in opponent's unplayed spells"""
+        threats = {
+            'high_damage_count': 0,
+            'cancel_count': 0,
+            'discard_count': 0,
+            'heal_count': 0,
+            'weaken_count': 0
+        }
+        
+        # Look up each spell in game data
+        for spell_name in spell_names:
+            # Find the card data
+            for card_id, card in gs.all_cards.items():
+                if card.name == spell_name:
+                    # Analyze the spell's effects
+                    effects_str = str(card.resolve_effects)
+                    if 'damage' in effects_str and 'value": 2' in effects_str:
+                        threats['high_damage_count'] += 1
+                    if 'cancel' in effects_str:
+                        threats['cancel_count'] += 1
+                    if 'discard' in effects_str:
+                        threats['discard_count'] += 1
+                    if 'heal' in effects_str:
+                        threats['heal_count'] += 1
+                    if 'weaken' in effects_str:
+                        threats['weaken_count'] += 1
+                    break
+        
+        return threats
     
     def _evaluate_timing(self, card, player, gs):
         """Evaluate if this is the right time to play this card"""
