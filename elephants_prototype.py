@@ -50,6 +50,15 @@ ACTION_EMOJIS = {
     'damage': '💥', 'heal': '💙', 'weaken': '📉', 'bolster': '📈',
     'advance': '➡️', 'discard': '🗑️', 'recall': '♻️'
 }
+
+# Spell type emojis
+SPELL_TYPE_EMOJIS = {
+    'conjury': '⚠️',
+    'attack': '🪓',
+    'response': '🛡️',
+    'remedy': '⛑️',
+    'boost': '➡️'
+}
 class RoundOverException(Exception):
     """Custom exception to signal the end of the current round immediately."""
     pass
@@ -283,6 +292,15 @@ class GameState:
 
 # --- DISPLAY ENGINE ---
 class DashboardDisplay:
+    def _get_spell_type_icons(self, card):
+        """Get icons representing the spell's types"""
+        icons = []
+        if card.is_conjury:
+            icons.append(SPELL_TYPE_EMOJIS['conjury'])
+        for spell_type in ['attack', 'response', 'remedy', 'boost']:
+            if spell_type in card.types:
+                icons.append(SPELL_TYPE_EMOJIS[spell_type])
+        return ' '.join(icons)  # Added space between icons
     def draw(self, gs, pov_player_index=0, prompt=""):
         clear_screen(); print(f"{Colors.HEADER}{'='*34}[ Elemental Elephants ]{'='*33}{Colors.ENDC}")
         print(f"Round: {gs.round_num} | Clash: {gs.clash_num} | Ringleader: 🐘 {Colors.BOLD}{gs.players[gs.ringleader_index].name}{Colors.ENDC}")
@@ -294,7 +312,7 @@ class DashboardDisplay:
         max_spells_per_clash = 0
         for p in gs.players:
             for clash_list in p.board:
-                visible_spells = [s for s in clash_list if s.status in ['active', 'prepared', 'cancelled']]
+                visible_spells = [s for s in clash_list if s.status in ['revealed', 'prepared', 'cancelled']]
                 max_spells_per_clash = max(max_spells_per_clash, len(visible_spells))
         
         # Display each player's row, with multiple rows if needed for stacked spells
@@ -320,7 +338,7 @@ class DashboardDisplay:
                 # Add clash content for this row
                 for j in range(4):
                     slot_content = p.board[j]
-                    visible_spells = [s for s in slot_content if s.status in ['active', 'prepared', 'cancelled']]
+                    visible_spells = [s for s in slot_content if s.status in ['revealed', 'prepared', 'cancelled']]
                     
                     if row >= len(visible_spells):
                         # No spell at this row position
@@ -336,7 +354,8 @@ class DashboardDisplay:
                         else:
                             color = Colors.GREY if s.status == 'cancelled' else ''
                             emoji = ELEMENT_EMOJIS.get(s.card.element, '')
-                            slot_str = f"{color}{emoji} {s.card.name}{Colors.ENDC}"
+                            type_icons = self._get_spell_type_icons(s.card)
+                            slot_str = f"{color}{emoji} {s.card.name} {type_icons}{Colors.ENDC}"
                     
                     row_str += slot_str.ljust(30) + " | "
                 
@@ -349,12 +368,15 @@ class DashboardDisplay:
             else:
                 for i, card in enumerate(pov_player.hand):
                     emoji = ELEMENT_EMOJIS.get(card.element, '')
+                    type_icons = self._get_spell_type_icons(card)
                     type_str = '/'.join(card.types) if card.types else 'None'
-                    print(f"[{i+1}] {emoji} {Colors.BOLD}{card.name}{Colors.ENDC} (P:{card.priority}, {type_str})"); 
+                    print(f"[{i+1}] {emoji} {Colors.BOLD}{card.name}{Colors.ENDC} {type_icons} (P:{card.priority}, {type_str})"); 
                     print(f"    {Colors.GREY}> {card.get_instructions_text()}{Colors.ENDC}")
         print("-" * 89);
         if gs.action_log: print(f"{Colors.BOLD}LOG:{Colors.ENDC}"); [print(f"  {entry}") for entry in gs.action_log[-5:]]
         if prompt: print(f"\n>>> {Colors.WARNING}{prompt}{Colors.ENDC}")
+
+
 # --- LOGIC ENGINES ---
 class ConditionChecker:
     def check(self, condition_data, gs, caster, current_card):
@@ -391,19 +413,22 @@ class ConditionChecker:
                 
                 return resolve_count >= required_count
 
-        active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s and s.status == 'active']
+        active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s and s.status == 'revealed']
         if cond_type == 'if_caster_has_active_spell_of_type':
             params = condition_data['parameters']
             spell_type = params['spell_type']
             exclude_self = params.get('exclude_self', False)
             required_count = params.get('count', 1)
             
-            # Special handling for advance phase conditions - check event log for spells that WERE active
-            # This is for cards like Bolts that check "if you had other active spells this clash"
+            # Check if we should use historical data (event log) or current state
+            # If the spell condition explicitly sets check_historical: true, use event log
+            # Otherwise, always check current state (even during advance phase)
+            check_historical = params.get('check_historical', False)
             in_advance_phase = any(event['type'] == 'spell_resolved' for event in gs.event_log if event['clash'] == gs.clash_num)
             
-            if in_advance_phase:
-                # Check event log for spells that were active at the start of resolve phase
+            if check_historical and in_advance_phase:
+                # Check event log for spells that WERE active at the start of resolve phase
+                # This is for cards like Bolts that check "if you had other active spells this clash"
                 count = 0
                 for event in gs.event_log:
                     if (event['type'] == 'spell_active_in_clash' and 
@@ -418,7 +443,7 @@ class ConditionChecker:
                             count += 1
                 return count >= required_count
             else:
-                # During resolve phase, check currently active spells
+                # Check currently active spells (default behavior for all phases)
                 count = 0
                 for spell in active_spells_this_clash:
                     if spell.owner == caster and (spell_type == 'any' or spell_type in spell.card.types):
@@ -611,7 +636,7 @@ class ActionHandler:
                 for i in range(4):
                     spells_in_clash = []
                     for p in gs.players:
-                        spells_in_clash.extend([s for s in p.board[i] if s.status == 'active'])
+                        spells_in_clash.extend([s for s in p.board[i] if s.status == 'revealed'])
                     if spells_in_clash:
                         clash_options[i+1] = (i, spells_in_clash)
                 
@@ -665,7 +690,7 @@ class ActionHandler:
                 for i in range(gs.clash_num - 1, 3):
                     spells_in_clash = []
                     for p in gs.players:
-                        spells_in_clash.extend([s for s in p.board[i] if s.status == 'active'])
+                        spells_in_clash.extend([s for s in p.board[i] if s.status == 'revealed'])
                     if spells_in_clash and i < 3:
                         # Move to next clash
                         for spell in spells_in_clash:
@@ -688,7 +713,7 @@ class ActionHandler:
                 past_spells = []
                 for i in range(gs.clash_num - 1):  # Only past clashes
                     for spell in caster.board[i]:
-                        if spell.status == 'active':
+                        if spell.status == 'revealed':
                             past_spells.append(spell)
                 
                 if not past_spells:
@@ -733,7 +758,7 @@ class ActionHandler:
         if action_type == 'player_choice':
             # Check if Coalesce is active for this player
             has_coalesce = False
-            active_spells = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'active']
+            active_spells = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'revealed']
             for spell in active_spells:
                 if spell.owner == caster and spell.card.name == 'Coalesce':
                     has_coalesce = True
@@ -953,7 +978,7 @@ class ActionHandler:
                     if choice is not None:
                         card_to_cast = caster.hand.pop(choice-1)
                         newly_played_card = PlayedCard(card_to_cast, caster)
-                        newly_played_card.status = 'active'  # Set to active since it's cast mid-resolution
+                        newly_played_card.status = 'revealed'  # Set to active since it's cast mid-resolution
                         gs.players[gs.players.index(caster)].board[gs.clash_num - 1].append(newly_played_card)
                         self.engine.add_to_resolution_queue(newly_played_card)
                         gs.action_log.append(f"{caster.name} casts an extra spell: [{card_to_cast.name}]!")
@@ -969,7 +994,7 @@ class ActionHandler:
                     if caster.hand:
                         card_to_cast = caster.hand.pop(0)
                         newly_played_card = PlayedCard(card_to_cast, caster)
-                        newly_played_card.status = 'active'
+                        newly_played_card.status = 'revealed'
                         gs.players[gs.players.index(caster)].board[gs.clash_num - 1].append(newly_played_card)
                         self.engine.add_to_resolution_queue(newly_played_card)
                         gs.action_log.append(f"{caster.name} casts an extra spell: [{card_to_cast.name}]!")
@@ -1014,7 +1039,7 @@ class ActionHandler:
                 target.max_health += params.get('value', 1); gs.action_log.append(f"{Colors.GREEN}{ACTION_EMOJIS['bolster']} {caster.name}'s [{current_card.name}] bolstered {target.name}. Max health now {target.max_health}.{Colors.ENDC}")
             elif action_type == 'damage_per_spell':
                 # Count active spells matching criteria
-                active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'active']
+                active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'revealed']
                 spell_type = params.get('spell_type', 'any')
                 exclude_self = params.get('exclude_self', False)
                 
@@ -1043,7 +1068,7 @@ class ActionHandler:
             
             elif action_type == 'heal_per_spell':
                 # Count active spells matching criteria
-                active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'active']
+                active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'revealed']
                 spell_type = params.get('spell_type', 'any')
                 exclude_self = params.get('exclude_self', False)
                 
@@ -1102,7 +1127,12 @@ class ActionHandler:
                             self._advance_single_spell(spell_to_advance, gs, caster, current_card, action_data)
                 else:
                     # Single spell advance
-                    self._advance_single_spell(target, gs, caster, current_card, action_data)
+                    if target is None:
+                        gs.action_log.append(f"{Colors.FAIL}[DEBUG] Advance target is None for {current_card.name}{Colors.ENDC}")
+                    elif not isinstance(target, PlayedCard):
+                        gs.action_log.append(f"{Colors.FAIL}[DEBUG] Advance target is not a PlayedCard: {type(target)}{Colors.ENDC}")
+                    else:
+                        self._advance_single_spell(target, gs, caster, current_card, action_data)
             
             
             elif action_type == 'discard':
@@ -1138,7 +1168,7 @@ class ActionHandler:
                 if isinstance(target, PlayedCard):
                     # Create a copy of the spell and add it to the resolution queue
                     copied_card = PlayedCard(target.card, caster)
-                    copied_card.status = 'active'
+                    copied_card.status = 'revealed'
                     caster.board[gs.clash_num - 1].append(copied_card)
                     self.engine.add_to_resolution_queue(copied_card)
                     gs.action_log.append(f"{caster.name} copies [{target.card.name}] from {target.owner.name}!")
@@ -1151,7 +1181,7 @@ class ActionHandler:
                     
                     # Check if Root is protecting this spell in the current clash
                     for spell in owner.board[gs.clash_num - 1]:
-                        if spell.status == 'active' and spell.card.name == 'Root':
+                        if spell.status == 'revealed' and spell.card.name == 'Root':
                             gs.action_log.append(f"[{target.card.name}] is protected by {owner.name}'s [Root] and cannot be recalled!")
                             return
                     
@@ -1176,7 +1206,7 @@ class ActionHandler:
                     count = 0
                     # Count active spells of the specified type for this enemy in current clash
                     for spell in enemy.board[gs.clash_num - 1]:
-                        if spell.status == 'active' and spell_type in spell.card.types:
+                        if spell.status == 'revealed' and spell_type in spell.card.types:
                             count += 1
                     
                     if count > 0 and not enemy.is_invulnerable:
@@ -1195,7 +1225,7 @@ class ActionHandler:
                     # Check if Root is protecting this spell in the current clash
                     owner = target.owner
                     for spell in owner.board[gs.clash_num - 1]:
-                        if spell.status == 'active' and spell.card.name == 'Root':
+                        if spell.status == 'revealed' and spell.card.name == 'Root':
                             gs.action_log.append(f"[{target.card.name}] is protected by {owner.name}'s [Root] and cannot be cancelled!")
                             return
                     
@@ -1209,7 +1239,7 @@ class ActionHandler:
                             owner = spell.owner
                             protected = False
                             for root_spell in owner.board[gs.clash_num - 1]:
-                                if root_spell.status == 'active' and root_spell.card.name == 'Root':
+                                if root_spell.status == 'revealed' and root_spell.card.name == 'Root':
                                     gs.action_log.append(f"[{spell.card.name}] is protected by {owner.name}'s [Root] and cannot be cancelled!")
                                     protected = True
                                     break
@@ -1344,7 +1374,7 @@ class ActionHandler:
             
             elif action_type == 'weaken_per_spell':
                 # Count active spells matching criteria (similar to damage_per_spell)
-                active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'active']
+                active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'revealed']
                 spell_type = params.get('spell_type', 'any')
                 exclude_self = params.get('exclude_self', False)
                 
@@ -1375,7 +1405,7 @@ class ActionHandler:
                     clash_spells = []
                     for player in gs.players:
                         for spell in player.board[i]:
-                            if spell.status == 'active':  # Only active spells can be advanced
+                            if spell.status == 'revealed':  # Only revealed spells can be advanced
                                 clash_spells.append(spell)
                     if clash_spells:
                         past_clash_spells[i] = clash_spells
@@ -1455,11 +1485,14 @@ class ActionHandler:
         if target_str == 'this_spell':
             for clash_list in caster.board:
                 for spell in clash_list:
-                    if spell.card.id == current_card.id: return [spell]
+                    if spell.card.id == current_card.id: 
+                        return [spell]
+            # Debug: spell not found
+            gs.action_log.append(f"{Colors.FAIL}[DEBUG] Could not find 'this_spell' for {current_card.name} (ID: {current_card.id}){Colors.ENDC}")
             return []
         enemies = [p for p in gs.players if p != caster]; valid_enemies = [p for p in enemies if not p.is_invulnerable]
         # Only look for active conjuries in the current clash
-        active_conjuries = [s for p in gs.players for s in p.board[gs.clash_num-1] if s and s.card.is_conjury and s.status == 'active']
+        active_conjuries = [s for p in gs.players for s in p.board[gs.clash_num-1] if s and s.card.is_conjury and s.status == 'revealed']
         if target_str == 'prompt_enemy' or target_str == 'prompt_player':
             # prompt_enemy and prompt_player both target enemies only
             if not valid_enemies: return []
@@ -1491,7 +1524,7 @@ class ActionHandler:
         if target_str == 'all_enemies_and_their_conjuries':
             all_targets = valid_enemies + [c for c in active_conjuries if c.owner in valid_enemies]
             return [all_targets] if all_targets else []
-        active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'active']
+        active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'revealed']
         if target_str == 'prompt_other_friendly_active_spell':
             options_list = [s for s in active_spells_this_clash if s.owner == caster and s.card.id != current_card.id]
             if not options_list: return []
@@ -1520,7 +1553,7 @@ class ActionHandler:
                     all_board_spells.append(spell)
             # Add active spells from current clash
             for spell in caster.board[gs.clash_num - 1]:
-                if spell.status == 'active':
+                if spell.status == 'revealed':
                     all_board_spells.append(spell)
             
             if not all_board_spells: return []
@@ -1537,7 +1570,7 @@ class ActionHandler:
             # We need to find enemies who meet the condition from the action's parent effect
             enemies = [p for p in gs.players if p != caster and not p.is_invulnerable]
             enemies_who_met_condition = []
-            active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'active']
+            active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'revealed']
             
             # Determine which spell type to check based on the spell using this
             # For Reflect, it's attack spells. For Enfeeble, it's boost spells.
@@ -1562,7 +1595,7 @@ class ActionHandler:
             for enemy in enemies:
                 # Only check current clash
                 for spell in enemy.board[gs.clash_num - 1]:
-                    if spell.status == 'active' and 'boost' in spell.card.types:
+                    if spell.status == 'revealed' and 'boost' in spell.card.types:
                         enemy_boost_spells.append(spell)
             
             if not enemy_boost_spells: return []
@@ -1580,7 +1613,7 @@ class ActionHandler:
             enemy_spells = []
             for enemy in enemies:
                 for spell in enemy.board[gs.clash_num - 1]:
-                    if spell.status == 'active':
+                    if spell.status == 'revealed':
                         enemy_spells.append(spell)
             
             if not enemy_spells: return []
@@ -1602,7 +1635,7 @@ class ActionHandler:
             enemy_remedy_spells = []
             for enemy in enemies:
                 for spell in enemy.board[gs.clash_num - 1]:
-                    if spell.status == 'active' and 'remedy' in spell.card.types:
+                    if spell.status == 'revealed' and 'remedy' in spell.card.types:
                         enemy_remedy_spells.append(spell)
             return enemy_remedy_spells
         
@@ -1611,7 +1644,7 @@ class ActionHandler:
             enemy_attack_spells = []
             for enemy in enemies:
                 for spell in enemy.board[gs.clash_num - 1]:
-                    if spell.status == 'active' and 'attack' in spell.card.types:
+                    if spell.status == 'revealed' and 'attack' in spell.card.types:
                         enemy_attack_spells.append(spell)
             return enemy_attack_spells
         
@@ -1625,13 +1658,13 @@ class ActionHandler:
                 if gs.clash_num < 4:  # Can't move from clash 4
                     for player in gs.players:
                         for spell in player.board[gs.clash_num - 1]:
-                            if spell.status == 'active':
+                            if spell.status == 'revealed':
                                 all_active_spells.append(spell)
             else:
                 # For other actions (like cancel), check current clash only
                 for player in gs.players:
                     for spell in player.board[gs.clash_num - 1]:
-                        if spell.status == 'active':
+                        if spell.status == 'revealed':
                             all_active_spells.append(spell)
             
             if not all_active_spells: return []
@@ -1675,7 +1708,7 @@ class ActionHandler:
                 past_spells = []
                 for i in range(gs.clash_num - 1):  # Only past clashes
                     for spell in caster.board[i]:
-                        if spell.status == 'active':
+                        if spell.status == 'revealed':
                             past_spells.append(spell)
                 
                 if not past_spells: return []
@@ -1716,7 +1749,7 @@ class ActionHandler:
             for enemy in enemies:
                 enemy_spells = []
                 for spell in active_spells_this_clash:
-                    if spell.owner == enemy and spell.status == 'active':
+                    if spell.owner == enemy and spell.status == 'revealed':
                         enemy_spells.append(spell)
                 
                 if len(enemy_spells) >= 2:
@@ -1747,7 +1780,7 @@ class ActionHandler:
             # For Clap's advance effect - all friendly active spells in current clash
             friendly_spells = []
             for spell in active_spells_this_clash:
-                if spell.owner == caster and spell.status == 'active':
+                if spell.owner == caster and spell.status == 'revealed':
                     friendly_spells.append(spell)
             return friendly_spells
         
@@ -1766,7 +1799,7 @@ class ActionHandler:
             for player in gs.players:
                 if player != target.owner:
                     for spell in player.board[gs.clash_num - 1]:
-                        if spell.status == 'active' and spell.card.name == 'Break':
+                        if spell.status == 'revealed' and spell.card.name == 'Break':
                             gs.action_log.append(f"[{target.card.name}] cannot advance because {player.name}'s [Break] prevents it!")
                             return  # Prevent the advance from happening
         
@@ -1830,6 +1863,28 @@ class GameEngine:
         self.ai_player = self.ai_strategies.get(1, MediumAI())
         if self.ai_player and not hasattr(self.ai_player, 'engine'):
             self.ai_player.engine = self
+    
+    def _format_spell_name(self, card):
+        """Format spell name with type icons"""
+        type_icons = self.display._get_spell_type_icons(card)
+        return f"[{card.name}] {type_icons}"
+    
+    def _is_spell_active(self, spell, clash_num=None):
+        """Check if a spell is truly active (revealed and in current clash)"""
+        if clash_num is None:
+            clash_num = self.gs.clash_num
+        
+        # Must be revealed (not prepared or cancelled)
+        if spell.status != 'revealed':
+            return False
+            
+        # Must be in the current clash
+        for player in self.gs.players:
+            if spell in player.board[clash_num - 1]:
+                return True
+                
+        return False
+    
     def _pause(self, message=""): prompt = f"{message} {Colors.GREY}[Press Enter to continue...]{Colors.ENDC}"; self.display.draw(self.gs, prompt=prompt); input()
     def _prompt_for_choice(self, player, options, prompt_message, view_key='name'):
         while True:
@@ -1974,13 +2029,17 @@ class GameEngine:
 
             if card_to_play:
                 # --- THIS IS THE KEY FIX ---
+                # Create the played card and add to board
+                played_card = PlayedCard(card_to_play, player)
+                player.board[self.gs.clash_num - 1].append(played_card)
+                
                 # Log opponent's play generically, but your play specifically.
                 if player.is_human:
-                    log_message = f"{player.name} prepared [{card_to_play.name}]."
+                    formatted_name = self._format_spell_name(card_to_play)
+                    log_message = f"{player.name} prepared {formatted_name}."
                 else:
                     log_message = f"{player.name} has prepared a spell."
-                
-                player.board[self.gs.clash_num - 1].append(PlayedCard(card_to_play, player))
+                    
                 self.gs.action_log.append(log_message)
             else:
                 self.gs.action_log.append(f"{player.name} did not play a spell.")
@@ -1993,17 +2052,18 @@ class GameEngine:
         for p in self.gs.players:
             for spell in p.board[self.gs.clash_num - 1]:
                 if spell.status == 'prepared':
-                    spell.status = 'active'
+                    spell.status = 'revealed'
         
         # Show all revealed spells with instructions
         self.gs.action_log.append(f"{Colors.BOLD}Spells Revealed:{Colors.ENDC}")
         for p in self.gs.players:
             for spell in p.board[self.gs.clash_num - 1]:
-                if spell.status == 'active':
+                if spell.status == 'revealed':
                     emoji = ELEMENT_EMOJIS.get(spell.card.element, '')
+                    type_icons = self.display._get_spell_type_icons(spell.card)
                     type_str = '/'.join(spell.card.types) if spell.card.types else 'None'
                     conjury_str = " [CONJURY]" if spell.card.is_conjury else ""
-                    self.gs.action_log.append(f"  {p.name}: {emoji} [{spell.card.name}]{conjury_str} (P:{spell.card.priority}, {type_str})")
+                    self.gs.action_log.append(f"  {p.name}: {emoji} [{spell.card.name}] {type_icons}{conjury_str} (P:{spell.card.priority}, {type_str})")
                     self.gs.action_log.append(f"    {Colors.GREY}> {spell.card.get_instructions_text()}{Colors.ENDC}")
         
         # Show AI decision logs after reveal
@@ -2072,7 +2132,7 @@ class GameEngine:
     def _run_resolve_phase(self) -> None:
         self.gs.action_log.clear(); self.gs.action_log.append(f"--- Clash {self.gs.clash_num}: RESOLVE ---")
         
-        active_spells = [s for p in self.gs.players for s in p.board[self.gs.clash_num-1] if s.status == 'active']
+        active_spells = [s for p in self.gs.players for s in p.board[self.gs.clash_num-1] if s.status == 'revealed']
         self.gs.resolution_queue = []
         
         # Fire events for all spells that are active at the start of resolve phase
@@ -2088,7 +2148,7 @@ class GameEngine:
         for player in self.gs.players:
             modifier = 0
             for spell in active_spells:
-                if spell.owner == player and spell.card.name == 'Accelerator' and spell.status == 'active':
+                if spell.owner == player and spell.card.name == 'Accelerator' and spell.status == 'revealed':
                     # Accelerator reduces priority by 2 for other friendly spells
                     modifier -= 2
             if modifier != 0:
@@ -2117,7 +2177,7 @@ class GameEngine:
             caster: Player = self.gs.players[spell_info['caster_idx']]
             played_card: PlayedCard = spell_info['played_card']
             
-            if played_card in processed_this_phase or played_card.status != 'active':
+            if played_card in processed_this_phase or played_card.status != 'revealed':
                 continue
             
             # Check if spell is still in the current clash (it might have been moved by Gravitate)
@@ -2133,7 +2193,8 @@ class GameEngine:
                 continue
 
             self.gs.action_log.clear()
-            self.gs.action_log.append(f"--> Resolving {caster.name}'s [{Colors.BOLD}{played_card.card.name}{Colors.ENDC}] (P:{played_card.card.priority})")
+            formatted_name = self._format_spell_name(played_card.card)
+            self.gs.action_log.append(f"--> Resolving {caster.name}'s {Colors.BOLD}{formatted_name}{Colors.ENDC} (P:{played_card.card.priority})")
             self.gs.action_log.append(f"    {Colors.GREY}{played_card.card.get_instructions_text()}{Colors.ENDC}")
             self._pause("Executing effect...")
 
@@ -2161,7 +2222,7 @@ class GameEngine:
         self.gs.action_log.append(f"--- Clash {self.gs.clash_num}: ADVANCE ---"); self._pause()
         
         # We need to copy the list as the underlying board state can change
-        advancing_spells = [s for p in self.gs.players for s in p.board[self.gs.clash_num - 1] if s.status == 'active' and s.card.advance_effects]
+        advancing_spells = [s for p in self.gs.players for s in p.board[self.gs.clash_num - 1] if s.status == 'revealed' and s.card.advance_effects]
         
         if not advancing_spells:
             self.gs.action_log.append("No spells to advance this clash.")
@@ -2169,7 +2230,7 @@ class GameEngine:
 
         for played_card in advancing_spells:
             if self.gs.game_over: return
-            if played_card.status != 'active': continue # Skip if cancelled mid-phase
+            if played_card.status != 'revealed': continue # Skip if cancelled mid-phase
             
             # Check if spell is still in the current clash (it might have been moved)
             caster = played_card.owner
@@ -2182,7 +2243,8 @@ class GameEngine:
             if not spell_still_in_current_clash:
                 continue  # Skip spells that were moved to future clashes
             self.gs.action_log.clear()
-            self.gs.action_log.append(f"--> Advancing {caster.name}'s [{played_card.card.name}]...")
+            formatted_name = self._format_spell_name(played_card.card)
+            self.gs.action_log.append(f"--> Advancing {caster.name}'s {formatted_name}...")
             self._pause()
             for effect in played_card.card.advance_effects:
                 # Call the correct method: _execute_action for a single effect

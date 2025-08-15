@@ -30,7 +30,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": true,
-    "instruction": "💥DAMAGE 💥DAMAGE"
+    "instruction": "💥 DAMAGE 💥 DAMAGE"
   },
   {
     "id": 2,
@@ -61,7 +61,7 @@
     ],
     "theme": "Damage your foes!",
     "base": true,
-    "instruction": "💥DAMAGE any number of enemies and CONJURY spells."
+    "instruction": "💥 DAMAGE any number of enemies and CONJURY spells."
   },
   {
     "id": 3,
@@ -114,7 +114,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": true,
-    "instruction": "RESOLVE: If you have other active ATTACK spells: THEN: 💥DAMAGE\nADVANCE: Advance this spell. ⏩"
+    "instruction": "RESOLVE: If you have other active ATTACK spells: THEN: 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 4,
@@ -147,7 +147,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": true,
-    "instruction": "❤️HEAL ❤️HEAL"
+    "instruction": "💙 HEAL 💙 HEAL"
   },
   {
     "id": 5,
@@ -200,7 +200,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": true,
-    "instruction": "RESOLVE: If you have other active REMEDY spells: THEN: ❤️HEAL\nADVANCE: Advance this spell. ⏩"
+    "instruction": "RESOLVE: If you have other active REMEDY spells: THEN: 💙 HEAL\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 6,
@@ -220,25 +220,25 @@
         "condition": {
           "type": "always"
         },
-        "action": {
-          "type": "player_choice",
-          "options": [
-            {
-              "type": "damage",
-              "target": "prompt_player_or_conjury",
-              "parameters": {
-                "value": 1
-              }
-            },
-            {
-              "type": "heal",
-              "target": "self",
-              "parameters": {
-                "value": 1
-              }
-            }
-          ]
+          "action": {
+    "type": "sequence",
+    "actions": [
+      {
+        "type": "damage",
+        "target": "prompt_player_or_conjury",
+        "parameters": {
+          "value": 1
         }
+      },
+      {
+        "type": "heal",
+        "target": "self",
+        "parameters": {
+          "value": 1
+        }
+      }
+    ]
+  }
       }
     ],
     "advance_effects": [],
@@ -246,7 +246,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": true,
-    "instruction": "💥DAMAGE ❤️HEAL"
+    "instruction": "💥 DAMAGE 💙 HEAL"
   },
   {
     "id": 7,
@@ -295,7 +295,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": true,
-    "instruction": "If this spell previously resolved: THEN: 💥DAMAGE 💥DAMAGE Otherwise, 💥DAMAGE"
+    "instruction": "If this spell previously resolved: THEN: 💥 DAMAGE 💥 DAMAGE Otherwise, 💥 DAMAGE"
   },
   {
     "id": 8,
@@ -403,7 +403,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": true,
-    "instruction": "🔻WEAKEN"
+    "instruction": "🔻 WEAKEN"
   },
   {
     "id": 11,
@@ -456,7 +456,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": true,
-    "instruction": "RESOLVE: If you have other active ATTACK spells: THEN: 💥DAMAGE 💥DAMAGE\nADVANCE: Advance this spell. ⏩"
+    "instruction": "RESOLVE: If you have other active ATTACK spells: THEN: 💥 DAMAGE 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 12,
@@ -581,7 +581,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": true,
-    "instruction": "❤️HEAL Or, ❤️HEAL for each of your other active spells."
+    "instruction": "💙 HEAL Or, 💙 HEAL for each of your other active spells."
   },
   {
     "id": 15,
@@ -628,7 +628,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": true,
-    "instruction": "💥DAMAGE Or, 💥DAMAGE for each of your other active spells."
+    "instruction": "💥 DAMAGE Or, 💥 DAMAGE for each of your other active spells."
   },
   {
     "id": 16,
@@ -661,7 +661,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": true,
-    "instruction": "🛡️BOLSTER"
+    "instruction": "🛡️ BOLSTER"
   },
   {
     "id": 17,
@@ -714,7 +714,7 @@
     "notfirst": 1,
     "notlast": 1,
     "base": true,
-    "instruction": "RESOLVE: If you have active REMEDY spells: THEN: 💥DAMAGE\nADVANCE: Advance this spell. ⏩"
+    "instruction": "RESOLVE: If you have active REMEDY spells: THEN: 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 18,
@@ -767,7 +767,7 @@
     "notfirst": 1,
     "notlast": 1,
     "base": true,
-    "instruction": "RESOLVE: If you have active ATTACK spells: THEN: ❤️HEAL\nADVANCE: Advance this spell. ⏩"
+    "instruction": "RESOLVE: If you have active ATTACK spells: THEN: 💙 HEAL\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 19,
@@ -891,7 +891,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": false,
-    "instruction": "💥DAMAGE 💥DAMAGE"
+    "instruction": "💥 DAMAGE 💥 DAMAGE"
   },
   {
     "id": 22,
@@ -1018,7 +1018,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": false,
-    "instruction": "If this spell was active in at least 2 other clashes: THEN: 🔻WEAKEN 🔻WEAKEN Otherwise, 💥DAMAGE"
+    "instruction": "If this spell was active in at least 2 other clashes: THEN: 🔻 WEAKEN 🔻 WEAKEN Otherwise, 💥 DAMAGE"
   },
   {
     "id": 25,
@@ -1056,7 +1056,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": true,
-    "instruction": "If enemies have active ATTACK spells: THEN: 💥DAMAGE 💥DAMAGE 💥DAMAGE each of those players."
+    "instruction": "If enemies have active ATTACK spells: THEN: 💥 DAMAGE 💥 DAMAGE 💥 DAMAGE each of those players."
   },
   {
     "id": 26,
@@ -1101,7 +1101,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": true,
-    "instruction": "🔻WEAKEN 💥DAMAGE"
+    "instruction": "🔻 WEAKEN 💥 DAMAGE"
   },
   {
     "id": 27,
@@ -1180,7 +1180,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": true,
-    "instruction": "RESOLVE: ❤️HEAL\nADVANCE: Advance this spell once. <icon><advance /></icon>"
+    "instruction": "RESOLVE: 💙 HEAL\nADVANCE: Advance this spell once. <icon><advance /></icon>"
   },
   {
     "id": 29,
@@ -1234,7 +1234,7 @@
     "notfirst": 1,
     "notlast": 0,
     "base": true,
-    "instruction": "RESOLVE: 🛡️BOLSTER\nADVANCE: If you have other active spells: THEN: Advance this spell once. ⏩"
+    "instruction": "RESOLVE: 🛡️ BOLSTER\nADVANCE: If you have other active spells: THEN: Advance this spell once. ⏩"
   },
   {
     "id": 30,
@@ -1287,7 +1287,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": true,
-    "instruction": "RESOLVE: 💥DAMAGE\nADVANCE: If there are other active <icon><attack/></icon> spells: THEN: Advance this spell. ⏩"
+    "instruction": "RESOLVE: 💥 DAMAGE\nADVANCE: If there are other active <icon><attack/></icon> spells: THEN: Advance this spell. ⏩"
   },
   {
     "id": 31,
@@ -1334,7 +1334,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": false,
-    "instruction": "If enemies have active ATTACK spells: THEN: <cardicon>🔻WEAKEN</cardicon> 💥DAMAGE each of those players."
+    "instruction": "If enemies have active ATTACK spells: THEN: <cardicon>🔻 WEAKEN</cardicon> 💥 DAMAGE each of those players."
   },
   {
     "id": 32,
@@ -1371,7 +1371,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: If enemies have active REMEDY spells: THEN: Cancel their spells.\nADVANCE: Otherwise, advance this spell. ⏩"
+    "instruction": "If enemies have active BOOST spells: THEN: Recall 1 of those spells."
   },
   {
     "id": 33,
@@ -1481,7 +1481,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: 💥DAMAGE\nADVANCE: Advance this spell once. <icon><advance /></icon>"
+    "instruction": "RESOLVE: 💥 DAMAGE\nADVANCE: Advance this spell once. <icon><advance /></icon>"
   },
   {
     "id": 36,
@@ -1581,7 +1581,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": false,
-    "instruction": "You may 💥DAMAGE yourself to 💥DAMAGE 💥DAMAGE 💥DAMAGE"
+    "instruction": "You may 💥 DAMAGE yourself to 💥 DAMAGE 💥 DAMAGE 💥 DAMAGE"
   },
   {
     "id": 38,
@@ -1650,7 +1650,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: You may 💥DAMAGE yourself. If you do: THEN: <cardicon>🔻WEAKEN</cardicon> for each of your active ATTACK spells.\nADVANCE: Advance this spell. <icon><advance /></icon>"
+    "instruction": "RESOLVE: You may 💥 DAMAGE yourself. If you do: THEN: <cardicon>🔻 WEAKEN</cardicon> for each of your active ATTACK spells.\nADVANCE: Advance this spell. <icon><advance /></icon>"
   },
   {
     "id": 39,
@@ -1702,7 +1702,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": false,
-    "instruction": "You may 💥DAMAGE yourself to cast up to 2 extra spells."
+    "instruction": "You may 💥 DAMAGE yourself to cast up to 2 extra spells."
   },
   {
     "id": 40,
@@ -1747,7 +1747,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": false,
-    "instruction": "🛡️BOLSTER ❤️HEAL"
+    "instruction": "🛡️ BOLSTER 💙 HEAL"
   },
   {
     "id": 41,
@@ -1812,7 +1812,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": false,
-    "instruction": "💥DAMAGE each enemy for each of their active BOOST spells."
+    "instruction": "💥 DAMAGE each enemy for each of their active BOOST spells."
   },
   {
     "id": 43,
@@ -1860,7 +1860,7 @@
     "notfirst": 0,
     "notlast": 2,
     "base": false,
-    "instruction": "RESOLVE: If this spell advanced: THEN: 💥DAMAGE\nADVANCE: Advance this spell. ⏩"
+    "instruction": "RESOLVE: If this spell advanced: THEN: 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 44,
@@ -1895,11 +1895,7 @@
         "condition": {
           "type": "if_not",
           "sub_condition": {
-            "type": "if_enemy_has_active_spell_of_type",
-            "parameters": {
-              "spell_type": "remedy",
-              "count": 1
-            }
+            "type": "if_resolve_condition_was_met"
           }
         },
         "action": {
@@ -1967,7 +1963,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: If enemies have active BOOST spells: THEN: 💥DAMAGE each of those players.\nADVANCE: THEN: And, advance this spell. ⏩"
+    "instruction": "RESOLVE: If enemies have active BOOST spells: THEN: 💥 DAMAGE each of those players.\nADVANCE: THEN: And, advance this spell. ⏩"
   },
   {
     "id": 46,
@@ -2019,7 +2015,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: If enemies have active BOOST spells: THEN: 💥DAMAGE\nADVANCE: Advance this spell. ⏩"
+    "instruction": "RESOLVE: If enemies have active BOOST spells: THEN: 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 47,
@@ -2112,7 +2108,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": false,
-    "instruction": "If enemies have active ATTACK spells: THEN: <hugeicon>🛡️BOLSTER</hugeicon> ❤️HEAL"
+    "instruction": "If enemies have active ATTACK spells: THEN: <hugeicon>🛡️ BOLSTER</hugeicon> 💙 HEAL"
   },
   {
     "id": 49,
@@ -2167,7 +2163,7 @@
     "notfirst": 1,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: 🔻WEAKEN\nADVANCE: If you have other active spells: THEN: Advance this spell once. ⏩"
+    "instruction": "RESOLVE: 🔻 WEAKEN\nADVANCE: If you have other active spells: THEN: Advance this spell once. ⏩"
   },
   {
     "id": 50,
@@ -2302,7 +2298,7 @@
     "notfirst": 1,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: You may discard 1 spell from your hand: THEN: 💥DAMAGE\nADVANCE: Advance this spell. ⏩"
+    "instruction": "RESOLVE: You may discard 1 spell from your hand: THEN: 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 52,
@@ -2437,7 +2433,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": false,
-    "instruction": "If enemies have active ATTACK spells: THEN: 💥DAMAGE 💥DAMAGE , and cancel those spells."
+    "instruction": "If enemies have active ATTACK spells: THEN: 💥 DAMAGE 💥 DAMAGE , and cancel those spells."
   },
   {
     "id": 55,
@@ -2483,7 +2479,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": false,
-    "instruction": "THEN: 💥DAMAGE 💥DAMAGE or ❤️HEAL ❤️HEAL"
+    "instruction": "THEN: 💥 DAMAGE 💥 DAMAGE or 💙 HEAL 💙 HEAL"
   },
   {
     "id": 56,
