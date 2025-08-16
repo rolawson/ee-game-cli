@@ -185,6 +185,8 @@ class Card:
             if value > 1:
                 return f"Cast up to {value} extra spells from your hand"
             return f"Cast an extra spell from your hand"
+        elif action_type == 'damage_per_spell_from_other_clashes':
+            return f"Deal damage equal to spells that were active in other clashes"
         elif action_type == 'damage_per_spell':
             spell_type = params.get('spell_type', 'any')
             return f"Deal damage to {target} equal to your other active {spell_type} spells"
@@ -755,6 +757,46 @@ class ActionHandler:
                     gs.action_log.append(f"{Colors.GREY}No valid targets for {action_type}.{Colors.ENDC}"); self.engine._pause()
                     return
 
+        if action_type == 'auto_optimal_choice':
+            # Automatically choose the optimal option based on comparison
+            params = action_data.get('parameters', {})
+            comparison = params.get('comparison', 'count_active_spells')
+            threshold = params.get('threshold', 3)
+            
+            # Evaluate the comparison
+            comparison_value = 0
+            if comparison == 'count_active_spells':
+                # Count caster's other active spells
+                for spell in caster.board[gs.clash_num - 1]:
+                    if spell.status == 'revealed' and spell.card != current_card:
+                        comparison_value += 1
+            # Add other comparison types here as needed
+            
+            # Get valid options
+            valid_options = []
+            for option in action_data.get('options', []):
+                option_targets = self._resolve_target(option, gs, caster, current_card)
+                if option_targets:
+                    valid_options.append(option)
+            
+            if not valid_options:
+                gs.action_log.append(f"{Colors.GREY}No valid options available.{Colors.ENDC}")
+                return True
+                
+            # Choose based on threshold
+            if comparison_value >= threshold and len(valid_options) >= 2:
+                # Choose the second option (typically the "per spell" option)
+                chosen_option = valid_options[1]
+                gs.action_log.append(f"{caster.name}'s [{current_card.name}] automatically chooses optimal option ({comparison_value} other active spells).")
+            else:
+                # Choose the first option (typically the fixed value option)
+                chosen_option = valid_options[0]
+                if comparison_value > 0:
+                    gs.action_log.append(f"{caster.name}'s [{current_card.name}] chooses fixed option ({comparison_value} other active spells).")
+            
+            self._execute_action(chosen_option, gs, caster, current_card)
+            return True
+
         if action_type == 'player_choice':
             # Check if Coalesce is active for this player
             has_coalesce = False
@@ -1037,6 +1079,39 @@ class ActionHandler:
                     gs.action_log.append(f"{caster.name}'s [{current_card.name}] weakened and CANCELLED [{target.card.name}].")
             elif action_type == 'bolster':
                 target.max_health += params.get('value', 1); gs.action_log.append(f"{Colors.GREEN}{ACTION_EMOJIS['bolster']} {caster.name}'s [{current_card.name}] bolstered {target.name}. Max health now {target.max_health}.{Colors.ENDC}")
+            elif action_type == 'damage_per_spell_from_other_clashes':
+                # Count active spells that were active in other clashes (for Impact)
+                damage = 0
+                exclude_self = params.get('exclude_self', True)
+                
+                # Check all clashes except the current one
+                for clash_idx in range(4):
+                    if clash_idx == gs.clash_num - 1:
+                        continue  # Skip current clash
+                    
+                    # Count revealed spells in other clashes
+                    for player in gs.players:
+                        for spell in player.board[clash_idx]:
+                            if spell and spell.status == 'revealed':
+                                # Exclude self if specified
+                                if exclude_self and spell.card == current_card and spell.owner == caster:
+                                    continue
+                                damage += 1
+                
+                if damage > 0 and isinstance(target, Player) and not target.is_invulnerable:
+                    original_health = target.health
+                    target.health = max(0, target.health - damage)
+                    gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage} damage to {target.name} ({damage} spell(s) from other clashes). ({target.health}/{target.max_health}){Colors.ENDC}")
+                    self._fire_event('player_damaged', gs, player=caster.name, target=target.name, value=damage, card_id=current_card.id)
+                    if target.health == 0:
+                        death_result = self.engine._handle_trunk_loss(target)
+                        if death_result == 'game_over':
+                            gs.game_over = True
+                            if caster.trunks > 0:
+                                raise RoundOverException()
+                elif damage == 0:
+                    gs.action_log.append(f"{caster.name}'s [{current_card.name}] found no spells from other clashes to count.")
+                    
             elif action_type == 'damage_per_spell':
                 # Count active spells matching criteria
                 active_spells_this_clash = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'revealed']

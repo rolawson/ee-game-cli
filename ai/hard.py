@@ -40,129 +40,166 @@ class HardAI(BaseAI):
         return best[0]
     
     def _evaluate_card(self, card, player, gs):
-        """Score a card based on game state"""
+        """Score a card based on game state - simplified and rebalanced"""
         score = 0
         
-        # Priority scoring - faster is better early game
-        if gs.clash_num <= 2 and card.priority != 'A':
-            score += (5 - int(card.priority)) * 10
+        # === CORE SCORING (High Priority) ===
         
-        # Critical health - prioritize healing
-        if player.health <= 2 and 'remedy' in card.types:
-            score += 150
-        elif player.health <= 3 and 'remedy' in card.types:
-            score += 80
-            
-        # Enemy at low health - prioritize damage
-        low_health_enemies = [p for p in gs.players if p != player and p.health <= 2]
-        if low_health_enemies and 'attack' in card.types:
-            score += 120
-            
-        # Enemy with empty hand - huge advantage
-        empty_hand_enemies = [p for p in gs.players if p != player and len(p.hand) == 0]
-        if empty_hand_enemies:
-            # They can't play spells next clash - be very aggressive
-            if 'attack' in card.types:
-                score += 100  # High priority to damage
-            if 'cancel' in str(card.resolve_effects) or 'discard' in str(card.resolve_effects):
-                score += 80  # Control spells are also great
-            # Boost spells are good when enemy can't interfere
-            if 'boost' in card.types:
-                score += 70
-            
-        # Boost spells when we have other spells
-        if 'boost' in card.types and len([c for c in player.hand if 'boost' not in c.types]) >= 2:
-            score += 60
-            
-        # Response spells - counter-play potential
-        if 'response' in card.types:
-            response_value = self._evaluate_response_counterplay(card, player, gs)
-            score += response_value
-                
-        # Conjury spells - powerful but vulnerable
-        if card.is_conjury:
-            # Base value is high
-            score += 60
-            
-            # But check for cancel threats
-            cancel_risk = 0
-            for opponent in gs.players:
-                if opponent != player:
-                    # Check opponent's hand and remaining spells
-                    remaining = self.get_remaining_spells(opponent.name)
-                    if any('cancel' in spell.lower() for spell in remaining):
-                        cancel_risk += 30
-                    
-                    # Check if opponent typically plays attack spells (can cancel conjuries)
-                    analysis = self.analyze_opponent_patterns(opponent.name)
-                    if analysis and analysis.get('aggression_level', 0) > 0.4:
-                        cancel_risk += 20
-            
-            score -= cancel_risk
-            
-            if self.engine and hasattr(self.engine, 'ai_decision_logs') and cancel_risk > 0:
-                self.engine.ai_decision_logs.append(
-                    f"\033[90m[AI-RISK] {card.name} conjury has {cancel_risk} cancel risk\033[0m"
-                )
-            
-        # Cancel/Discard when enemies have multiple spells
-        if 'cancel' in str(card.resolve_effects) or 'discard' in str(card.resolve_effects):
-            # This is a rough heuristic - in later clashes enemies have more spells
-            if gs.clash_num >= 2:
-                score += 70
-                
-        # Avoid cards with restrictions at wrong times
-        if gs.clash_num == 1 and card.notfirst == 1:
-            score -= 50
-        elif gs.clash_num == 4 and card.notlast == 1:
-            score -= 50
-            
-        # Element synergy (if we played same element before)
-        if gs.clash_num > 1:
-            for past_clash in range(gs.clash_num - 1):
-                for spell in player.board[past_clash]:
-                    if spell.card.element == card.element:
-                        score += 15
-                        
-        # Hand size considerations
-        if len(player.hand) <= 2:
-            # Running low on cards - be more conservative
+        # 1. Health-based decisions (most critical)
+        health_ratio = player.health / player.max_health
+        if health_ratio <= 0.4:  # Below 40% health
             if 'remedy' in card.types:
-                score += 30  # Prioritize survival
-            if card.priority == 'A':  # Advance priority cards can come back
-                score += 25
+                score += 100  # High priority
+            if 'response' in card.types:
+                score += 60   # Defense is good
+            if 'attack' in card.types and health_ratio > 0.2:
+                score += 40   # Still need offense unless critical
+        elif health_ratio >= 0.7:  # Above 70% health
+            if 'attack' in card.types:
+                score += 60   # Prioritize offense when healthy
+            if 'boost' in card.types:
+                score += 50   # Support spells are good
                 
-        # Random factor to prevent predictability
-        score += random.randint(-10, 10)
+        # 2. Enemy vulnerability (capitalize on weakness)
+        for enemy in gs.players:
+            if enemy != player:
+                enemy_health_ratio = enemy.health / enemy.max_health
+                if enemy_health_ratio <= 0.4 and 'attack' in card.types:
+                    score += 80  # Push for the kill
+                if len(enemy.hand) == 0:
+                    # Enemy can't play - be aggressive
+                    if 'attack' in card.types:
+                        score += 70
+                    if 'boost' in card.types:
+                        score += 60  # Safe to set up
+                        
+        # 3. Priority/Speed (simplified)
+        if card.priority != 'A':
+            priority_val = int(card.priority)
+            if gs.clash_num <= 2:
+                # Early game - faster is better
+                score += (6 - priority_val) * 8
+            else:
+                # Late game - power matters more
+                score += (6 - priority_val) * 4
+        else:
+            # Advance priority - best early
+            if gs.clash_num <= 2:
+                score += 40
+            elif gs.clash_num == 3:
+                score += 20
+                
+        # === SECONDARY SCORING (Medium Priority) ===
         
-        # Check for combo potential
-        combo_score = self._check_combo_potential(card, player, gs)
-        score += combo_score
+        # 4. Basic type scoring
+        if 'response' in card.types and gs.clash_num >= 2:
+            score += 35  # Responses better after turn 1
+        if 'conjury' in card.types and gs.clash_num <= 2:
+            score += 45  # Conjuries best early
+        if 'boost' in card.types and len(player.hand) >= 3:
+            score += 30  # Boosts when we have cards to play
+            
+        # 5. Combo check (simplified - only immediate combos)
+        immediate_combo_score = self._check_immediate_combos(card, player, gs)
+        score += immediate_combo_score
         
-        # Opponent-aware scoring
-        opponent_score = self._score_against_opponents(card, player, gs)
-        score += opponent_score
+        # 6. Card advantage
+        effects_str = str(card.resolve_effects) + str(card.advance_effects)
+        if 'recall' in effects_str or 'cast_extra_spell' in effects_str:
+            score += 40  # Card advantage is valuable
+        if 'advance' in effects_str and 'this_spell' in effects_str:
+            score += 35  # Self-advancing is good
+            
+        # === MINOR ADJUSTMENTS ===
         
-        # Timing-based scoring
-        timing_score = self._evaluate_timing(card, player, gs)
-        score += timing_score
+        # 7. Hand size bonus
+        if len(player.hand) <= 2:
+            if card.priority == 'A':
+                score += 20  # Cards that come back
+            if 'remedy' in card.types:
+                score += 15  # Stay alive
+                
+        # 8. Element bonus (simplified)
+        element_bonus = self._get_simple_element_bonus(card.element, player, gs)
+        score += element_bonus
         
-        # Card counting strategy
-        counting_score = self._evaluate_card_counting(card, player, gs)
-        score += counting_score
+        # 9. Restrictions
+        if gs.clash_num == 1 and card.notfirst == 1:
+            score -= 30
+        elif gs.clash_num == 4 and card.notlast == 1:
+            score -= 30
+            
+        # 10. Small random factor
+        score += random.randint(-5, 5)
         
-        # Hand synergy evaluation
-        hand_synergy_score = self._evaluate_hand_synergies(card, player, gs)
-        score += hand_synergy_score
+        return score
+    
+    def _check_immediate_combos(self, card, player, gs):
+        """Check for combos that can trigger THIS turn only"""
+        score = 0
         
-        # Card mobility evaluation
-        mobility_score = self._evaluate_card_mobility(card, player, gs)
-        score += mobility_score
+        # Get my active spells in current clash
+        my_active_spells = [s for s in player.board[gs.clash_num - 1] 
+                           if s.status == 'revealed']
         
-        # Element category bonus during play
-        element_play_score = self._evaluate_element_play(card, player, gs)
-        score += element_play_score
+        # Check if this card's conditions are already met
+        for effect in card.resolve_effects:
+            condition = effect.get('condition', {})
+            if condition.get('type') == 'if_caster_has_active_spell_of_type':
+                params = condition.get('parameters', {})
+                spell_type = params.get('spell_type', 'any')
+                required = params.get('count', 1)
+                exclude_self = params.get('exclude_self', False)
+                
+                # Count matching spells already on board
+                matches = 0
+                for spell in my_active_spells:
+                    if spell_type == 'any' or spell_type in spell.card.types:
+                        matches += 1
+                
+                # Will the condition be met when we play this?
+                if not exclude_self and (spell_type == 'any' or spell_type in card.types):
+                    matches += 1  # This card counts too
+                    
+                if matches >= required:
+                    score += 50  # Condition WILL trigger
+                    if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                        self.engine.ai_decision_logs.append(
+                            f"\033[90m[AI-COMBO] {card.name} combo ready with {spell_type} spells!\033[0m"
+                        )
         
+        # Special synergies with specific active spells
+        for spell in my_active_spells:
+            # Coalesce turns OR to AND
+            if spell.card.name == 'Coalesce' and 'player_choice' in str(card.resolve_effects):
+                score += 80  # Very powerful combo
+                
+        return score
+    
+    def _get_simple_element_bonus(self, element, player, gs):
+        """Simple element-based bonus"""
+        score = 0
+        
+        # Count same element already played
+        same_element_count = 0
+        for i in range(gs.clash_num):
+            for spell in player.board[i]:
+                if spell.card.element == element:
+                    same_element_count += 1
+                    
+        # Small bonus for element synergy
+        if same_element_count > 0:
+            score += min(same_element_count * 10, 30)  # Cap at 30
+            
+        # Category-based bonus (simplified)
+        category = self.get_element_category(element)
+        if category == 'offense' and any(p.health <= 3 for p in gs.players if p != player):
+            score += 15  # Offense good when enemies are weak
+        elif category == 'defense' and player.health <= 3:
+            score += 15  # Defense good when we're weak
+        elif category == 'mobility' and 2 <= gs.clash_num <= 3:
+            score += 10  # Mobility good mid-game
+            
         return score
     
     def _evaluate_card_mobility(self, card, player, gs):
@@ -807,112 +844,81 @@ class HardAI(BaseAI):
         return choice
     
     def _evaluate_option(self, option, caster, gs, current_card):
-        """Score an option based on strategic value"""
+        """Score an option based on strategic value - simplified"""
         score = 0
         
-        # Check if it's a risky option (self-damage)
-        has_self_damage = self._has_self_damage(option)
-        if has_self_damage:
-            # Calculate risk/reward
-            self_damage = self._get_self_damage_amount(option)
-            if caster.health <= self_damage:
-                # This would kill us - NEVER choose this
-                score -= 10000  # Essentially impossible to choose
-                if self.engine and hasattr(self.engine, 'ai_decision_logs'):
-                    self.engine.ai_decision_logs.append(
-                        f"\033[90m[AI-SAFETY] LETHAL self-damage detected! Health: {caster.health}, Damage: {self_damage}\033[0m"
-                    )
-            elif caster.health <= self_damage + 1:
-                score -= 500  # Extremely dangerous
-            elif caster.health <= 3:
-                score -= 200  # Be very cautious at low health
+        # 1. Self-damage evaluation (reduced penalties)
+        self_damage = self._get_self_damage_amount(option)
+        if self_damage > 0:
+            health_after = caster.health - self_damage
+            if health_after <= 0:
+                score -= 1000  # Still avoid lethal
+            elif health_after == 1:
+                score -= 100   # Very risky
+            elif health_after <= 2:
+                score -= 50    # Risky
             else:
-                score -= self_damage * 20  # Increased penalty
+                score -= self_damage * 10  # Moderate penalty
+                
+            # But if the payoff is good, it might be worth it
+            if self._is_attack_option(option):
+                damage = self._get_option_damage(option)
+                if damage >= 3:  # High damage output
+                    score += damage * 15  # Offset some penalty
         
-        # Evaluate offensive options
+        # 2. Attack options
         if self._is_attack_option(option):
             damage = self._get_option_damage(option)
             
-            # Check enemy states
+            # Base damage value
+            score += damage * 25
+            
+            # Bonus for potentially lethal damage
             enemies = [p for p in gs.players if p != caster]
             for enemy in enemies:
                 if enemy.health <= damage:
-                    score += 200  # Lethal damage
+                    score += 100  # Lethal
                 elif enemy.health <= damage + 1:
-                    score += 150  # Near-lethal damage
-                else:
-                    score += damage * 20  # General damage value
-                
-                # Bonus for attacking enemies with empty hands
-                if len(enemy.hand) == 0:
-                    score += 50
-                    
-            # Consider timing - early damage is often better
-            if gs.clash_num <= 2:
-                score += 30
+                    score += 50   # Near-lethal
         
-        # Evaluate healing options
+        # 3. Healing options
         if self._is_remedy_option(option):
             healing = self._get_option_healing(option)
+            health_ratio = caster.health / caster.max_health
             
-            # Scale healing value based on health
-            if caster.health <= 2:
-                score += healing * 50  # Critical need
-            elif caster.health <= 3:
-                score += healing * 30  # High value
-            elif caster.health <= 4:
-                score += healing * 15  # Moderate value
+            if health_ratio <= 0.3:
+                score += healing * 40  # Critical
+            elif health_ratio <= 0.5:
+                score += healing * 25  # Important
             else:
-                score += healing * 5   # Low priority when healthy
+                score += healing * 10  # Nice to have
                 
-            # Avoid overhealing
+            # Small penalty for overhealing
             if caster.health + healing > caster.max_health:
                 overheal = (caster.health + healing) - caster.max_health
-                score -= overheal * 10
+                score -= overheal * 5
         
-        # Evaluate advance options
-        if self._is_advance_option(option):
-            # Advancing is generally good for card advantage
-            score += 60
-            
-            # Better in later rounds when we have more spells played
-            if gs.round_num >= 2:
-                score += 30
+        # 4. Other beneficial effects
+        if option.get('type') == 'advance':
+            score += 40  # Card advantage
+            if option.get('target') == 'this_spell':
+                score += 10  # Reliable
                 
-            # Check if we're advancing our own spell vs others
-            if option.get('target') == 'this_spell':
-                # Self-advance is reliable
-                score += 20
-            elif option.get('target') == 'friendly_spell':
-                # Check if we have good spells to advance
-                active_spells = [s for s in caster.board[gs.clash_num-1] if s.status == 'active']
-                if active_spells:
-                    score += 40
-        
-        # Special handling for Gust-like choices (advance self vs other)
-        if current_card.name == 'Gust' and option.get('type') == 'advance':
-            if option.get('target') == 'this_spell':
-                # Self-advance for Gust - good for card advantage
-                if len(caster.hand) <= 3:
-                    score += 80  # High value when low on cards
-                else:
-                    score += 40
-            else:
-                # Advance other spell - situational
-                active_spells = [s for s in caster.board[gs.clash_num-1] 
-                               if s.status == 'active' and s.card.name != 'Gust']
-                if active_spells:
-                    # Bonus for advancing high-value spells
-                    for spell in active_spells:
-                        if 'attack' in spell.card.types:
-                            score += 70
-                        elif 'remedy' in spell.card.types:
-                            score += 60
-                        else:
-                            score += 50
-        
-        # Add some randomness to prevent predictability
-        score += random.randint(-15, 15)
+        if option.get('type') == 'bolster':
+            score += 30  # Max health increase
+            
+        if option.get('type') == 'weaken':
+            score += 35  # Enemy debuff
+            
+        if option.get('type') == 'cancel' or option.get('type') == 'discard':
+            score += 45  # Disruption
+            
+        # 5. Pass option (doing nothing)
+        if option.get('type') == 'pass':
+            score -= 20  # Generally want to do something
+            
+        # Small random factor
+        score += random.randint(-10, 10)
         
         return score
     

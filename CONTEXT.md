@@ -152,8 +152,43 @@ Elemental Elephants/
 │   ├── medium.py           # Heuristic-based AI
 │   └── hard.py             # Strategic scoring AI
 ├── spells.json             # Card definitions
+├── element_categories.json # Element categorization and synergies
 ├── HOWTOPLAY.md            # Game rules
 ├── CLARIFICATIONS.md       # Rules clarifications
 ├── CONTEXT.md              # This file
-└── AI_ARCHITECTURE_PLAN_V2.md  # AI design documentation
+├── AI_ARCHITECTURE.md      # Consolidated AI documentation
+├── spell_analytics.py      # Spell balance analysis tool
+├── gameplay_analytics.py   # Game statistics tracking
+└── test_results/           # AI test results
 ```
+
+## Latest Updates
+1. **Element Categories System** - Added element_categories.json configuration:
+   - Offense (Fire, Lightning, Venom, Earth, Sunbeam, Blood)
+   - Defense (Water, Ichor, Thunder, Moonshine, Metal, Nectar)
+   - Mobility (Wind, Space, Time, Aster, Shadow) - Shadow moved from offense
+   - Balanced (Wood, Twilight)
+   - Includes draft priorities and spell type synergies
+
+2. **AI Strategic Improvements**:
+   - Added element category awareness to all AI levels
+   - Enhanced drafting with category-based evaluation
+   - Improved gameplay decisions using element synergies
+   - Data-driven configuration for easy balance adjustments
+
+3. **Analytics Tools** - Created comprehensive analysis tools:
+   - spell_analytics.py - Analyzes damage, healing, priorities, effects by element
+   - gameplay_analytics.py - Tracks win rates, game length, element usage
+   - spell_analysis_report.txt - Generated comprehensive balance report
+
+4. **Spell Updates**:
+   - Turbulence: Now checks if_spell_was_active_in_other_clashes (2+)
+   - Impact: damage_per_spell_from_other_clashes action
+   - Grow/Prickle: auto_optimal_choice for intelligent option selection
+
+5. **Hard AI Performance Fix** - Rebalanced Hard AI to be more competitive:
+   - Simplified scoring system from 11+ factors to focused core mechanics
+   - Reduced extreme penalties (lethal self-damage from -10000 to -1000)
+   - Made combo evaluation immediate rather than potential-based
+   - Improved health-based decision making with ratio thresholds
+   - Streamlined option evaluation to encourage aggressive play

@@ -1,35 +1,55 @@
-ELEMENTAL ELEPHANTS - SPELL & ELEMENT ANALYTICS
+ELEMENTAL ELEPHANTS - SPELL & ELEMENT ANALYTICS (UPDATED)
 ============================================================
+Generated with enhanced damage calculations and real-world considerations
+
 DAMAGE OUTPUT BY ELEMENT
 ----------------------------------------
-Element         Avg Damage   Max Damage   # Spells  
-Wind                   3.0            3          1 [mobility]
-Earth                  2.0            2          1 [offense]
-Time                   2.0            2          1 [mobility]
-Sunbeam                2.0            3          2 [offense]
-Blood                  2.0            4          3 [offense]
-Twilight               2.0            2          1 [balanced]
-Fire                   1.3            2          3 [offense]
-Wood                   1.0            1          1 [balanced]
-Metal                  1.0            1          1 [defense]
-Space                  1.0            1          1 [mobility]
-Moonshine              1.0            1          1 [defense]
-Aster                  1.0            1          1 [mobility]
-Venom                  1.0            1          2 [offense]
-Nectar                 1.0            1          1 [defense]
-Lightning              1.0            1          1 [offense]
+Element         Avg Damage   Max Potential   # Damage Spells  
+Blood                  3.0              6                3 [offense]
+Twilight               2.0              2                1 [balanced]
+Wind                   1.5              2                1 [mobility]
+Time                   1.5              9                2 [mobility]
+Fire                   1.4              4                5 [offense]
+Wood                   1.3              6                3 [balanced]
+Sunbeam                1.3              3                3 [offense]
+Water                  1.0              1                1 [defense]
+Earth                  1.0              1                1 [offense]
+Metal                  1.0              1                1 [defense]
+Moonshine              1.0              1                1 [defense]
+Shadow                 1.0              1                1 [mobility]
+Space                  1.0              1                1 [mobility]
+Aster                  1.0              1                1 [mobility]
+Venom                  1.0              1                2 [offense]
+Nectar                 1.0              1                1 [defense]
+Lightning              1.0              1                1 [offense]
+Thunder                1.0              1                1 [defense]
+
+Key Damage Spells:
+- Blood/Overexert: 4 flat damage (with 1 self-damage)
+- Blood/Ritual: 1-6 damage (scales with attack spells)
+- Wood/Prickle: 1-6 damage (auto-optimal choice)
+- Time/Impact: 0-9 damage (scales with spells from other clashes)
+- Fire/Ignite: 1-4 damage (can advance 3 times)
+- Wind/Turbulence: 1-2 damage (2 if active in 2+ other clashes, else 1)
 
 ============================================================
 
 HEALING OUTPUT BY ELEMENT
 ----------------------------------------
-Element         Avg Healing  Max Healing  # Spells  
-Twilight                2.0            2          1 [balanced]
-Water                   1.5            2          2 [defense]
-Wood                    1.0            1          1 [balanced]
-Metal                   1.0            1          1 [defense]
-Moonshine               1.0            1          1 [defense]
-Ichor                   1.0            1          1 [defense]
+Element         Healing Spells   Max Healing   
+Water                      3              2 [defense]
+Ichor                      2              1 [defense]
+Wood                       1          1-6+ [balanced]
+Twilight                   1              1 [balanced]
+Metal                      1              1 [defense]
+Moonshine                  1              1 [defense]
+Nectar                     1              1 [defense]
+
+Notable Healing:
+- Water/Nourish: 2 heal (highest flat healing)
+- Wood/Grow: 1 heal or 1 per spell (auto-optimal, can scale high)
+- Water/Cleanse: 1 heal per remedy spell
+- Twilight/Crepuscule: 1 heal + 1 damage combo
 
 ============================================================
 
@@ -97,7 +117,7 @@ Lightning            0      2      3      0      0  [offense]
 Metal                0      0      2      0      0  [defense]
 Moonshine            0      0      3      0      0  [defense]
 Nectar               0      0      2      0      0  [defense]
-Shadow               0      0      0      1      0  [offense]
+Shadow               0      0      0      1      0  [mobility]
 Space                0      1      0      0      1  [mobility]
 Sunbeam              0      0      0      0      0  [offense]
 Thunder              2      0      2      0      0  [defense]
@@ -163,28 +183,36 @@ SPELL DISTRIBUTION BY ELEMENT CATEGORY
 ----------------------------------------
 
 OFFENSE
-Elements: Blood, Earth, Fire, Lightning, Shadow, Sunbeam, Venom
-Total Spells: 21
-Damage Spells: 13 (61.9%)
+Elements: Blood, Earth, Fire, Lightning, Sunbeam, Venom
+Total Spells: 18
+Damage Spells: 17 (94.4%)
 Healing Spells: 0 (0.0%)
+Average Damage: 1.57
+Highest Damage: Blood (3.0 avg, 6 max)
 
 DEFENSE
 Elements: Ichor, Metal, Moonshine, Nectar, Thunder, Water
 Total Spells: 18
 Damage Spells: 6 (33.3%)
-Healing Spells: 7 (38.9%)
+Healing Spells: 8 (44.4%)
+Average Damage: 1.0
+Best Healing: Water (3 healing spells)
 
 MOBILITY
-Elements: Aster, Space, Time, Wind
-Total Spells: 12
-Damage Spells: 4 (33.3%)
+Elements: Aster, Shadow, Space, Time, Wind
+Total Spells: 15
+Damage Spells: 5 (33.3%)
 Healing Spells: 0 (0.0%)
+Average Damage: 1.2
+Unique: Space (move_to_future_clash), Wind (highest damage)
 
 BALANCED
 Elements: Twilight, Wood
 Total Spells: 7
-Damage Spells: 2 (28.6%)
+Damage Spells: 5 (71.4%)
 Healing Spells: 2 (28.6%)
+Average Damage: 1.5
+Notable: Wood has both high damage (Prickle) and scaling healing (Grow)
 
 ============================================================
 
@@ -192,78 +220,61 @@ SELF-DAMAGE SPELLS BY ELEMENT
 ----------------------------------------
 
 Blood [offense]:
-  - Offering: 1 self-damage
-  - Ritual: 1 self-damage
-  - Overexert: 1 self-damage
+  - Offering: 1 self-damage for 2 damage
+  - Ritual: 1 self-damage for up to 6 damage
+  - Overexert: 1 self-damage for 4 damage + extra cast
+
+Sunbeam [offense]:
+  - Illuminate: Optional 1 self-damage for 3 damage total
 
 ============================================================
 
 CARD ADVANTAGE MECHANICS BY ELEMENT
 ----------------------------------------
 
-Aster [mobility] (2 spells):
-  - Starfall: self-advance
-  - Constellation: recall, self-advance
+High Card Advantage Elements:
+1. Lightning (3 spells): Multiple advance + 2 discard effects
+2. Moonshine (3 spells): All 3 spells can advance
+3. Venom (3 spells): All 3 spells can advance
+4. Aster (2 spells): Recall + double advance
 
-Blood [offense] (2 spells):
-  - Ritual: self-advance
-  - Overexert: extra cast
+Unique Mechanics:
+- Space: Move spells between clashes (Gravitate)
+- Shadow: Steal enemy boost spells (Sap)
+- Blood/Sunbeam: Cast extra spells (Overexert/Illuminate)
+- Twilight: Versatile (advance, cancel, discard, recall)
 
-Earth [offense] (2 spells):
-  - Aftershocks: self-advance
-  - Quake: enemy discard
+============================================================
 
-Fire [offense] (1 spells):
-  - Ignite: self-advance
+KEY BALANCE OBSERVATIONS
+----------------------------------------
 
-Ichor [defense] (1 spells):
-  - Shrine: recall
+1. DAMAGE LEADERS:
+   - Blood dominates offense (3.0 avg) but with self-damage risk
+   - Wind reduced from 3.0 to 1.5 (Turbulence correctly calculated)
+   - Time has huge potential (Impact up to 9) but situational
+   - Wood surprisingly strong with Prickle auto-optimal
 
-Lightning [offense] (3 spells):
-  - Bolts: self-advance
-  - Electrocute: enemy discard, self-advance
-  - Surge: self-advance
+2. ELEMENT CATEGORY PERFORMANCE:
+   - Offense: Highest damage output (1.57 avg) as expected
+   - Defense: Best healing access, lowest damage (1.0 avg)
+   - Mobility: Moderate damage (1.2 avg), unique positioning
+   - Balanced: Good mix, competitive damage (1.5 avg)
 
-Metal [defense] (2 spells):
-  - Besiege: self-advance
-  - Defend: self-advance
+3. NOTABLE CHANGES FROM V1:
+   - Turbulence: Correctly shown as 1-2 damage (was 3)
+   - Shadow: Now properly categorized as mobility
+   - Auto-optimal spells (Grow/Prickle) properly evaluated
+   - Conditional damage properly calculated
 
-Moonshine [defense] (3 spells):
-  - Slumber: self-advance
-  - Nightglow: self-advance
-  - Bedim: self-advance
+4. POTENTIAL BALANCE CONCERNS:
+   - Blood may be overtuned (3.0 avg damage)
+   - Some offense elements underperforming (Lightning, Venom at 1.0)
+   - Time/Impact has extreme variance (0-9 damage)
+   - Fire's potential through Ignite advancing may be underestimated
 
-Nectar [defense] (2 spells):
-  - Punish: self-advance
-  - Root: self-advance
-
-Shadow [offense] (1 spells):
-  - Sap: recall
-
-Sunbeam [offense] (1 spells):
-  - Illuminate: extra cast
-
-Thunder [defense] (1 spells):
-  - Break: self-advance
-
-Time [mobility] (2 spells):
-  - Accelerator: self-advance
-  - Repeater: self-advance
-
-Twilight [balanced] (2 spells):
-  - Daybreak: enemy discard, recall
-  - Coalesce: self-advance
-
-Venom [offense] (3 spells):
-  - Agonize: self-advance
-  - Encumber: self-advance
-  - Enfeeble: self-advance
-
-Water [defense] (1 spells):
-  - Flow: self-advance
-
-Wind [mobility] (1 spells):
-  - Gust: self-advance
-
-Wood [balanced] (1 spells):
-  - Seed: self-advance
+5. RECOMMENDATIONS FOR TESTING:
+   - Monitor Blood spell usage and win rates
+   - Check if Time/Impact is achieving its potential in real games
+   - Verify Wind/Turbulence performs at new 1.5 average
+   - Test auto-optimal spell effectiveness (Grow/Prickle)

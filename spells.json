@@ -264,7 +264,10 @@
     "resolve_effects": [
       {
         "condition": {
-          "type": "if_spell_previously_resolved_this_round"
+          "type": "if_spell_was_active_in_other_clashes",
+          "parameters": {
+            "count": 2
+          }
         },
         "action": {
           "type": "damage",
@@ -278,7 +281,10 @@
         "condition": {
           "type": "if_not",
           "sub_condition": {
-            "type": "if_spell_previously_resolved_this_round"
+            "type": "if_spell_was_active_in_other_clashes",
+            "parameters": {
+              "count": 2
+            }
           }
         },
         "action": {
@@ -295,7 +301,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": true,
-    "instruction": "If this spell previously resolved: THEN: 💥 DAMAGE 💥 DAMAGE Otherwise, 💥 DAMAGE"
+    "instruction": "If this spell was active in at least 2 other clashes: THEN: 💥 DAMAGE 💥 DAMAGE Otherwise, 💥 DAMAGE"
   },
   {
     "id": 8,
@@ -555,7 +561,7 @@
           "type": "always"
         },
         "action": {
-          "type": "player_choice",
+          "type": "auto_optimal_choice",
           "options": [
             {
               "type": "heal",
@@ -572,7 +578,11 @@
                 "exclude_self": true
               }
             }
-          ]
+          ],
+          "parameters": {
+            "threshold": 3,
+            "comparison": "count_active_spells"
+          }
         }
       }
     ],
@@ -602,7 +612,7 @@
           "type": "always"
         },
         "action": {
-          "type": "player_choice",
+          "type": "auto_optimal_choice",
           "options": [
             {
               "type": "damage",
@@ -619,7 +629,11 @@
                 "exclude_self": true
               }
             }
-          ]
+          ],
+          "parameters": {
+            "threshold": 3,
+            "comparison": "count_active_spells"
+          }
         }
       }
     ],
@@ -1018,7 +1032,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": false,
-    "instruction": "If this spell was active in at least 2 other clashes: THEN: 🔻 WEAKEN 🔻 WEAKEN Otherwise, 💥 DAMAGE"
+    "instruction": "💥 DAMAGE for each other active spell that was active in another clash."
   },
   {
     "id": 25,
