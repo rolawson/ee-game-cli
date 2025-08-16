@@ -57,6 +57,41 @@ python ai_vs_ai.py tournament 20   # 20 games per matchup
 python ai_vs_ai.py hard medium 10  # 10 games of hard vs medium
 ```
 
+### Analytics and Data Generation
+The game includes comprehensive analytics tracking for balance testing:
+
+#### Generate Analytics Data
+```bash
+# Quick test (5 games)
+python generate_analytics_data.py quick
+
+# Custom number of games
+python generate_analytics_data.py 100              # 100 hard vs hard games
+python generate_analytics_data.py 50 medium easy   # 50 medium vs easy games
+
+# Full tournament
+python generate_analytics_data.py tournament 20    # 20 games per matchup
+
+# Interactive analytics tournament
+python run_analytics_tournament.py                 # Prompts for settings
+```
+
+#### View Analytics Reports
+```bash
+# Generate report from existing game logs
+python analyze_real_world_data.py
+
+# View the generated report
+cat real_world_analysis.txt
+```
+
+The analytics system tracks:
+- Real-world damage dealt by each spell
+- Average damage per element
+- Spell usage frequency
+- Comparison of theoretical vs actual damage
+- Win rates and game lengths
+
 ### AI Difficulty Levels
 - **easy**: Random decisions with simple preferences
 - **medium**: Basic strategy and situational awareness

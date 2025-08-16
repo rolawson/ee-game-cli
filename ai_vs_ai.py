@@ -63,6 +63,10 @@ class AIGameRunner:
         engine.ai_strategies[0] = ai1
         engine.ai_strategies[1] = ai2
         
+        # Override the pause method to prevent input blocking
+        original_pause = engine._pause
+        engine._pause = lambda msg="": None  # No-op pause
+        
         # Capture game state
         game_start = time.time()
         rounds_played = 0

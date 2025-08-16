@@ -9,8 +9,11 @@ from typing import Any
 # Import AI classes from separate module
 from ai import EasyAI, MediumAI, HardAI
 
+# Import game logger for analytics
+from game_logger import game_logger
+
 # --- CONSTANTS ---
-DEBUG_AI = True  # Set to False to disable AI decision logging
+DEBUG_AI = False  # Set to False to disable AI decision logging
 
 # Load spell data from external JSON file
 def load_spell_data():
@@ -535,6 +538,93 @@ class ActionHandler:
 
     def _fire_event(self, event_type: str, gs: 'GameState', **kwargs: Any) -> None:
         event = {"clash": gs.clash_num, "type": event_type}; event.update(kwargs); gs.event_log.append(event)
+        
+        # Log to game logger for analytics
+        if event_type == 'player_damaged':
+            # Extract spell info from current context
+            current_card = None
+            for key, value in kwargs.items():
+                if key == 'card_id':
+                    # Find the card by ID
+                    for spell in SPELL_DATA:
+                        if spell.get('id') == value:
+                            current_card = spell
+                            break
+            
+            if current_card:
+                game_logger.log_damage_dealt(
+                    source_player=kwargs.get('player'),
+                    target_player=kwargs.get('target'),
+                    damage_amount=kwargs.get('value', 0),
+                    spell_name=current_card.get('card_name', 'Unknown'),
+                    element=current_card.get('element', 'Unknown'),
+                    clash_num=gs.clash_num,
+                    round_num=gs.round_num,
+                    is_self_damage=(kwargs.get('player') == kwargs.get('target'))
+                )
+        
+        elif event_type == 'player_healed':
+            # Find the healing spell
+            current_card = None
+            for key, value in kwargs.items():
+                if key == 'card_id':
+                    for spell in SPELL_DATA:
+                        if spell.get('id') == value:
+                            current_card = spell
+                            break
+            
+            if current_card:
+                game_logger.log_healing_done(
+                    source_player=kwargs.get('player'),  # The healed player
+                    target_player=kwargs.get('player'),   # Same for self-heal
+                    heal_amount=kwargs.get('value', 0),
+                    spell_name=current_card.get('card_name', 'Unknown'),
+                    element=current_card.get('element', 'Unknown'),
+                    clash_num=gs.clash_num,
+                    round_num=gs.round_num
+                )
+        
+        elif event_type == 'player_weakened':
+            # Find the weakening spell
+            current_card = None
+            for key, value in kwargs.items():
+                if key == 'card_id':
+                    for spell in SPELL_DATA:
+                        if spell.get('id') == value:
+                            current_card = spell
+                            break
+            
+            if current_card:
+                game_logger.log_weaken_dealt(
+                    source_player=kwargs.get('player'),
+                    target_player=kwargs.get('target'),
+                    weaken_amount=kwargs.get('value', 0),
+                    spell_name=current_card.get('card_name', 'Unknown'),
+                    element=current_card.get('element', 'Unknown'),
+                    clash_num=gs.clash_num,
+                    round_num=gs.round_num
+                )
+        
+        elif event_type == 'player_bolstered':
+            # Find the bolstering spell
+            current_card = None
+            for key, value in kwargs.items():
+                if key == 'card_id':
+                    for spell in SPELL_DATA:
+                        if spell.get('id') == value:
+                            current_card = spell
+                            break
+            
+            if current_card:
+                game_logger.log_bolster_done(
+                    source_player=kwargs.get('player'),
+                    target_player=kwargs.get('target'),
+                    bolster_amount=kwargs.get('value', 0),
+                    spell_name=current_card.get('card_name', 'Unknown'),
+                    element=current_card.get('element', 'Unknown'),
+                    clash_num=gs.clash_num,
+                    round_num=gs.round_num
+                )
     
     def _calculate_spell_damage(self, card: 'Card', owner: 'Player', gs: 'GameState') -> int:
         """Calculate the base damage value from a spell card"""
@@ -1111,14 +1201,20 @@ class ActionHandler:
                 self._fire_event('player_healed', gs, player=target.name, value=params.get('value', 1), card_id=current_card.id)
             elif action_type == 'weaken':
                 if isinstance(target, Player):
-                    target.max_health = max(0, target.max_health - params.get('value', 1)); target.health = min(target.health, target.max_health)
-                    gs.action_log.append(f"{Colors.YELLOW}{ACTION_EMOJIS['weaken']} {caster.name}'s [{current_card.name}] weakened {target.name} by {params.get('value', 1)}. Max health now {target.max_health}.{Colors.ENDC}")
+                    weaken_amount = params.get('value', 1)
+                    target.max_health = max(0, target.max_health - weaken_amount); target.health = min(target.health, target.max_health)
+                    gs.action_log.append(f"{Colors.YELLOW}{ACTION_EMOJIS['weaken']} {caster.name}'s [{current_card.name}] weakened {target.name} by {weaken_amount}. Max health now {target.max_health}.{Colors.ENDC}")
+                    # Log weaken event separately
+                    self._fire_event('player_weakened', gs, player=caster.name, target=target.name, value=weaken_amount, card_id=current_card.id)
                 elif isinstance(target, PlayedCard) and target.card.is_conjury:
                     # Weakening a conjury cancels it
                     target.status = 'cancelled'
                     gs.action_log.append(f"{caster.name}'s [{current_card.name}] weakened and CANCELLED [{target.card.name}].")
             elif action_type == 'bolster':
-                target.max_health += params.get('value', 1); gs.action_log.append(f"{Colors.GREEN}{ACTION_EMOJIS['bolster']} {caster.name}'s [{current_card.name}] bolstered {target.name}. Max health now {target.max_health}.{Colors.ENDC}")
+                bolster_amount = params.get('value', 1)
+                target.max_health += bolster_amount; gs.action_log.append(f"{Colors.GREEN}{ACTION_EMOJIS['bolster']} {caster.name}'s [{current_card.name}] bolstered {target.name}. Max health now {target.max_health}.{Colors.ENDC}")
+                # Log bolster event separately
+                self._fire_event('player_bolstered', gs, player=caster.name, target=target.name, value=bolster_amount, card_id=current_card.id)
             elif action_type == 'damage_per_spell_from_other_clashes':
                 # Count active spells that were active in other clashes (for Impact)
                 damage = 0
@@ -1527,6 +1623,8 @@ class ActionHandler:
                     target.max_health = max(0, target.max_health - count)
                     target.health = min(target.health, target.max_health)
                     gs.action_log.append(f"{caster.name}'s [{current_card.name}] weakened {target.name} by {count} ({count} {spell_type} spell(s)). Max health now {target.max_health}.")
+                    # Log weaken_per_spell event separately
+                    self._fire_event('player_weakened', gs, player=caster.name, target=target.name, value=count, card_id=current_card.id)
                 else:
                     gs.action_log.append(f"{caster.name} has no active {spell_type} spells to boost the weakening.")
             
@@ -1975,6 +2073,7 @@ class GameEngine:
         self.gs = GameState(player_names); self.display = DashboardDisplay()
         self.condition_checker = ConditionChecker(); self.action_handler = ActionHandler(self)
         self.ai_decision_logs = []  # Store AI logs to show after reveal
+        self.ai_difficulty = ai_difficulty  # Store for logging
         
         # Create AI strategies based on difficulty
         self.ai_strategies = {}
@@ -2065,6 +2164,17 @@ class GameEngine:
             
             winner = next((p for p in self.gs.players if p.trunks > 0), None)
             self.gs.action_log.append(f"GAME OVER! The winner is {winner.name}!" if winner else "GAME OVER! No winner.")
+            
+            # Log game end
+            if winner:
+                loser = next((p for p in self.gs.players if p != winner), None)
+                game_logger.log_game_end(
+                    winner_name=winner.name,
+                    winner_health=winner.health,
+                    loser_health=0 if loser else 0,
+                    total_rounds=self.gs.round_num - 1
+                )
+            
             self._pause()
         except Exception:
             clear_screen(); print("\n\n--- A CRITICAL ERROR OCCURRED ---")
@@ -2100,6 +2210,22 @@ class GameEngine:
                     prompt = f"{p.name}, choose card {len(hand_choices)+1}/4 for your starting hand:"; choice = self._prompt_for_choice(p, options, prompt); hand_choices.append(options.pop(choice))
                 p.hand = hand_choices; p.discard_pile = list(options.values())
             else: random.shuffle(p.discard_pile); p.hand = p.discard_pile[:4]; p.discard_pile = p.discard_pile[4:]
+        
+        # Start game logging
+        player_elements = {}
+        for p in self.gs.players:
+            # Get unique elements from player's cards
+            elements = list(set(card.element for card in p.hand + p.discard_pile))
+            player_elements[p.name] = elements
+        
+        game_logger.start_game(
+            self.gs.players[0].name, 
+            self.gs.players[1].name,
+            player_elements[self.gs.players[0].name],
+            player_elements[self.gs.players[1].name],
+            self.ai_difficulty if not self.gs.players[0].is_human else None
+        )
+        
         self._pause("Setup complete. The first round is about to begin.")
     def _run_round(self) -> None:
         self.gs.action_log.clear()
@@ -2196,6 +2322,14 @@ class GameEngine:
             for spell in p.board[self.gs.clash_num - 1]:
                 if spell.status == 'prepared':
                     spell.status = 'revealed'
+                    # Log spell played
+                    game_logger.log_spell_played(
+                        player_name=p.name,
+                        spell_name=spell.card.name,
+                        element=spell.card.element,
+                        clash_num=self.gs.clash_num,
+                        round_num=self.gs.round_num
+                    )
         
         # Show all revealed spells with instructions
         self.gs.action_log.append(f"{Colors.BOLD}Spells Revealed:{Colors.ENDC}")
