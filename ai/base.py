@@ -239,3 +239,19 @@ class BaseAI(ABC):
         # Subclasses should override with strategic choices
         import random
         return random.choice(available_sets)
+    
+    def choose_cards_to_keep(self, player, gs):
+        """Choose which cards to keep at end of round
+        
+        Args:
+            player: The AI player
+            gs: Current game state
+            
+        Returns:
+            List of cards to keep (empty list means discard all for new set)
+        """
+        # Default implementation - keep remedy cards if hurt, otherwise keep all
+        if player.health / player.max_health < 0.7:
+            # Keep remedy cards when hurt
+            return [c for c in player.hand if 'remedy' in c.types]
+        return player.hand  # Keep all cards by default

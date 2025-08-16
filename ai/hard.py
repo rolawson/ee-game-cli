@@ -328,7 +328,11 @@ class HardAI(BaseAI):
     def _evaluate_hand_synergies(self, card, player, gs):
         """Evaluate synergies between cards in hand for multi-turn planning"""
         score = 0
-        other_cards = [c for c in player.hand if c != card]
+        # Handle case where card is None (evaluating whole hand)
+        if card is None:
+            other_cards = player.hand
+        else:
+            other_cards = [c for c in player.hand if c != card]
         
         if not other_cards:
             return 0
@@ -344,7 +348,7 @@ class HardAI(BaseAI):
                         spell_type = params.get('spell_type', 'any')
                         
                         # This card enables the future card
-                        if spell_type == 'any' or spell_type in card.types:
+                        if card and (spell_type == 'any' or spell_type in card.types):
                             future_enablement_score += 50
                             if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                                 self.engine.ai_decision_logs.append(
@@ -358,7 +362,7 @@ class HardAI(BaseAI):
         
         # Check if holding this card enables better combos later
         hold_value = 0
-        if card.resolve_effects:
+        if card and card.resolve_effects:
             for effect in card.resolve_effects:
                 condition = effect.get('condition', {})
                 if condition.get('type') == 'if_caster_has_active_spell_of_type':
@@ -384,14 +388,16 @@ class HardAI(BaseAI):
         if combo_chains and self.engine and hasattr(self.engine, 'ai_decision_logs'):
             chain_names = [c.name for c in combo_chains]
             self.engine.ai_decision_logs.append(
-                f"\033[90m[AI-SYNERGY] Combo chain detected: {card.name} -> {' -> '.join(chain_names)}\033[0m"
+                f"\033[90m[AI-SYNERGY] Combo chain detected: {card.name if card else 'Hand'} -> {' -> '.join(chain_names)}\033[0m"
             )
         
         # Element/type clustering bonus
-        same_element_count = sum(1 for c in other_cards if c.element == card.element)
+        same_element_count = 0
         same_type_overlap = 0
-        for c in other_cards:
-            same_type_overlap += len(set(card.types) & set(c.types))
+        if card:
+            same_element_count = sum(1 for c in other_cards if c.element == card.element)
+            for c in other_cards:
+                same_type_overlap += len(set(card.types) & set(c.types))
         
         clustering_score = (same_element_count * 10) + (same_type_overlap * 15)
         
@@ -400,6 +406,10 @@ class HardAI(BaseAI):
     def _detect_combo_chains(self, start_card, other_cards, gs):
         """Detect multi-card combo chains starting with this card"""
         chains = []
+        
+        # Handle None card
+        if not start_card:
+            return chains
         
         # Simple 2-card chains for now
         for next_card in other_cards:
@@ -1623,3 +1633,160 @@ class HardAI(BaseAI):
                 score += 15  # Storm synergy/counter
                 
         return score
+    
+    def choose_cards_to_keep(self, player, gs):
+        """Strategically choose which cards to keep at end of round
+        
+        May choose to discard entire hand if:
+        - Hand quality is poor
+        - Elements don't match well against opponent
+        - Better sets are likely available
+        """
+        # If hand is empty or very low health, use default logic
+        if not player.hand or player.health <= 1:
+            return super().choose_cards_to_keep(player, gs)
+        
+        # Evaluate current hand quality
+        hand_score = self._evaluate_hand_quality(player, gs)
+        
+        # Get information about available sets
+        available_sets_count = len(gs.main_deck) if hasattr(gs, 'main_deck') else 0
+        
+        # Decision factors for clearing hand
+        should_clear_hand = False
+        reasons = []
+        
+        # Factor 1: Poor hand quality
+        if hand_score < -50:
+            should_clear_hand = True
+            reasons.append("poor hand quality")
+        
+        # Factor 2: Bad element matchup
+        opponent_elements = self._get_opponent_elements(gs)
+        if opponent_elements:
+            bad_matchup_count = sum(1 for card in player.hand 
+                                    if self._is_bad_element_matchup(card.element, opponent_elements))
+            if bad_matchup_count >= len(player.hand) * 0.75:  # 75% or more bad matchups
+                should_clear_hand = True
+                reasons.append("bad element matchups")
+        
+        # Factor 3: All high priority (slow) spells
+        avg_priority = sum(int(c.priority) if c.priority != 'A' else 99 
+                          for c in player.hand) / len(player.hand)
+        if avg_priority >= 4:
+            should_clear_hand = True
+            reasons.append("too many slow spells")
+        
+        # Factor 4: No damage spells when opponent is low health
+        opponents = [p for p in gs.players if p != player]
+        if opponents and min(p.health for p in opponents) <= 2:
+            has_damage = any('attack' in card.types or 
+                           any('damage' in str(effect) for effect in card.resolve_effects)
+                           for card in player.hand)
+            if not has_damage:
+                should_clear_hand = True
+                reasons.append("no damage spells vs low health opponent")
+        
+        # Factor 5: Health is good and sets are available
+        if player.health >= player.max_health * 0.8 and available_sets_count >= 3:
+            # More willing to take risks when healthy
+            if hand_score < 0:
+                should_clear_hand = True
+                reasons.append("healthy and better sets available")
+        
+        # Log decision if in debug mode
+        if should_clear_hand and self.engine and hasattr(self.engine, 'ai_decision_logs'):
+            self.engine.ai_decision_logs.append(
+                f"\\033[90m[AI-HARD] {player.name} clearing entire hand: {', '.join(reasons)}\\033[0m"
+            )
+        
+        # If clearing hand, return empty list
+        if should_clear_hand:
+            return []
+        
+        # Otherwise, selectively keep good cards
+        cards_to_keep = []
+        for card in player.hand:
+            keep_score = self._evaluate_card(card, player, gs)
+            
+            # Always keep high-value cards
+            if keep_score >= 100:
+                cards_to_keep.append(card)
+            # Keep remedy if hurt
+            elif 'remedy' in card.types and player.health < player.max_health * 0.7:
+                cards_to_keep.append(card)
+            # Keep cards that match well against opponent
+            elif opponent_elements and not self._is_bad_element_matchup(card.element, opponent_elements):
+                if keep_score >= 0:  # At least neutral value
+                    cards_to_keep.append(card)
+            # Keep if score is positive and we don't have many cards yet
+            elif keep_score > 20 and len(cards_to_keep) < 3:
+                cards_to_keep.append(card)
+        
+        # If we're keeping very few cards, might as well clear for new set
+        if len(cards_to_keep) <= 1 and available_sets_count >= 2:
+            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                self.engine.ai_decision_logs.append(
+                    f"\\033[90m[AI-HARD] {player.name} clearing hand - only {len(cards_to_keep)} cards worth keeping\\033[0m"
+                )
+            return []
+        
+        return cards_to_keep
+    
+    def _evaluate_hand_quality(self, player, gs):
+        """Evaluate overall quality of current hand"""
+        if not player.hand:
+            return -1000
+        
+        total_score = 0
+        
+        # Score each card
+        for card in player.hand:
+            total_score += self._evaluate_card(card, player, gs)
+        
+        # Bonus for synergies
+        total_score += self._evaluate_hand_synergies(None, player, gs) * 10
+        
+        # Penalty for too many similar types
+        type_counts = {}
+        for card in player.hand:
+            for spell_type in card.types:
+                type_counts[spell_type] = type_counts.get(spell_type, 0) + 1
+        
+        # Penalty for imbalance
+        max_type_count = max(type_counts.values()) if type_counts else 0
+        if max_type_count >= 3:
+            total_score -= (max_type_count - 2) * 20
+        
+        return total_score
+    
+    def _get_opponent_elements(self, gs):
+        """Get list of elements opponents have shown"""
+        opponent_elements = set()
+        
+        for name, history in self.opponent_history.items():
+            # Don't include our own history
+            if any(p.name == name and p in gs.players for p in gs.players):
+                player = next(p for p in gs.players if p.name == name)
+                if player != gs.players[0]:  # Assuming AI is not player 0
+                    for element, count in history['elements_used'].items():
+                        if count > 0:
+                            opponent_elements.add(element)
+        
+        return list(opponent_elements)
+    
+    def _is_bad_element_matchup(self, my_element, opponent_elements):
+        """Check if my element is weak against opponent elements"""
+        # This is a simplified check - could be enhanced with actual game rules
+        element_weaknesses = {
+            'Fire': ['Water', 'Earth'],
+            'Water': ['Lightning', 'Wood'],
+            'Earth': ['Wood', 'Wind'],
+            'Wind': ['Fire', 'Metal'],
+            'Wood': ['Fire', 'Metal'],
+            'Metal': ['Thunder', 'Water'],
+            # Add more as needed
+        }
+        
+        weak_against = element_weaknesses.get(my_element, [])
+        return any(opp_elem in weak_against for opp_elem in opponent_elements)

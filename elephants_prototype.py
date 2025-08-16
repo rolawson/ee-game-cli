@@ -1750,12 +1750,72 @@ class ActionHandler:
                 if choice is not None: return [options[choice]]
                 else: return []
             else: # AI Logic
-                high_threat_conjuries = [c for c in all_possible_targets if isinstance(c, PlayedCard) and (int(c.card.priority) if str(c.card.priority).isdigit() else 5) <= 2]
-                if high_threat_conjuries: return [random.choice(high_threat_conjuries)]
-                low_health_players = [p for p in all_possible_targets if isinstance(p, Player) and p.health <= 2]
-                if low_health_players: return [random.choice(low_health_players)]
-                player_targets = [t for t in all_possible_targets if isinstance(t, Player)]
-                return [random.choice(player_targets)] if player_targets else [random.choice(all_possible_targets)]
+                # Get AI strategy for smarter targeting
+                ai_index = gs.players.index(caster)
+                ai_strategy = self.engine.ai_strategies.get(ai_index)
+                
+                # Separate conjuries and players
+                conjury_targets = [c for c in all_possible_targets if isinstance(c, PlayedCard)]
+                player_targets = [p for p in all_possible_targets if isinstance(p, Player)]
+                
+                # Enhanced conjury evaluation
+                if conjury_targets:
+                    # Score each conjury based on threat level
+                    conjury_scores = {}
+                    for conjury in conjury_targets:
+                        score = 0
+                        
+                        # High priority conjuries are more threatening
+                        priority = int(conjury.card.priority) if str(conjury.card.priority).isdigit() else 99
+                        if priority <= 2:
+                            score += 50  # Very high threat
+                        elif priority <= 3:
+                            score += 30  # High threat
+                        else:
+                            score += 10  # Base threat
+                        
+                        # Remedy conjuries are high priority when we're hurt
+                        if 'remedy' in conjury.card.types and caster.health < caster.max_health * 0.6:
+                            score += 40
+                        
+                        # Attack conjuries are always threatening
+                        if 'attack' in conjury.card.types:
+                            score += 30
+                        
+                        # Boost conjuries can enable combos
+                        if 'boost' in conjury.card.types:
+                            score += 20
+                        
+                        # Consider the element
+                        if hasattr(ai_strategy, '_is_bad_element_matchup'):
+                            if ai_strategy._is_bad_element_matchup(caster.element if hasattr(caster, 'element') else 'Unknown', [conjury.card.element]):
+                                score += 15  # Extra reason to remove it
+                        
+                        conjury_scores[conjury] = score
+                    
+                    # Check if any conjury is worth targeting over players
+                    best_conjury = max(conjury_scores.items(), key=lambda x: x[1])
+                    
+                    # Target conjury if it's high threat or no players are low health
+                    low_health_players = [p for p in player_targets if p.health <= 2]
+                    if best_conjury[1] >= 40 or not low_health_players:
+                        # For Hard AI, pick the highest threat conjury
+                        if ai_strategy and type(ai_strategy).__name__ == 'HardAI':
+                            return [best_conjury[0]]
+                        # Other AIs pick randomly from high-threat conjuries
+                        high_threat = [c for c, score in conjury_scores.items() if score >= 30]
+                        if high_threat:
+                            return [random.choice(high_threat)]
+                
+                # Otherwise, standard player targeting
+                low_health_players = [p for p in player_targets if p.health <= 2]
+                if low_health_players: 
+                    return [random.choice(low_health_players)]
+                if player_targets:
+                    return [random.choice(player_targets)]
+                
+                # Fallback
+                return [random.choice(all_possible_targets)] if all_possible_targets else []
         if target_str == 'all_enemies_and_their_conjuries':
             all_targets = valid_enemies + [c for c in active_conjuries if c.owner in valid_enemies]
             return [all_targets] if all_targets else []
@@ -2581,8 +2641,31 @@ class GameEngine:
                         self.gs.action_log.append(f"{Colors.WARNING}Note: You cannot discard cards from this newly drafted set!{Colors.ENDC}")
                         drew_new_set = True
                 else: # AI Logic
-                    discards = [c for c in p.hand if 'remedy' not in c.types and p.health/p.max_health > 0.7]
-                    p.discard_pile.extend(discards); p.hand = [c for c in p.hand if c not in discards]
+                    # Get the AI strategy for this player
+                    ai_index = self.gs.players.index(p)
+                    ai_strategy = self.ai_strategies.get(ai_index)
+                    
+                    if ai_strategy and hasattr(ai_strategy, 'choose_cards_to_keep'):
+                        # Use AI's strategic decision
+                        cards_to_keep = ai_strategy.choose_cards_to_keep(p, self.gs)
+                        discards = [c for c in p.hand if c not in cards_to_keep]
+                        p.discard_pile.extend(discards)
+                        p.hand = cards_to_keep
+                        
+                        # Check if AI is clearing entire hand
+                        if not p.hand and self.gs.main_deck:
+                            self.gs.action_log.append(f"{p.name} discarded their entire hand and can draft a new spell set!")
+                            new_set = ai_strategy.choose_draft_set(p, self.gs, self.gs.main_deck)
+                            self.gs.main_deck.remove(new_set)
+                            p.hand.extend(new_set)
+                            emoji = ELEMENT_EMOJIS.get(new_set[0].element, '')
+                            self.gs.action_log.append(f"{p.name} drafted the '{new_set[0].elephant}' ({emoji} {new_set[0].element}) set.")
+                            drew_new_set = True
+                    else:
+                        # Fallback to original simple logic
+                        discards = [c for c in p.hand if 'remedy' not in c.types and p.health/p.max_health > 0.7]
+                        p.discard_pile.extend(discards)
+                        p.hand = [c for c in p.hand if c not in discards]
 
             # Step 3: Handle Recall phase - MUST fill to max if drew new set
             max_hand_size = 4 + (3 - p.trunks)
