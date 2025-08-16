@@ -979,12 +979,12 @@
     "base": false,
     "instruction": "Move all of the spells from one clash to another, and discard this spell."
   },
-  {
+   {
     "id": 24,
     "card_name": "Impact",
     "elephant": "Elephantus Infinitum",
-    "element": "Space",
-    "set_name": "24 Space 3",
+    "element": "Time",
+    "set_name": "24 Time 3",
     "is_conjury": true,
     "priority": 5,
     "spell_types": [
@@ -994,34 +994,13 @@
     "resolve_effects": [
       {
         "condition": {
-          "type": "if_spell_was_active_in_other_clashes",
-          "parameters": {
-            "count": 2
-          }
+          "type": "always"
         },
         "action": {
-          "type": "damage",
-          "target": "prompt_player",
-          "parameters": {
-            "value": 2
-          }
-        }
-      },
-      {
-        "condition": {
-          "type": "if_not",
-          "sub_condition": {
-            "type": "if_spell_previously_resolved_this_round",
-            "parameters": {
-              "count": 2
-            }
-          }
-        },
-        "action": {
-          "type": "damage",
+          "type": "damage_per_spell_from_other_clashes",
           "target": "prompt_player_or_conjury",
           "parameters": {
-            "value": 1
+            "exclude_self": true
           }
         }
       }
@@ -1326,18 +1305,7 @@
         },
         "action": [
           {
-            "type": "weaken",
-            "target": "all_enemies_who_met_condition",
-            "parameters": {
-              "value": 1
-            }
-          },
-          {
-            "type": "damage",
-            "target": "all_enemies_who_met_condition",
-            "parameters": {
-              "value": 1
-            }
+            "type": "damage_equal_to_enemy_attack_damage"
           }
         ]
       }
@@ -1347,7 +1315,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": false,
-    "instruction": "If enemies have active ATTACK spells: THEN: <cardicon>🔻 WEAKEN</cardicon> 💥 DAMAGE each of those players."
+    "instruction": "If enemies have active ATTACK spells: THEN: Deal 💥 DAMAGE to each enemy equal to their attack spell's damage."
   },
   {
     "id": 32,

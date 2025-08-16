@@ -1031,20 +1031,38 @@ class HardAI(BaseAI):
                 return action_type
     
     def choose_draft_set(self, player, gs, available_sets):
-        """Strategic drafting for Hard AI
+        """Strategic drafting for Hard AI with opponent awareness
         
         Evaluates each available set based on:
         - Spell type balance
-        - Element synergies
+        - Element synergies  
         - Priority distribution
         - Combo potential
         - Counter-play options
+        - Opponent element tracking
+        - Exploration incentives
         """
         if not available_sets:
             return None
         
         # Analyze what we already have (if this is second draft)
         current_cards = player.discard_pile  # Cards from first draft
+        
+        # Track opponent elements if they drafted first
+        opponent_elements = []
+        for p in gs.players:
+            if p != player and p.discard_pile:
+                # Get elements from their drafted cards
+                for card in p.discard_pile:
+                    if card.element not in opponent_elements:
+                        opponent_elements.append(card.element)
+        
+        # Track our element pick history for variety
+        if not hasattr(self, 'element_pick_history'):
+            self.element_pick_history = []
+        if not hasattr(self, 'strategy_mode'):
+            # Randomly choose a strategy for this game
+            self.strategy_mode = random.choice(['aggressive', 'defensive', 'balanced', 'experimental'])
         
         set_scores = {}
         
@@ -1053,6 +1071,8 @@ class HardAI(BaseAI):
             
             # Analyze the set
             set_analysis = self._analyze_spell_set(spell_set, gs)
+            element = spell_set[0].element
+            category = self.get_element_category(element)
             
             # 1. Type balance scoring
             type_balance_score = self._evaluate_type_balance(set_analysis, current_cards)
@@ -1083,21 +1103,104 @@ class HardAI(BaseAI):
             element_category_score = self._evaluate_element_category(spell_set, current_cards, gs)
             score += element_category_score
             
-            # Add some randomness to prevent predictability
-            score += random.randint(-20, 20)
+            # 6. Opponent element counter-play
+            if opponent_elements:
+                opponent_counter_score = self._evaluate_counter_play_potential(spell_set, opponent_elements)
+                score += opponent_counter_score
+            
+            # 7. Exploration bonus for variety
+            exploration_bonus = 0
+            
+            # First pick variety bonus
+            if len(current_cards) == 0:  # First draft
+                # Strong bonus for elements we've never/rarely started with
+                first_pick_count = sum(1 for i, e in enumerate(self.element_pick_history) if i % 2 == 0 and e == element)
+                if first_pick_count == 0:
+                    exploration_bonus += 80  # Never picked first
+                elif first_pick_count < 2:
+                    exploration_bonus += 40  # Rarely picked first
+                    
+                # Extra random bonus for first pick
+                exploration_bonus += random.randint(0, 60)
+            
+            if element not in self.element_pick_history[-4:]:
+                exploration_bonus += 40  # Haven't picked this recently
+            if len([e for e in self.element_pick_history if e == element]) < 2:
+                exploration_bonus += 20  # Rarely pick this element
+            score += exploration_bonus
+            
+            # 8. Strategy mode influence
+            if self.strategy_mode == 'aggressive' and category == 'offense':
+                score += 50
+            elif self.strategy_mode == 'defensive' and category == 'defense':
+                score += 50
+            elif self.strategy_mode == 'balanced' and category == 'balanced':
+                score += 40
+            elif self.strategy_mode == 'experimental':
+                # Favor unusual or complex elements
+                if element in ['Twilight', 'Aster', 'Nectar', 'Thunder']:
+                    score += 60
+            
+            # Add significant randomness to prevent predictability
+            score += random.randint(-40, 40)
             
             set_scores[set_idx] = score
             
             if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                 self.engine.ai_decision_logs.append(
                     f"\\033[90m[AI-DRAFT] {spell_set[0].elephant} ({spell_set[0].element}): "
-                    f"score = {score} (types: {type_balance_score}, priority: {priority_score}, "
-                    f"combos: {combo_score}, counter: {counter_score})\\033[0m"
+                    f"score = {score} (strategy: {self.strategy_mode})\\033[0m"
                 )
         
-        # Choose the highest scoring set
-        best_idx = max(set_scores.items(), key=lambda x: x[1])[0]
+        # Choose from top sets with weighted randomness
+        sorted_scores = sorted(set_scores.items(), key=lambda x: x[1], reverse=True)
+        
+        # Sometimes just pick randomly for variety (20% chance)
+        if random.random() < 0.2:
+            best_idx = random.choice(list(set_scores.keys()))
+            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                self.engine.ai_decision_logs.append(
+                    f"\\033[90m[AI-DRAFT] Making random choice for variety!\\033[0m"
+                )
+        else:
+            # Consider more choices for variety
+            num_choices = min(6, len(sorted_scores))  # Consider top 6 instead of 4
+            top_choices = sorted_scores[:num_choices]
+            
+            # Calculate selection weights with flatter distribution
+            if top_choices:
+                min_score = min(score for _, score in top_choices)
+                max_score = max(score for _, score in top_choices)
+                score_range = max_score - min_score
+                
+                # Flatten the weights to make lower-ranked choices more likely
+                weights = []
+                for _, score in top_choices:
+                    # Normalize score to 0-1 range
+                    normalized = (score - min_score) / (score_range + 1)
+                    # Apply square root to flatten distribution
+                    weight = (normalized ** 0.5) * 100 + 20  # Min weight of 20
+                    weights.append(weight)
+                
+                total_weight = sum(weights)
+                
+                # Weighted random selection
+                rand_val = random.random() * total_weight
+                cumulative = 0
+                best_idx = top_choices[0][0]  # Default to best
+                
+                for i, (idx, _) in enumerate(top_choices):
+                    cumulative += weights[i]
+                    if rand_val <= cumulative:
+                        best_idx = idx
+                        break
+            else:
+                best_idx = 0
+        
         chosen_set = available_sets[best_idx]
+        
+        # Track our pick
+        self.element_pick_history.append(chosen_set[0].element)
         
         if self.engine and hasattr(self.engine, 'ai_decision_logs'):
             self.engine.ai_decision_logs.append(
@@ -1476,4 +1579,47 @@ class HardAI(BaseAI):
             if synergy > 1.0:
                 score += (synergy - 1.0) * 30
         
+        return score
+    
+    def _evaluate_counter_play_potential(self, spell_set, opponent_elements):
+        """Evaluate how well this set counters known opponent elements"""
+        score = 0
+        
+        for spell in spell_set:
+            effects_str = str(spell.resolve_effects) + str(spell.advance_effects)
+            
+            # Check for specific counters to opponent elements
+            for opp_elem in opponent_elements:
+                opp_category = self.get_element_category(opp_elem)
+                
+                # Counter strategies
+                if opp_category == 'offense':
+                    # Counter offense with healing/defense
+                    if 'remedy' in spell.types:
+                        score += 15
+                    if 'bolster' in effects_str:
+                        score += 10
+                        
+                elif opp_category == 'defense':
+                    # Counter defense with disruption
+                    if 'cancel' in effects_str or 'discard' in effects_str:
+                        score += 15
+                    if 'weaken' in effects_str:
+                        score += 20
+                        
+                elif opp_category == 'mobility':
+                    # Counter mobility with control
+                    if 'cancel' in effects_str:
+                        score += 20
+                    if spell.priority in ['1', '2']:  # Fast spells
+                        score += 10
+                        
+            # Specific element counters
+            if 'Blood' in opponent_elements and 'remedy' in spell.types:
+                score += 25  # Blood does self-damage
+            if 'Fire' in opponent_elements and 'Water' == spell.element:
+                score += 20  # Classic counter
+            if 'Lightning' in opponent_elements and 'Thunder' == spell.element:
+                score += 15  # Storm synergy/counter
+                
         return score

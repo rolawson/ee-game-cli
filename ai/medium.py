@@ -287,8 +287,11 @@ class MediumAI(BaseAI):
         
         set_scores = {}
         
+        # Add exploration bonus for less frequently picked elements
+        element_pick_history = getattr(self, 'element_pick_history', [])
+        
         for idx, spell_set in enumerate(available_sets):
-            score = random.randint(0, 20)  # Some randomness
+            score = random.randint(0, 50)  # More randomness for variety
             
             # Count spell types in this set
             type_counts = {}
@@ -325,15 +328,19 @@ class MediumAI(BaseAI):
             element = spell_set[0].element
             category = self.get_element_category(element)
             
-            # Simple category preferences
+            # Variable category preferences with more randomness
             if category == 'offense':
-                score += 25  # Good for damage
+                score += random.randint(15, 35)  # 15-35 instead of fixed 25
             elif category == 'defense':
-                score += 30  # Always useful
+                score += random.randint(20, 40)  # 20-40 instead of fixed 30
             elif category == 'mobility':
-                score += 35  # Flexibility is great
+                score += random.randint(25, 45)  # 25-45 instead of fixed 35
             elif category == 'balanced':
-                score += 20  # Solid choice
+                score += random.randint(10, 30)  # 10-30 instead of fixed 20
+            
+            # Exploration bonus - favor elements we haven't picked recently
+            if element not in element_pick_history[-3:]:
+                score += 30  # Encourage trying new elements
             
             # If second draft, consider what we have
             if current_cards:
@@ -348,9 +355,28 @@ class MediumAI(BaseAI):
             
             set_scores[idx] = score
         
-        # Pick highest scoring set
-        best_idx = max(set_scores.items(), key=lambda x: x[1])[0]
+        # Pick from top choices with some randomness
+        sorted_scores = sorted(set_scores.items(), key=lambda x: x[1], reverse=True)
+        
+        # Consider top 3 choices (or all if less than 3)
+        top_choices = sorted_scores[:min(3, len(sorted_scores))]
+        
+        # Weight selection by score but allow for surprises
+        if random.random() < 0.7:  # 70% pick the best
+            best_idx = top_choices[0][0]
+        elif len(top_choices) > 1 and random.random() < 0.8:  # 24% pick second best
+            best_idx = top_choices[1][0]
+        elif len(top_choices) > 2:  # 6% pick third best
+            best_idx = top_choices[2][0]
+        else:
+            best_idx = top_choices[0][0]
+            
         chosen_set = available_sets[best_idx]
+        
+        # Track what we've picked
+        if not hasattr(self, 'element_pick_history'):
+            self.element_pick_history = []
+        self.element_pick_history.append(chosen_set[0].element)
         
         if self.engine and hasattr(self.engine, 'ai_decision_logs'):
             self.engine.ai_decision_logs.append(

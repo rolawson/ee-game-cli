@@ -208,6 +208,8 @@ class Card:
         elif action_type == 'damage_per_enemy_spell_type':
             spell_type = params.get('spell_type', 'any')
             return f"Deal damage to each enemy equal to their {spell_type} spells"
+        elif action_type == 'damage_equal_to_enemy_attack_damage':
+            return f"Deal damage to each enemy equal to their attack spell's damage"
         elif action_type == 'cancel':
             if 'all_enemy' in str(target):
                 spell_type = str(target).replace('all_enemy_', '').replace('_spells', '')
@@ -533,6 +535,44 @@ class ActionHandler:
 
     def _fire_event(self, event_type: str, gs: 'GameState', **kwargs: Any) -> None:
         event = {"clash": gs.clash_num, "type": event_type}; event.update(kwargs); gs.event_log.append(event)
+    
+    def _calculate_spell_damage(self, card: 'Card', owner: 'Player', gs: 'GameState') -> int:
+        """Calculate the base damage value from a spell card"""
+        damage = 0
+        
+        # Check resolve effects for damage actions
+        for effect in card.resolve_effects:
+            action = effect.get('action', {})
+            if isinstance(action, dict):
+                if action.get('type') == 'damage':
+                    # Simple damage action
+                    damage += action.get('parameters', {}).get('value', 0)
+                elif action.get('type') == 'damage_multi_target':
+                    # Multi-target damage (same value)
+                    damage += action.get('parameters', {}).get('value', 0)
+                elif action.get('type') == 'player_choice':
+                    # Check choices for damage options
+                    for option in action.get('options', []):
+                        if option.get('type') == 'damage':
+                            # Use the highest damage option
+                            option_damage = option.get('parameters', {}).get('value', 0)
+                            damage = max(damage, option_damage)
+                        elif option.get('type') == 'sequence':
+                            # Check sequence for damage
+                            seq_damage = 0
+                            for seq_action in option.get('actions', []):
+                                if seq_action.get('type') == 'damage':
+                                    seq_damage += seq_action.get('parameters', {}).get('value', 0)
+                            damage = max(damage, seq_damage)
+        
+        # Check advance effects for additional damage
+        for effect in card.advance_effects:
+            action = effect.get('action', {})
+            if isinstance(action, dict) and action.get('type') == 'damage':
+                # Don't count advance damage for now (it's conditional)
+                pass
+        
+        return damage
 
     def execute_effects(self, effects: list[dict], gs: 'GameState', caster: 'Player', current_card: 'Card', played_card: 'PlayedCard' = None) -> None:
         a_condition_was_met = False
@@ -1290,6 +1330,28 @@ class ActionHandler:
                         enemy.health = max(0, enemy.health - damage)
                         gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage} damage to {enemy.name} ({count} {spell_type} spell(s)). ({enemy.health}/{enemy.max_health}){Colors.ENDC}")
                         self._fire_event('player_damaged', gs, player=caster.name, target=enemy.name, value=damage, card_id=current_card.id)
+                        if original_health > 0 and enemy.health <= 0:
+                            if self.engine._handle_trunk_loss(enemy) == 'round_over': 
+                                raise RoundOverException()
+            
+            elif action_type == 'damage_equal_to_enemy_attack_damage':
+                # Familiar - damage based on each enemy's own attack spell damage
+                enemies = [p for p in gs.players if p != caster]
+                
+                for enemy in enemies:
+                    total_damage = 0
+                    # Check enemy's active attack spells in current clash
+                    for spell in enemy.board[gs.clash_num - 1]:
+                        if spell.status == 'revealed' and 'attack' in spell.card.types:
+                            # Calculate damage from this attack spell
+                            spell_damage = self._calculate_spell_damage(spell.card, enemy, gs)
+                            total_damage += spell_damage
+                    
+                    if total_damage > 0 and not enemy.is_invulnerable:
+                        original_health = enemy.health
+                        enemy.health = max(0, enemy.health - total_damage)
+                        gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [Familiar] reflected {total_damage} damage to {enemy.name} (from their attack spells). ({enemy.health}/{enemy.max_health}){Colors.ENDC}")
+                        self._fire_event('player_damaged', gs, player=caster.name, target=enemy.name, value=total_damage, card_id=current_card.id)
                         if original_health > 0 and enemy.health <= 0:
                             if self.engine._handle_trunk_loss(enemy) == 'round_over': 
                                 raise RoundOverException()
