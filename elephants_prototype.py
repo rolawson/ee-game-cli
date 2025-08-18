@@ -2107,14 +2107,13 @@ class ActionHandler:
     def _advance_single_spell(self, target: 'PlayedCard', gs: 'GameState', caster: 'Player', current_card: 'Card', action_data: dict) -> None:
         """Helper method to advance a single spell."""
         # Check if Break is preventing enemy advances
-        if target.owner != caster:
-            # Check if any opponent has Break active in the current clash
-            for player in gs.players:
-                if player != target.owner:
-                    for spell in player.board[gs.clash_num - 1]:
-                        if spell.status == 'revealed' and spell.card.name == 'Break':
-                            gs.action_log.append(f"[{target.card.name}] cannot advance because {player.name}'s [Break] prevents it!")
-                            return  # Prevent the advance from happening
+        # Break prevents ALL enemy spells from advancing, regardless of who is trying to advance them
+        for player in gs.players:
+            if player != target.owner:  # player is an opponent of the spell's owner
+                for spell in player.board[gs.clash_num - 1]:
+                    if spell.status == 'revealed' and spell.card.name == 'Break':
+                        gs.action_log.append(f"[{target.card.name}] cannot advance because {player.name}'s [Break] prevents it!")
+                        return  # Prevent the advance from happening
         
         # Check if this is a self-advance with a limit
         params = action_data.get('parameters', {})
