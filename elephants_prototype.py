@@ -1180,7 +1180,11 @@ class ActionHandler:
                         gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage} damage to {target.name}. ({target.health}/{target.max_health}){Colors.ENDC}")
                         self._fire_event('player_damaged', gs, player=caster.name, target=target.name, value=damage, card_id=current_card.id)
                         if original_health > 0 and target.health <= 0:
-                            if self.engine._handle_trunk_loss(target) == 'round_over': raise RoundOverException()
+                            death_result = self.engine._handle_trunk_loss(target)
+                            if death_result == 'game_over':
+                                raise RoundOverException()
+                            elif death_result == 'round_over':
+                                raise RoundOverException()
                 elif isinstance(target, PlayedCard) and target.card.is_conjury:
                     target.status = 'cancelled'; gs.action_log.append(f"{caster.name}'s [{current_card.name}] CANCELLED [{target.card.name}].")
                     self._fire_event('spell_cancelled', gs, player=caster.name, target_card_id=target.card.id, card_id=current_card.id)
@@ -1192,7 +1196,11 @@ class ActionHandler:
                             gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage} damage to {t.name}. ({t.health}/{t.max_health}){Colors.ENDC}")
                             self._fire_event('player_damaged', gs, player=caster.name, target=t.name, value=damage, card_id=current_card.id)
                             if original_health > 0 and t.health <= 0:
-                                if self.engine._handle_trunk_loss(t) == 'round_over': raise RoundOverException()
+                                death_result = self.engine._handle_trunk_loss(t)
+                                if death_result == 'game_over':
+                                    raise RoundOverException()
+                                elif death_result == 'round_over':
+                                    raise RoundOverException()
                      elif isinstance(t, PlayedCard) and t.card.is_conjury:
                         t.status = 'cancelled'; gs.action_log.append(f"{caster.name}'s [{current_card.name}] CANCELLED [{t.card.name}].")
                         self._fire_event('spell_cancelled', gs, player=caster.name, target_card_id=t.card.id, card_id=current_card.id)
@@ -1270,7 +1278,11 @@ class ActionHandler:
                         gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage} damage to {target.name} ({count} spell(s)). ({target.health}/{target.max_health}){Colors.ENDC}")
                         self._fire_event('player_damaged', gs, player=caster.name, target=target.name, value=damage, card_id=current_card.id)
                         if original_health > 0 and target.health <= 0:
-                            if self.engine._handle_trunk_loss(target) == 'round_over': raise RoundOverException()
+                            death_result = self.engine._handle_trunk_loss(target)
+                            if death_result == 'game_over':
+                                raise RoundOverException()
+                            elif death_result == 'round_over':
+                                raise RoundOverException()
                     elif isinstance(target, PlayedCard) and target.card.is_conjury:
                         target.status = 'cancelled'
                         gs.action_log.append(f"{caster.name}'s [{current_card.name}] CANCELLED [{target.card.name}].")
@@ -1427,7 +1439,10 @@ class ActionHandler:
                         gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage} damage to {enemy.name} ({count} {spell_type} spell(s)). ({enemy.health}/{enemy.max_health}){Colors.ENDC}")
                         self._fire_event('player_damaged', gs, player=caster.name, target=enemy.name, value=damage, card_id=current_card.id)
                         if original_health > 0 and enemy.health <= 0:
-                            if self.engine._handle_trunk_loss(enemy) == 'round_over': 
+                            death_result = self.engine._handle_trunk_loss(enemy)
+                            if death_result == 'game_over':
+                                raise RoundOverException()
+                            elif death_result == 'round_over': 
                                 raise RoundOverException()
             
             elif action_type == 'damage_equal_to_enemy_attack_damage':
@@ -1449,7 +1464,10 @@ class ActionHandler:
                         gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [Familiar] reflected {total_damage} damage to {enemy.name} (from their attack spells). ({enemy.health}/{enemy.max_health}){Colors.ENDC}")
                         self._fire_event('player_damaged', gs, player=caster.name, target=enemy.name, value=total_damage, card_id=current_card.id)
                         if original_health > 0 and enemy.health <= 0:
-                            if self.engine._handle_trunk_loss(enemy) == 'round_over': 
+                            death_result = self.engine._handle_trunk_loss(enemy)
+                            if death_result == 'game_over':
+                                raise RoundOverException()
+                            elif death_result == 'round_over': 
                                 raise RoundOverException()
             
             elif action_type == 'cancel':
@@ -2218,9 +2236,10 @@ class GameEngine:
     def run_game(self) -> None:
         try:
             self._setup_game()
-            while len([p for p in self.gs.players if p.trunks > 0]) > 1:
+            while len([p for p in self.gs.players if p.trunks > 0]) > 1 and not self.gs.game_over:
                 self._run_round()
-                self.gs.round_num += 1
+                if not self.gs.game_over:
+                    self.gs.round_num += 1
             
             winner = next((p for p in self.gs.players if p.trunks > 0), None)
             self.gs.action_log.append(f"GAME OVER! The winner is {winner.name}!" if winner else "GAME OVER! No winner.")
@@ -2304,10 +2323,15 @@ class GameEngine:
                 self.gs.clash_num = i
                 self._run_clash()
         except RoundOverException:
-            self.gs.action_log.append(f"{Colors.WARNING}The round has ended early due to trunk loss!{Colors.ENDC}")
-            self._pause("Proceeding to the end of the round.")
+            if self.gs.game_over:
+                self.gs.action_log.append(f"{Colors.WARNING}The game has ended!{Colors.ENDC}")
+            else:
+                self.gs.action_log.append(f"{Colors.WARNING}The round has ended early due to trunk loss!{Colors.ENDC}")
+                self._pause("Proceeding to the end of the round.")
 
-        self._run_end_of_round()
+        # Only run end of round if game isn't over
+        if not self.gs.game_over:
+            self._run_end_of_round()
     def _run_clash(self):
         self._run_prepare_phase()
         if self.gs.game_over: return # Check after prepare phase in case a player couldn't play
@@ -2547,7 +2571,8 @@ class GameEngine:
             # Check if a player was just knocked out (health is 0 but we haven't processed it yet)
             if player.health <= 0 and not player.knocked_out_this_turn:
                 player.knocked_out_this_turn = True # Mark as processed for this turn
-                if self._handle_trunk_loss(player) == 'round_over':
+                death_result = self._handle_trunk_loss(player)
+                if death_result == 'game_over' or death_result == 'round_over':
                     raise RoundOverException()
         
         # After handling any trunk losses, check if the round should end.
@@ -2739,6 +2764,11 @@ class GameEngine:
                 player.discard_pile.append(spell.card)
         player.board = [[] for _ in range(4)]
         self.gs.action_log.append(f"{player.name}'s spells were cleared from the board.")
+        
+        # Check if this player just lost their last trunk
+        if player.trunks == 0:
+            self.gs.game_over = True
+            return 'game_over'
         
         # Check for sudden death - if only one player is not invulnerable, round ends
         vulnerable_players = [p for p in self.gs.players if not p.is_invulnerable]

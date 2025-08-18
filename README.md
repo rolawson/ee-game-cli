@@ -58,10 +58,46 @@ python ai_vs_ai.py hard medium 10  # 10 games of hard vs medium
 ```
 
 
+### Analytics and Data Generation
+The game includes comprehensive analytics tracking for balance testing:
+
+#### Generate Analytics Data
+```bash
+# Quick test (5 games)
+python generate_analytics_data.py quick
+
+# Custom number of games
+python generate_analytics_data.py 100              # 100 hard vs hard games
+python generate_analytics_data.py 50 medium easy   # 50 medium vs easy games
+
+# Full tournament
+python generate_analytics_data.py tournament 20    # 20 games per matchup
+
+# Interactive analytics tournament
+python run_analytics_tournament.py                 # Prompts for settings
+```
+
+#### View Analytics Reports
+```bash
+# Generate report from existing game logs
+python analyze_real_world_data.py
+
+# View the generated report
+cat real_world_analysis.txt
+```
+
+The analytics system tracks:
+- Real-world damage dealt by each spell
+- Average damage per element
+- Spell usage frequency
+- Comparison of theoretical vs actual damage
+- Win rates and game lengths
+- Weighted damage analysis (weaken effects count as 2x)
+
 ### AI Difficulty Levels
 - **easy**: Random decisions with simple preferences
 - **medium**: Basic strategy and situational awareness
-- **hard**: Advanced strategy with combo awareness and card counting
+- **hard**: Advanced strategy with combo awareness, card counting, strategic hand clearing, and conjury targeting
 
 ## Game Rules
 
@@ -96,6 +132,12 @@ python ai_vs_ai.py hard medium 10  # 10 games of hard vs medium
 - `ai_vs_ai.py` - Run AI tournaments with detailed analysis
 - `ai_test.py` - Basic AI testing framework
 
+### Analytics Tools
+- `game_logger.py` - Game event logging system for analytics
+- `generate_analytics_data.py` - Generate game data for analysis
+- `run_analytics_tournament.py` - Interactive tournament runner for analytics
+- `analyze_real_world_data.py` - Generate comprehensive analytics reports
+
 ### Documentation
 - `HOWTOPLAY.md` - Detailed game rules and mechanics
 - `CONTEXT.md` - Technical architecture overview
@@ -103,3 +145,5 @@ python ai_vs_ai.py hard medium 10  # 10 games of hard vs medium
 
 ### Results
 - `test_results/` - Directory containing AI battle statistics (JSON files)
+- `game_logs/` - Directory containing detailed game logs for analytics (JSON files)
+- `real_world_analysis.txt` - Generated analytics report
