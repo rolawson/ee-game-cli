@@ -207,14 +207,51 @@ class UnifiedAnalytics:
                 # Win rate is wins / total games played with that element
                 element_win_rates[element] = element_wins[element] / element_games[element]
         
+        # Calculate category win rates
+        category_win_rates = self._calculate_category_win_rates(element_win_rates)
+        
         return {
             'win_rates': element_win_rates,
+            'category_win_rates': category_win_rates,
             'total_games': element_games,
             'wins': element_wins,
             'selections': dict(element_selections),
             'avg_damage': {e: sum(dmg)/len(dmg) if dmg else 0 for e, dmg in element_damage.items()},
             'avg_healing': {e: sum(heal)/len(heal) if heal else 0 for e, heal in element_healing.items()}
         }
+    
+    def _calculate_category_win_rates(self, element_win_rates: Dict[str, float]) -> Dict[str, float]:
+        """Calculate average win rates by element category"""
+        import json
+        import os
+        
+        # Load element categories
+        try:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            categories_path = os.path.join(current_dir, 'element_categories.json')
+            with open(categories_path, 'r') as f:
+                categories_data = json.load(f)
+        except:
+            return {}
+        
+        category_win_rates = {}
+        
+        for category_name, category_info in categories_data.get('categories', {}).items():
+            elements = category_info.get('elements', [])
+            
+            # Get win rates for elements in this category
+            category_rates = []
+            for element in elements:
+                if element in element_win_rates:
+                    category_rates.append(element_win_rates[element])
+            
+            # Calculate average win rate for the category
+            if category_rates:
+                category_win_rates[category_name] = sum(category_rates) / len(category_rates)
+            else:
+                category_win_rates[category_name] = 0.0
+        
+        return category_win_rates
     
     def _analyze_spells(self) -> Dict[str, Any]:
         """Analyze individual spell performance"""
@@ -546,6 +583,13 @@ class UnifiedAnalytics:
             avg_dmg = element_stats['avg_damage'].get(element, 0)
             self._add_line(f"  {element:12} - {win_rate:6.1%} ({wins:3}/{games:3} games) | Avg Damage: {avg_dmg:.1f}")
         
+        # Add category win rates
+        if 'category_win_rates' in element_stats:
+            self._add_line("\nWin Rates by Category:")
+            sorted_categories = sorted(element_stats['category_win_rates'].items(), key=lambda x: x[1], reverse=True)
+            for category, win_rate in sorted_categories:
+                self._add_line(f"  {category.capitalize():12} - {win_rate:6.1%}")
+        
         # Add element selection frequency
         self._add_line("\nElement Selection Frequency:")
         total_selections = sum(element_stats['selections'].values())
@@ -650,6 +694,7 @@ class UnifiedAnalytics:
             'last_updated': datetime.now().isoformat(),
             'total_games': analysis.get('total_games', 0),
             'win_rates': dict(element_stats.get('win_rates', {})),
+            'category_win_rates': dict(element_stats.get('category_win_rates', {})),
             'selection_rates': {},
             'games_per_element': dict(element_stats.get('total_games', {}))
         }
