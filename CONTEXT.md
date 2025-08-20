@@ -192,3 +192,11 @@ Elemental Elephants/
    - Made combo evaluation immediate rather than potential-based
    - Improved health-based decision making with ratio thresholds
    - Streamlined option evaluation to encourage aggressive play
+
+6. **AI Element Selection Bias Fix** - Eliminated heavy bias toward certain elements:
+   - Replaced complex additive scoring with normalized weight-based system
+   - Made win rate the primary factor in element selection (0.5x to 2.0x weight)
+   - Added penalties for overselected elements (0.3x weight for >15% selection)
+   - Implemented true weighted random selection instead of always picking highest score
+   - Added element_win_rates.json for dynamic win rate tracking
+   - Result: Selection rates now balanced between 5-8% per element (was 19.5% for Metal)

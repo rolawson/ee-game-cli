@@ -1074,138 +1074,69 @@ class HardAI(BaseAI):
             # Randomly choose a strategy for this game
             self.strategy_mode = random.choice(['aggressive', 'defensive', 'balanced', 'experimental'])
         
-        set_scores = {}
+        # Calculate weights for each set based on multiple factors
+        set_weights = {}
         
         for set_idx, spell_set in enumerate(available_sets):
-            score = 0
-            
-            # Analyze the set
-            set_analysis = self._analyze_spell_set(spell_set, gs)
             element = spell_set[0].element
             category = self.get_element_category(element)
             
-            # 1. Type balance scoring
-            type_balance_score = self._evaluate_type_balance(set_analysis, current_cards)
-            score += type_balance_score
+            # Start with base weight of 1.0
+            weight = 1.0
             
-            # 2. Priority distribution
-            priority_score = self._evaluate_priority_distribution(set_analysis, current_cards)
-            score += priority_score
+            # 1. PRIMARY FACTOR: Win rate (if we have data)
+            if self.element_win_rates.get('total_games', 0) >= 50:
+                win_rate = self.get_element_win_rate(element)
+                # Adjust weight based on win rate (0.5 to 2.0 range)
+                weight *= (0.5 + win_rate * 1.5)
+                
+                # Penalize overselected elements
+                selection_rate = self.element_win_rates.get('selection_rates', {}).get(element, 0)
+                if selection_rate > 0.15:  # Over 15%
+                    weight *= 0.3  # Strong penalty
+                elif selection_rate > 0.10:  # Over 10%
+                    weight *= 0.6  # Moderate penalty
             
-            # 3. Combo potential within set
-            combo_score = self._evaluate_set_combos(spell_set, gs)
-            score += combo_score
+            # 2. Skip counter-selection - should use real data, not hardcoded relationships
             
-            # 4. Element synergy with existing cards
-            if current_cards:
-                element_score = self._evaluate_element_synergy(spell_set, current_cards)
-                score += element_score
-            
-            # 5. Counter-play potential
-            counter_score = self._evaluate_counter_potential(set_analysis)
-            score += counter_score
-            
-            # 6. Special abilities and unique effects
-            special_score = self._evaluate_special_abilities(spell_set)
-            score += special_score
-            
-            # 7. Element category evaluation
-            element_category_score = self._evaluate_element_category(spell_set, current_cards, gs)
-            score += element_category_score
-            
-            # 6. Opponent element counter-play
-            if opponent_elements:
-                opponent_counter_score = self._evaluate_counter_play_potential(spell_set, opponent_elements)
-                score += opponent_counter_score
-            
-            # 7. Exploration bonus for variety
-            exploration_bonus = 0
-            
-            # First pick variety bonus
-            if len(current_cards) == 0:  # First draft
-                # Strong bonus for elements we've never/rarely started with
-                first_pick_count = sum(1 for i, e in enumerate(self.element_pick_history) if i % 2 == 0 and e == element)
-                if first_pick_count == 0:
-                    exploration_bonus += 80  # Never picked first
-                elif first_pick_count < 2:
-                    exploration_bonus += 40  # Rarely picked first
-                    
-                # Extra random bonus for first pick
-                exploration_bonus += random.randint(0, 60)
-            
-            if element not in self.element_pick_history[-4:]:
-                exploration_bonus += 40  # Haven't picked this recently
-            if len([e for e in self.element_pick_history if e == element]) < 2:
-                exploration_bonus += 20  # Rarely pick this element
-            score += exploration_bonus
-            
-            # 8. Strategy mode influence
+            # 3. Basic category preference (small factor)
             if self.strategy_mode == 'aggressive' and category == 'offense':
-                score += 50
+                weight *= 1.2
             elif self.strategy_mode == 'defensive' and category == 'defense':
-                score += 50
-            elif self.strategy_mode == 'balanced' and category == 'balanced':
-                score += 40
-            elif self.strategy_mode == 'experimental':
-                # Favor unusual or complex elements
-                if element in ['Twilight', 'Aster', 'Nectar', 'Thunder']:
-                    score += 60
+                weight *= 1.2
+            elif category == 'mobility':
+                weight *= 1.1  # Slight preference for mobility
             
-            # Add significant randomness to prevent predictability
-            score += random.randint(-40, 40)
+            # 4. Variety bonus (avoid repeating recent picks)
+            if element in self.element_pick_history[-6:]:
+                weight *= 0.7  # Discourage recent repeats
             
-            set_scores[set_idx] = score
+            # Store normalized weight
+            set_weights[set_idx] = max(weight, 0.1)  # Minimum weight of 0.1
             
             if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                win_rate = self.get_element_win_rate(element) if self.element_win_rates.get('total_games', 0) >= 50 else 0.5
+                selection_rate = self.element_win_rates.get('selection_rates', {}).get(element, 0)
                 self.engine.ai_decision_logs.append(
-                    f"\\033[90m[AI-DRAFT] {spell_set[0].elephant} ({spell_set[0].element}): "
-                    f"score = {score} (strategy: {self.strategy_mode})\\033[0m"
+                    f"\\033[90m[AI-DRAFT] {element}: weight={weight:.2f}, win_rate={win_rate:.1%}, selection_rate={selection_rate:.1%}\\033[0m"
                 )
         
-        # Choose from top sets with weighted randomness
-        sorted_scores = sorted(set_scores.items(), key=lambda x: x[1], reverse=True)
-        
-        # Sometimes just pick randomly for variety (20% chance)
-        if random.random() < 0.2:
-            best_idx = random.choice(list(set_scores.keys()))
-            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
-                self.engine.ai_decision_logs.append(
-                    f"\\033[90m[AI-DRAFT] Making random choice for variety!\\033[0m"
-                )
+        # Use weighted random selection
+        total_weight = sum(set_weights.values())
+        if total_weight == 0:
+            # Fallback to equal weights if something went wrong
+            best_idx = random.choice(list(range(len(available_sets))))
         else:
-            # Consider more choices for variety
-            num_choices = min(6, len(sorted_scores))  # Consider top 6 instead of 4
-            top_choices = sorted_scores[:num_choices]
+            # Weighted random choice
+            rand_val = random.random() * total_weight
+            cumulative = 0
+            best_idx = 0
             
-            # Calculate selection weights with flatter distribution
-            if top_choices:
-                min_score = min(score for _, score in top_choices)
-                max_score = max(score for _, score in top_choices)
-                score_range = max_score - min_score
-                
-                # Flatten the weights to make lower-ranked choices more likely
-                weights = []
-                for _, score in top_choices:
-                    # Normalize score to 0-1 range
-                    normalized = (score - min_score) / (score_range + 1)
-                    # Apply square root to flatten distribution
-                    weight = (normalized ** 0.5) * 100 + 20  # Min weight of 20
-                    weights.append(weight)
-                
-                total_weight = sum(weights)
-                
-                # Weighted random selection
-                rand_val = random.random() * total_weight
-                cumulative = 0
-                best_idx = top_choices[0][0]  # Default to best
-                
-                for i, (idx, _) in enumerate(top_choices):
-                    cumulative += weights[i]
-                    if rand_val <= cumulative:
-                        best_idx = idx
-                        break
-            else:
-                best_idx = 0
+            for idx, weight in set_weights.items():
+                cumulative += weight
+                if rand_val <= cumulative:
+                    best_idx = idx
+                    break
         
         chosen_set = available_sets[best_idx]
         
@@ -1213,9 +1144,12 @@ class HardAI(BaseAI):
         self.element_pick_history.append(chosen_set[0].element)
         
         if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+            element = chosen_set[0].element
+            final_weight = set_weights[best_idx]
+            win_rate = self.get_element_win_rate(element) if self.element_win_rates.get('total_games', 0) >= 50 else 0.5
             self.engine.ai_decision_logs.append(
-                f"\\033[90m[AI-DRAFT] Chose {chosen_set[0].elephant} ({chosen_set[0].element}) "
-                f"with score {set_scores[best_idx]}\\033[0m"
+                f"\\033[90m[AI-DRAFT] Chose {chosen_set[0].elephant} ({element}) "
+                f"with weight {final_weight:.2f} (win_rate: {win_rate:.1%})\\033[0m"
             )
         
         return chosen_set
@@ -1364,9 +1298,9 @@ class HardAI(BaseAI):
                 if spell1.element == spell2.element:
                     score += 10
                 
-                # Type synergy
-                shared_types = set(spell1.types) & set(spell2.types)
-                score += len(shared_types) * 15
+                # Type synergy - don't reward just having multiple types
+                # Only reward meaningful synergies
+                pass
         
         # Check for self-sufficient combos
         has_enablers = False
@@ -1482,9 +1416,23 @@ class HardAI(BaseAI):
         set_element = spell_set[0].element
         set_category = self.get_element_category(set_element)
         
-        # Base score from element draft priority
-        draft_priority = self.get_element_draft_priority(set_element)
-        score += (draft_priority - 1.0) * 100  # Convert multiplier to score
+        # Base score from real-world win rates instead of draft priority
+        # Use win rate data if we have enough games
+        if self.element_win_rates.get('total_games', 0) >= 50:
+            win_rate = self.get_element_win_rate(set_element)
+            # Convert win rate to score: 50% = 0, 75% = +50, 25% = -50
+            win_rate_score = (win_rate - 0.5) * 200
+            score += win_rate_score
+            
+            # Also penalize overselected elements to encourage variety
+            selection_rate = self.element_win_rates.get('selection_rates', {}).get(set_element, 0)
+            expected_rate = 1.0 / 19  # ~5.3% for 19 elements
+            if selection_rate > expected_rate * 2:  # Over 10%
+                score -= 30  # Penalty for overselection
+        else:
+            # Fallback to original draft priority if not enough data
+            draft_priority = self.get_element_draft_priority(set_element)
+            score += (draft_priority - 1.0) * 100
         
         # Evaluate synergies with spell types in the set
         type_synergy_score = 0
@@ -1532,11 +1480,19 @@ class HardAI(BaseAI):
                     score += 20
         
         # Log decision
-        if self.engine and hasattr(self.engine, 'ai_decision_logs') and type_synergy_score > 0:
-            self.engine.ai_decision_logs.append(
-                f"\\033[90m[AI-DRAFT] {set_element} ({set_category}): "
-                f"priority={draft_priority:.1f}, synergy_score={type_synergy_score}\\033[0m"
-            )
+        if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+            if self.element_win_rates.get('total_games', 0) >= 50:
+                win_rate = self.get_element_win_rate(set_element)
+                self.engine.ai_decision_logs.append(
+                    f"\\033[90m[AI-DRAFT] {set_element} ({set_category}): "
+                    f"win_rate={win_rate:.1%}, score={score:.0f}\\033[0m"
+                )
+            else:
+                draft_priority = self.get_element_draft_priority(set_element)
+                self.engine.ai_decision_logs.append(
+                    f"\\033[90m[AI-DRAFT] {set_element} ({set_category}): "
+                    f"priority={draft_priority:.1f}, score={score:.0f}\\033[0m"
+                )
         
         return score
     
@@ -1624,13 +1580,7 @@ class HardAI(BaseAI):
                     if spell.priority in ['1', '2']:  # Fast spells
                         score += 10
                         
-            # Specific element counters
-            if 'Blood' in opponent_elements and 'remedy' in spell.types:
-                score += 25  # Blood does self-damage
-            if 'Fire' in opponent_elements and 'Water' == spell.element:
-                score += 20  # Classic counter
-            if 'Lightning' in opponent_elements and 'Thunder' == spell.element:
-                score += 15  # Storm synergy/counter
+            # Element-specific counters should use real data, not assumptions
                 
         return score
     
@@ -1777,16 +1727,6 @@ class HardAI(BaseAI):
     
     def _is_bad_element_matchup(self, my_element, opponent_elements):
         """Check if my element is weak against opponent elements"""
-        # This is a simplified check - could be enhanced with actual game rules
-        element_weaknesses = {
-            'Fire': ['Water', 'Earth'],
-            'Water': ['Lightning', 'Wood'],
-            'Earth': ['Wood', 'Wind'],
-            'Wind': ['Fire', 'Metal'],
-            'Wood': ['Fire', 'Metal'],
-            'Metal': ['Thunder', 'Water'],
-            # Add more as needed
-        }
-        
-        weak_against = element_weaknesses.get(my_element, [])
-        return any(opp_elem in weak_against for opp_elem in opponent_elements)
+        # TODO: Should use real win rate data instead of hardcoded relationships
+        # For now, return False to avoid using incorrect assumptions
+        return False

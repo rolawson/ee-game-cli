@@ -15,6 +15,7 @@ class BaseAI(ABC):
         self.engine = None  # Will be set by GameEngine
         self.opponent_history = {}  # Track what opponents have played
         self._load_element_categories()
+        self.element_win_rates = self._load_element_win_rates()
     
     def choose_card_to_play(self, player, gs):
         """Main entry point for AI card selection"""
@@ -223,6 +224,25 @@ class BaseAI(ABC):
             
         category_data = BaseAI._element_categories['categories'].get(category, {})
         return category_data.get('draft_priority', 1.0)
+    
+    def _load_element_win_rates(self):
+        """Load element win rate data from analytics"""
+        try:
+            current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            win_rates_path = os.path.join(current_dir, 'element_win_rates.json')
+            
+            if os.path.exists(win_rates_path):
+                with open(win_rates_path, 'r') as f:
+                    data = json.load(f)
+                    return data
+            else:
+                return {'win_rates': {}, 'selection_rates': {}, 'total_games': 0}
+        except Exception:
+            return {'win_rates': {}, 'selection_rates': {}, 'total_games': 0}
+    
+    def get_element_win_rate(self, element):
+        """Get win rate for an element from analytics data"""
+        return self.element_win_rates.get('win_rates', {}).get(element, 0.5)
     
     def choose_draft_set(self, player, gs, available_sets):
         """Choose a spell set during drafting phase

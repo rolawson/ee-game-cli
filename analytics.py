@@ -642,6 +642,30 @@ class UnifiedAnalytics:
             f.write('\n'.join(self.report_lines))
         return filename
     
+    def save_win_rates(self, analysis: Dict[str, Any]) -> None:
+        """Save element win rates to a file for AI to use"""
+        element_stats = analysis.get('element_stats', {})
+        
+        win_rate_data = {
+            'last_updated': datetime.now().isoformat(),
+            'total_games': analysis.get('total_games', 0),
+            'win_rates': dict(element_stats.get('win_rates', {})),
+            'selection_rates': {},
+            'games_per_element': dict(element_stats.get('total_games', {}))
+        }
+        
+        # Calculate selection rates
+        total_selections = sum(element_stats.get('selections', {}).values())
+        if total_selections > 0:
+            for element, count in element_stats.get('selections', {}).items():
+                win_rate_data['selection_rates'][element] = count / total_selections
+        
+        # Save to file
+        with open('element_win_rates.json', 'w') as f:
+            json.dump(win_rate_data, f, indent=2)
+        
+        print(f"\nWin rate data saved to element_win_rates.json")
+    
     def display_report(self) -> None:
         """Display report to console"""
         for line in self.report_lines:
@@ -685,6 +709,9 @@ def main():
     # Display and save
     analytics.display_report()
     filename = analytics.save_report()
+    
+    # Save win rate data for AI
+    analytics.save_win_rates(analysis)
     
     print(f"\nReport saved to: {filename}")
 

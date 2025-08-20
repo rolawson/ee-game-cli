@@ -10,7 +10,7 @@ Never take proactive action without first asking me.
 
 Never update JSON files. Instead tell me what updates to make myself.
 
-Never specify specific spells in logic. Develop logic in an extensible way instead.
+Never hard-code specific spells or elements in logic. Develop logic in an extensible way instead.
 
 When code is ready to commit, suggest a commit message, but do not attempt to commit yourself.
 
