@@ -18,10 +18,22 @@ class GameLogger:
         self.bolster_events = []
         self.spell_plays = []
         self.game_metadata = {}
+        self.trunk_start_times = {}  # Track when each trunk starts
         
         # Create log directory if it doesn't exist
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
+    
+    def reset(self):
+        """Reset the logger for a new game"""
+        self.current_game = None
+        self.damage_events = []
+        self.healing_events = []
+        self.weaken_events = []
+        self.bolster_events = []
+        self.spell_plays = []
+        self.game_metadata = {}
+        self.trunk_start_times = {}
     
     def start_game(self, player1_name, player2_name, player1_elements, player2_elements, ai_difficulty=None):
         """Start logging a new game"""
@@ -40,21 +52,34 @@ class GameLogger:
                 }
             },
             'ai_difficulty': ai_difficulty,
-            'events': []
+            'events': [],
+            'player_elements': {
+                player1_name: player1_elements,
+                player2_name: player2_elements
+            }
         }
         self.damage_events = []
         self.healing_events = []
         self.weaken_events = []
         self.bolster_events = []
         self.spell_plays = []
+        
+        # Initialize trunk tracking - each player starts with 3 trunks at round 1
+        self.trunk_start_times = {
+            f"{player1_name}_trunk_1": 1,
+            f"{player2_name}_trunk_1": 1
+        }
     
-    def log_spell_played(self, player_name, spell_name, element, clash_num, round_num):
+    def log_spell_played(self, player_name, spell_name, element, clash_num, round_num, spell_types=None, is_conjury=False):
         """Log when a spell is played"""
         event = {
             'type': 'spell_played',
             'player': player_name,
             'spell': spell_name,
+            'spell_name': spell_name,  # Duplicate for consistency
             'element': element,
+            'spell_types': spell_types or [],
+            'is_conjury': is_conjury,
             'clash': clash_num,
             'round': round_num,
             'timestamp': datetime.now().isoformat()
@@ -136,9 +161,109 @@ class GameLogger:
         if self.current_game:
             self.current_game['events'].append(event)
     
+    def log_trunk_lost(self, player_name, round_num, remaining_trunks):
+        """Log when a player loses a trunk"""
+        event = {
+            'type': 'trunk_lost',
+            'player': player_name,
+            'round': round_num,
+            'remaining_trunks': remaining_trunks,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        # Track trunk lifetime
+        trunk_key = f"{player_name}_trunk_{3 - remaining_trunks}"  # trunk 1, 2, or 3
+        if trunk_key in self.trunk_start_times:
+            start_round = self.trunk_start_times[trunk_key]
+            event['trunk_lifetime_rounds'] = round_num - start_round
+        
+        # Start tracking next trunk
+        if remaining_trunks > 0:
+            next_trunk_key = f"{player_name}_trunk_{3 - remaining_trunks + 1}"
+            self.trunk_start_times[next_trunk_key] = round_num
+        
+        if self.current_game:
+            self.current_game['events'].append(event)
+    
+    def log_spell_advanced(self, player_name, spell_name, from_clash, to_clash):
+        """Log when a spell is advanced"""
+        event = {
+            'type': 'spell_advanced',
+            'player': player_name,
+            'spell': spell_name,
+            'from_clash': from_clash,
+            'to_clash': to_clash,
+            'timestamp': datetime.now().isoformat()
+        }
+        if self.current_game:
+            self.current_game['events'].append(event)
+    
+    def log_spell_cancelled(self, player_name, spell_name, cancelled_by):
+        """Log when a spell is cancelled"""
+        event = {
+            'type': 'spell_cancelled',
+            'player': player_name,
+            'spell': spell_name,
+            'cancelled_by': cancelled_by,
+            'timestamp': datetime.now().isoformat()
+        }
+        if self.current_game:
+            self.current_game['events'].append(event)
+    
+    def log_spell_recalled(self, player_name, spell_name, from_location):
+        """Log when a spell is recalled"""
+        event = {
+            'type': 'spell_recalled',
+            'player': player_name,
+            'spell': spell_name,
+            'from_location': from_location,
+            'timestamp': datetime.now().isoformat()
+        }
+        if self.current_game:
+            self.current_game['events'].append(event)
+    
+    def log_spell_moved(self, player_name, spell_name, from_clash, to_clash):
+        """Log when a spell is moved"""
+        event = {
+            'type': 'spell_moved',
+            'player': player_name,
+            'spell': spell_name,
+            'from_clash': from_clash,
+            'to_clash': to_clash,
+            'timestamp': datetime.now().isoformat()
+        }
+        if self.current_game:
+            self.current_game['events'].append(event)
+    
+    def log_spell_discarded(self, player_name, spell_name, discarded_by):
+        """Log when a spell is discarded"""
+        event = {
+            'type': 'spell_discarded',
+            'player': player_name,
+            'spell': spell_name,
+            'discarded_by': discarded_by,
+            'timestamp': datetime.now().isoformat()
+        }
+        if self.current_game:
+            self.current_game['events'].append(event)
+    
+    def log_spell_revealed(self, player_name, spell_name, revealed_by):
+        """Log when a spell is revealed from hand"""
+        event = {
+            'type': 'spell_revealed',
+            'player': player_name,
+            'spell': spell_name,
+            'revealed_by': revealed_by,
+            'timestamp': datetime.now().isoformat()
+        }
+        if self.current_game:
+            self.current_game['events'].append(event)
+    
     def log_game_end(self, winner_name, winner_health, loser_health, total_rounds):
         """Log the end of a game"""
         if self.current_game:
+            self.current_game['winner'] = winner_name  # Add winner at top level for easier access
+            self.current_game['total_rounds'] = total_rounds  # Add at top level too
             self.current_game['result'] = {
                 'winner': winner_name,
                 'winner_health': winner_health,

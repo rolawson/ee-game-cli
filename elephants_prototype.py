@@ -625,6 +625,51 @@ class ActionHandler:
                     clash_num=gs.clash_num,
                     round_num=gs.round_num
                 )
+        
+        elif event_type == 'spell_advanced':
+            # Extract spell name from card_id
+            spell_name = 'Unknown'
+            for spell in SPELL_DATA:
+                if spell.get('id') == kwargs.get('card_id'):
+                    spell_name = spell.get('card_name', 'Unknown')
+                    break
+            
+            game_logger.log_spell_advanced(
+                player_name=kwargs.get('player'),
+                spell_name=spell_name,
+                from_clash=gs.clash_num,
+                to_clash=gs.clash_num + 1
+            )
+        
+        elif event_type == 'spell_cancelled':
+            # Extract spell names
+            target_spell_name = 'Unknown'
+            canceller_spell_name = 'Unknown'
+            for spell in SPELL_DATA:
+                if spell.get('id') == kwargs.get('target_card_id'):
+                    target_spell_name = spell.get('card_name', 'Unknown')
+                if spell.get('id') == kwargs.get('card_id'):
+                    canceller_spell_name = spell.get('card_name', 'Unknown')
+            
+            game_logger.log_spell_cancelled(
+                player_name=kwargs.get('player'),
+                spell_name=target_spell_name,
+                cancelled_by=canceller_spell_name
+            )
+        
+        elif event_type == 'spell_recalled':
+            # Extract spell name
+            spell_name = 'Unknown'
+            for spell in SPELL_DATA:
+                if spell.get('id') == kwargs.get('card_id'):
+                    spell_name = spell.get('card_name', 'Unknown')
+                    break
+            
+            game_logger.log_spell_recalled(
+                player_name=kwargs.get('player'),
+                spell_name=spell_name,
+                from_location='discard'  # Default, could be enhanced
+            )
     
     def _calculate_spell_damage(self, card: 'Card', owner: 'Player', gs: 'GameState') -> int:
         """Calculate the base damage value from a spell card"""
@@ -717,6 +762,8 @@ class ActionHandler:
                     # For AI enemies, reveal a random card
                     revealed_card = random.choice(enemy.hand)
                     gs.action_log.append(f"Revealed from {enemy.name}'s hand: [{revealed_card.name}]")
+                    # Log the reveal
+                    game_logger.log_spell_revealed(enemy.name, revealed_card.name, caster.name)
                     revealed_cards.append((enemy, revealed_card))
             
             # Let the caster choose which card to recall
@@ -808,6 +855,9 @@ class ActionHandler:
                                 owner.board[source_clash_idx].remove(spell)
                                 owner.board[dest_clash_idx].append(spell)
                                 moved_count += 1
+                                
+                                # Log the move
+                                game_logger.log_spell_moved(owner.name, spell.card.name, source_clash_idx + 1, dest_clash_idx + 1)
                                 
                                 # If moving to current clash, add to resolution queue
                                 if dest_clash_idx == gs.clash_num - 1:
@@ -1368,6 +1418,8 @@ class ActionHandler:
                                 clash_list.remove(spell)
                                 caster.discard_pile.append(spell.card)
                                 gs.action_log.append(f"{Colors.GREY}{ACTION_EMOJIS['discard']} [{spell.card.name}] was discarded.{Colors.ENDC}")
+                                # Log the discard
+                                game_logger.log_spell_discarded(caster.name, spell.card.name, "self")
                                 return
                 elif isinstance(target, PlayedCard):
                     # Discard a specific spell (used by Electrocute, Daybreak)
@@ -1380,9 +1432,13 @@ class ActionHandler:
                     if owner != caster:
                         caster.discard_pile.append(target.card)
                         gs.action_log.append(f"{caster.name} discarded [{target.card.name}] from {owner.name}'s past spells into their own discard pile!")
+                        # Log the discard
+                        game_logger.log_spell_discarded(owner.name, target.card.name, caster.name)
                     else:
                         owner.discard_pile.append(target.card)
                         gs.action_log.append(f"{caster.name} discarded [{target.card.name}] from past spells!")
+                        # Log the discard
+                        game_logger.log_spell_discarded(owner.name, target.card.name, caster.name)
                 else:
                     gs.action_log.append(f"No valid target to discard.")
             
@@ -1540,6 +1596,8 @@ class ActionHandler:
                         owner.board[current_clash].remove(target)
                         owner.board[target_clash].append(target)
                         gs.action_log.append(f"{caster.name} moved [{target.card.name}] from Clash {current_clash + 1} to Clash {target_clash + 1}!")
+                        # Log the move
+                        game_logger.log_spell_moved(owner.name, target.card.name, current_clash + 1, target_clash + 1)
                         self.engine._pause()
                     else:
                         gs.action_log.append(f"Cannot move [{target.card.name}] to a future clash.")
@@ -2411,7 +2469,9 @@ class GameEngine:
                         spell_name=spell.card.name,
                         element=spell.card.element,
                         clash_num=self.gs.clash_num,
-                        round_num=self.gs.round_num
+                        round_num=self.gs.round_num,
+                        spell_types=spell.card.types,
+                        is_conjury=spell.card.is_conjury
                     )
         
         # Show all revealed spells with instructions
@@ -2758,6 +2818,10 @@ class GameEngine:
     def _handle_trunk_loss(self, player: Player) -> str:
         message = player.lose_trunk()
         self.gs.action_log.append(f"{Colors.FAIL}{message}{Colors.ENDC}")
+        
+        # Log trunk loss for analytics
+        game_logger.log_trunk_lost(player.name, self.gs.round_num, player.trunks)
+        
         for clash_list in player.board:
             for spell in clash_list:
                 player.discard_pile.append(spell.card)
