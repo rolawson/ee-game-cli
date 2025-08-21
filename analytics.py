@@ -162,6 +162,8 @@ class UnifiedAnalytics:
             'theme_stats': self._analyze_themes(),
             'playstyle_stats': self._analyze_playstyles(),
             'trunk_survival': self._analyze_trunk_survival(),
+            'trunk_destroyers': self._analyze_trunk_destroyers(),
+            'response_effectiveness': self._analyze_response_spells(),
             'balance_issues': self._detect_balance_issues()
         }
         
@@ -392,36 +394,29 @@ class UnifiedAnalytics:
         conjury_cancelled = 0
         conjuries_by_spell = defaultdict(lambda: {'played': 0, 'cancelled': 0})
         
+        # First pass: identify all conjury spells
+        conjury_spell_names = set()
         for game in self.game_logs:
-            # Track conjuries that were played
-            conjury_tracker = {}  # Maps spell instances to track if they're conjuries
-            
+            for event in game.get('events', []):
+                if event['type'] == 'spell_played' and event.get('is_conjury', False):
+                    spell_name = event.get('spell', event.get('spell_name'))
+                    conjury_spell_names.add(spell_name)
+        
+        # Second pass: count plays and cancellations
+        for game in self.game_logs:
             for event in game.get('events', []):
                 if event['type'] == 'spell_played':
-                    # Check if this spell is a conjury
-                    is_conjury = event.get('is_conjury', False)
-                    if is_conjury:
-                        spell_name = event.get('spell', event.get('spell_name'))
-                        player = event.get('player')
-                        clash = event.get('clash')
-                        key = f"{player}_{spell_name}_{clash}"
-                        
+                    spell_name = event.get('spell', event.get('spell_name'))
+                    if spell_name in conjury_spell_names:
                         conjury_played += 1
                         conjuries_by_spell[spell_name]['played'] += 1
-                        conjury_tracker[key] = spell_name
                 
                 elif event['type'] == 'spell_cancelled':
-                    # Check if the cancelled spell was a conjury
-                    spell_name = event.get('spell')
-                    player = event.get('player')
-                    
-                    # Look through our tracked conjuries to see if this matches
-                    for key, tracked_spell in list(conjury_tracker.items()):
-                        if player in key and spell_name == tracked_spell:
-                            conjury_cancelled += 1
-                            conjuries_by_spell[spell_name]['cancelled'] += 1
-                            del conjury_tracker[key]
-                            break
+                    # The cancelled spell is in the 'spell' field
+                    cancelled_spell = event.get('spell')
+                    if cancelled_spell in conjury_spell_names:
+                        conjury_cancelled += 1
+                        conjuries_by_spell[cancelled_spell]['cancelled'] += 1
         
         # Calculate cancellation rates per spell
         spell_cancel_rates = {}
@@ -523,6 +518,118 @@ class UnifiedAnalytics:
             'total_trunk_losses': len(trunk_lifetimes),
             'player_averages': player_avg_lifetimes
         }
+    
+    def _analyze_trunk_destroyers(self) -> Dict[str, Any]:
+        """Analyze which spells are most likely to destroy trunks"""
+        trunk_destroyers = defaultdict(int)
+        damage_before_trunk_loss = defaultdict(list)
+        
+        for game in self.game_logs:
+            recent_damage_events = []  # Track recent damage events
+            
+            for event in game.get('events', []):
+                # Track damage events
+                if event['type'] == 'damage_dealt':
+                    recent_damage_events.append({
+                        'spell': event.get('spell', event.get('spell_name', 'Unknown')),
+                        'target': event.get('target_player'),  # Use target_player field
+                        'amount': event.get('amount', 0),
+                        'timestamp': event.get('timestamp')
+                    })
+                    # Keep only last 10 damage events
+                    recent_damage_events = recent_damage_events[-10:]
+                
+                # When a trunk is lost, attribute it to recent damage
+                elif event['type'] == 'trunk_lost':
+                    lost_player = event.get('player')
+                    
+                    # Find damage that killed this player
+                    for damage_event in reversed(recent_damage_events):
+                        if damage_event['target'] == lost_player:
+                            spell_name = damage_event['spell']
+                            trunk_destroyers[spell_name] += 1
+                            damage_before_trunk_loss[spell_name].append(damage_event['amount'])
+                            break  # Only credit the killing blow
+        
+        # Calculate statistics
+        trunk_destroyer_stats = {}
+        for spell, count in trunk_destroyers.items():
+            avg_damage = sum(damage_before_trunk_loss[spell]) / len(damage_before_trunk_loss[spell]) if damage_before_trunk_loss[spell] else 0
+            trunk_destroyer_stats[spell] = {
+                'trunk_kills': count,
+                'avg_damage_for_kill': avg_damage
+            }
+        
+        return trunk_destroyer_stats
+    
+    def _analyze_response_spells(self) -> Dict[str, Any]:
+        """Analyze how often response spell conditions are met within a round"""
+        response_spell_stats = defaultdict(lambda: {'played': 0, 'condition_met': 0})
+        
+        # Identify response spells from spell data
+        import json
+        import os
+        response_spells = set()
+        try:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            spells_path = os.path.join(current_dir, 'spells.json')
+            with open(spells_path, 'r') as f:
+                spell_data = json.load(f)
+                for spell in spell_data:
+                    if 'response' in spell.get('spell_types', []):
+                        response_spells.add(spell.get('card_name'))
+        except:
+            pass
+        
+        # Track response spell effectiveness
+        for game in self.game_logs:
+            # Track spells played in each round
+            round_spells = defaultdict(list)
+            
+            for event in game.get('events', []):
+                round_num = event.get('round', 1)
+                
+                if event['type'] == 'spell_played':
+                    spell_name = event.get('spell', event.get('spell_name'))
+                    if spell_name in response_spells:
+                        player = event.get('player')
+                        response_spell_stats[spell_name]['played'] += 1
+                        round_spells[round_num].append({
+                            'spell': spell_name,
+                            'player': player,
+                            'triggered': False
+                        })
+                
+                # Look for any effect from response spells (damage, healing, etc)
+                elif event['type'] in ['damage_dealt', 'healing_done', 'weaken_dealt', 
+                                     'bolster_done', 'spell_advanced', 'spell_recalled']:
+                    spell_name = event.get('spell', event.get('spell_name'))
+                    if spell_name in response_spells:
+                        # Mark this response spell as having triggered
+                        player = event.get('source_player', event.get('player'))
+                        round_num = event.get('round', 1)
+                        
+                        # Find the matching played spell in this round
+                        for spell_info in round_spells.get(round_num, []):
+                            if (spell_info['spell'] == spell_name and 
+                                spell_info['player'] == player and 
+                                not spell_info['triggered']):
+                                spell_info['triggered'] = True
+                                response_spell_stats[spell_name]['condition_met'] += 1
+                                break
+        
+        # Calculate effectiveness rates
+        response_effectiveness = {}
+        for spell, stats in response_spell_stats.items():
+            if stats['played'] > 0:
+                effectiveness = stats['condition_met'] / stats['played']
+                response_effectiveness[spell] = {
+                    'times_played': stats['played'],
+                    'times_triggered': stats['condition_met'],
+                    'effectiveness_rate': effectiveness
+                }
+        
+        return response_effectiveness
     
     def _detect_balance_issues(self) -> List[str]:
         """Detect potential balance issues"""
@@ -638,6 +745,33 @@ class UnifiedAnalytics:
         self._add_line(f"Shortest Trunk Lifetime: {trunk_stats['min_trunk_lifetime']} rounds")
         self._add_line(f"Longest Trunk Lifetime: {trunk_stats['max_trunk_lifetime']} rounds")
         self._add_line(f"Total Trunk Losses: {trunk_stats['total_trunk_losses']}")
+        
+        # Trunk Destroyers
+        self._add_section("TRUNK DESTROYER SPELLS")
+        trunk_destroyers = analysis.get('trunk_destroyers', {})
+        if trunk_destroyers:
+            # Sort by trunk kills
+            sorted_destroyers = sorted(trunk_destroyers.items(), 
+                                     key=lambda x: x[1]['trunk_kills'], reverse=True)
+            self._add_line("Spells Most Likely to End Rounds:")
+            for spell, stats in sorted_destroyers[:10]:  # Top 10
+                self._add_line(f"  {spell:20} - {stats['trunk_kills']:3} trunk kills "
+                             f"(avg {stats['avg_damage_for_kill']:.1f} damage)")
+        else:
+            self._add_line("No trunk-destroying spells detected.")
+        
+        # Response Spell Effectiveness
+        self._add_section("RESPONSE SPELL EFFECTIVENESS")
+        response_stats = analysis.get('response_effectiveness', {})
+        if response_stats:
+            self._add_line("Response Spell Trigger Rates (within round):")
+            sorted_responses = sorted(response_stats.items(), 
+                                    key=lambda x: x[1]['effectiveness_rate'], reverse=True)
+            for spell, stats in sorted_responses:
+                self._add_line(f"  {spell:20} - {stats['effectiveness_rate']:5.1%} trigger rate "
+                             f"({stats['times_triggered']}/{stats['times_played']} times)")
+        else:
+            self._add_line("No response spells analyzed.")
         
         # Conjury Analysis
         self._add_section("CONJURY ANALYSIS")
