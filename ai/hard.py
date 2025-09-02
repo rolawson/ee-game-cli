@@ -167,6 +167,33 @@ class HardAI(BaseAI):
                         self.engine.ai_decision_logs.append(
                             f"\033[90m[AI-COMBO] {card.name} combo ready with {spell_type} spells!\033[0m"
                         )
+                        
+            elif condition.get('type') == 'if_enemy_has_active_spell_of_type':
+                # Response spells that trigger off enemy spells
+                params = condition.get('parameters', {})
+                spell_type = params.get('spell_type', 'any')
+                required = params.get('count', 1)
+                
+                # Count enemy spells across ALL clashes
+                enemy_matches = 0
+                for enemy in gs.players:
+                    if enemy != player:
+                        for clash_idx in range(gs.clash_num):
+                            for spell in enemy.board[clash_idx]:
+                                if spell.status == 'revealed':
+                                    if spell_type == 'any' or spell_type in spell.card.types:
+                                        enemy_matches += 1
+                
+                if enemy_matches >= required:
+                    # This is a GREAT time to play this response spell
+                    if 'response' in card.types:
+                        score += 80  # High value for guaranteed response trigger
+                    else:
+                        score += 60
+                    if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                        self.engine.ai_decision_logs.append(
+                            f"\033[90m[AI-RESPONSE] {card.name} will trigger - enemies have {enemy_matches} {spell_type} spells!\033[0m"
+                        )
         
         # Special synergies with specific active spells
         for spell in my_active_spells:
