@@ -259,6 +259,21 @@ class GameLogger:
         if self.current_game:
             self.current_game['events'].append(event)
     
+    def log_response_condition_evaluated(self, player_name, spell_name, condition_met, clash_num, round_num, condition_type):
+        """Log when a response spell's condition is evaluated"""
+        event = {
+            'type': 'response_condition_evaluated',
+            'player': player_name,
+            'spell': spell_name,
+            'condition_met': condition_met,
+            'condition_type': condition_type,
+            'clash': clash_num,
+            'round': round_num,
+            'timestamp': datetime.now().isoformat()
+        }
+        if self.current_game:
+            self.current_game['events'].append(event)
+    
     def log_game_end(self, winner_name, winner_health, loser_health, total_rounds):
         """Log the end of a game"""
         if self.current_game:

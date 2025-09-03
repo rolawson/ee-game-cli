@@ -152,6 +152,10 @@ class UnifiedAnalytics:
             print("No game logs to analyze!")
             return {}
         
+        # Save game logs for detailed analysis
+        with open('game_logs.json', 'w') as f:
+            json.dump(self.game_logs, f)
+        
         analysis = {
             'total_games': len(self.game_logs),
             'element_stats': self._analyze_elements(),
@@ -563,7 +567,7 @@ class UnifiedAnalytics:
         return trunk_destroyer_stats
     
     def _analyze_response_spells(self) -> Dict[str, Any]:
-        """Analyze how often response spell conditions are met within a round"""
+        """Analyze how often response spell conditions are met using logged condition evaluations"""
         response_spell_stats = defaultdict(lambda: {'played': 0, 'condition_met': 0})
         
         # Identify response spells from spell data
@@ -581,42 +585,25 @@ class UnifiedAnalytics:
         except:
             pass
         
-        # Track response spell effectiveness
+        # Track response spell effectiveness using the logged condition evaluations
         for game in self.game_logs:
-            # Track spells played in each round
-            round_spells = defaultdict(list)
+            response_spell_evaluations = defaultdict(lambda: {'evaluated': 0, 'met': 0})
             
             for event in game.get('events', []):
-                round_num = event.get('round', 1)
-                
-                if event['type'] == 'spell_played':
-                    spell_name = event.get('spell', event.get('spell_name'))
+                if event['type'] == 'response_condition_evaluated':
+                    # Count every evaluation - each clash is a separate opportunity
+                    spell_name = event.get('spell')
+                    condition_met = event.get('condition_met', False)
+                    
                     if spell_name in response_spells:
-                        player = event.get('player')
-                        response_spell_stats[spell_name]['played'] += 1
-                        round_spells[round_num].append({
-                            'spell': spell_name,
-                            'player': player,
-                            'triggered': False
-                        })
-                
-                # Look for any effect from response spells (damage, healing, etc)
-                elif event['type'] in ['damage_dealt', 'healing_done', 'weaken_dealt', 
-                                     'bolster_done', 'spell_advanced', 'spell_recalled']:
-                    spell_name = event.get('spell', event.get('spell_name'))
-                    if spell_name in response_spells:
-                        # Mark this response spell as having triggered
-                        player = event.get('source_player', event.get('player'))
-                        round_num = event.get('round', 1)
-                        
-                        # Find the matching played spell in this round
-                        for spell_info in round_spells.get(round_num, []):
-                            if (spell_info['spell'] == spell_name and 
-                                spell_info['player'] == player and 
-                                not spell_info['triggered']):
-                                spell_info['triggered'] = True
-                                response_spell_stats[spell_name]['condition_met'] += 1
-                                break
+                        response_spell_evaluations[spell_name]['evaluated'] += 1
+                        if condition_met:
+                            response_spell_evaluations[spell_name]['met'] += 1
+            
+            # Add the evaluations to our stats
+            for spell_name, eval_stats in response_spell_evaluations.items():
+                response_spell_stats[spell_name]['played'] += eval_stats['evaluated']
+                response_spell_stats[spell_name]['condition_met'] += eval_stats['met']
         
         # Calculate effectiveness rates
         response_effectiveness = {}
@@ -764,12 +751,12 @@ class UnifiedAnalytics:
         self._add_section("RESPONSE SPELL EFFECTIVENESS")
         response_stats = analysis.get('response_effectiveness', {})
         if response_stats:
-            self._add_line("Response Spell Trigger Rates (within round):")
+            self._add_line("Response Spell Condition Success Rate (per clash evaluation):")
             sorted_responses = sorted(response_stats.items(), 
                                     key=lambda x: x[1]['effectiveness_rate'], reverse=True)
             for spell, stats in sorted_responses:
-                self._add_line(f"  {spell:20} - {stats['effectiveness_rate']:5.1%} trigger rate "
-                             f"({stats['times_triggered']}/{stats['times_played']} times)")
+                self._add_line(f"  {spell:20} - {stats['effectiveness_rate']:5.1%} success rate "
+                             f"({stats['times_triggered']}/{stats['times_played']} evaluations)")
         else:
             self._add_line("No response spells analyzed.")
         

@@ -130,6 +130,9 @@ class Card:
         if cond_type == 'if_spell_was_active_in_other_clashes':
             count = cond.get('parameters', {}).get('count', 2)
             return f"If this spell was active in at least {count} other clashes: "
+        if cond_type == 'if_spell_advanced_count':
+            count = cond.get('parameters', {}).get('count', 2)
+            return f"If this spell advanced {count} times: "
         if cond_type == 'if_not': return f"Otherwise: "
         if cond_type == 'if_board_has_active_spell_of_type':
             p = cond['parameters']
@@ -494,9 +497,13 @@ class ConditionChecker:
         if cond_type == 'if_not': return not self.check(condition_data['sub_condition'], gs, caster, current_card)
         
         if cond_type == 'if_spell_advanced_this_turn':
-            # Check if any spell has advanced this turn (round)
+            # For Agonize - check if THIS SPECIFIC spell advanced this turn
+            # Look for advance events for this spell in the current round
             for event in gs.event_log:
-                if event['type'] == 'spell_advanced':
+                if (event['type'] == 'spell_advanced' and
+                    event.get('round', 0) == gs.round_num and
+                    event.get('player') == caster.name and
+                    event.get('card_id') == current_card.id):
                     return True
             return False
         
@@ -529,6 +536,25 @@ class ConditionChecker:
                 gs.action_log.append(f"{Colors.GREY}[DEBUG] Impact was active in {active_clash_count} other clashes, needs {required_count} to trigger weaken{Colors.ENDC}")
             
             return active_clash_count >= required_count
+        
+        if cond_type == 'if_spell_advanced_count':
+            # For Turbulence - check if this spell has advanced at least 'count' times
+            params = condition_data.get('parameters', {})
+            required_count = params.get('count', 2)
+            
+            # Count how many times THIS spell has advanced
+            advance_count = 0
+            for event in gs.event_log:
+                if (event['type'] == 'spell_advanced' and
+                    event.get('player') == caster.name and
+                    event.get('card_id') == current_card.id):
+                    advance_count += 1
+            
+            # Debug logging
+            if DEBUG_AI:
+                gs.action_log.append(f"{Colors.GREY}[DEBUG] {current_card.name} has advanced {advance_count} times, needs {required_count}{Colors.ENDC}")
+            
+            return advance_count >= required_count
         
         return False
 # +++ START: REPLACE THE ENTIRE ActionHandler CLASS WITH THIS +++
@@ -712,6 +738,39 @@ class ActionHandler:
     def execute_effects(self, effects: list[dict], gs: 'GameState', caster: 'Player', current_card: 'Card', played_card: 'PlayedCard' = None) -> None:
         a_condition_was_met = False
         is_sequential = all(eff['condition'].get('type') == 'always' for eff in effects)
+        
+        # Log response spell condition evaluation for analytics
+        if 'response' in current_card.types and not is_sequential:
+            # This is a response spell with conditions
+            for effect in effects:
+                condition_type = effect['condition'].get('type')
+                if condition_type not in ['always', 'otherwise']:
+                    # Evaluate the condition and log the result
+                    condition_met = self.engine.condition_checker.check(effect['condition'], gs, caster, current_card)
+                    
+                    # Add debug info for spell type conditions
+                    debug_info = ""
+                    if condition_type == 'if_enemy_has_active_spell_of_type':
+                        params = effect['condition'].get('parameters', {})
+                        spell_type = params.get('spell_type', 'any')
+                        # Count enemy spells of this type
+                        enemy_spells = []
+                        for p in gs.players:
+                            if p != caster:
+                                for s in p.board[gs.clash_num-1]:
+                                    if s.status == 'revealed' and (spell_type == 'any' or spell_type in s.card.types):
+                                        enemy_spells.append(f"{s.card.name}({','.join(s.card.types)})")
+                        debug_info = f" [Looking for {spell_type}, found: {', '.join(enemy_spells) if enemy_spells else 'none'}]"
+                    
+                    game_logger.log_response_condition_evaluated(
+                        player_name=caster.name,
+                        spell_name=current_card.name,
+                        condition_met=condition_met,
+                        clash_num=gs.clash_num,
+                        round_num=gs.round_num,
+                        condition_type=condition_type + debug_info
+                    )
+                    break  # Only log the first non-always condition
 
         if is_sequential:
             for effect in effects:
@@ -2192,7 +2251,7 @@ class ActionHandler:
                     owner.board[next_clash_idx].append(target)
                     target.advances_this_round += 1  # Increment advance count
                     gs.action_log.append(f"{Colors.GREEN}{ACTION_EMOJIS['advance']} {owner.name}'s [{target.card.name}] advanced from Clash {i+1} to Clash {next_clash_idx + 1}.{Colors.ENDC}")
-                    self._fire_event('spell_advanced', gs, player=owner.name, card_id=target.card.id)
+                    self._fire_event('spell_advanced', gs, player=owner.name, card_id=target.card.id, round=gs.round_num)
                     found_and_moved = True
                     break
             if not found_and_moved:
@@ -2668,6 +2727,20 @@ class GameEngine:
             self.gs.action_log.append(f"--> Advancing {caster.name}'s {formatted_name}...")
             self._pause()
             for effect in played_card.card.advance_effects:
+                condition_type = effect['condition'].get('type')
+                
+                # Log response spell condition evaluation for advance effects
+                if 'response' in played_card.card.types and condition_type not in ['always', 'otherwise']:
+                    condition_met = self.condition_checker.check(effect['condition'], self.gs, caster, played_card.card)
+                    game_logger.log_response_condition_evaluated(
+                        player_name=caster.name,
+                        spell_name=played_card.card.name,
+                        condition_met=condition_met,
+                        clash_num=self.gs.clash_num,
+                        round_num=self.gs.round_num,
+                        condition_type=condition_type + ' (advance)'
+                    )
+                
                 # Call the correct method: _execute_action for a single effect
                 if self.condition_checker.check(effect['condition'], self.gs, caster, played_card.card):
                     self.action_handler._execute_action(effect['action'], self.gs, caster, played_card.card)

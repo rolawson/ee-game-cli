@@ -261,41 +261,36 @@
       "response"
     ],
     "base_set": true,
-    "resolve_effects": [
-      {
-        "condition": {
-          "type": "if_spell_was_active_in_other_clashes",
-          "parameters": {
-            "count": 2
-          }
-        },
-        "action": {
-          "type": "damage",
-          "target": "prompt_player_or_conjury",
-          "parameters": {
-            "value": 2
-          }
+      "resolve_effects": [
+    {
+      "condition": {
+        "type": "if_spell_advanced_count",
+        "parameters": {
+          "count": 2
         }
       },
-      {
-        "condition": {
-          "type": "if_not",
-          "sub_condition": {
-            "type": "if_spell_was_active_in_other_clashes",
-            "parameters": {
-              "count": 2
-            }
-          }
-        },
-        "action": {
-          "type": "damage",
-          "target": "prompt_player_or_conjury",
-          "parameters": {
-            "value": 1
-          }
+      "action": {
+        "type": "damage",
+        "target": "prompt_player_or_conjury",
+        "parameters": {
+          "value": 2
         }
       }
-    ],
+    },
+    {
+      "condition": {
+        "type": "otherwise"
+      },
+      "action": {
+        "type": "damage",
+        "target": "prompt_player_or_conjury",
+        "parameters": {
+          "value": 1
+        }
+      }
+    }
+  ]
+,
     "advance_effects": [],
     "theme": "Advance forward!",
     "notfirst": 0,
@@ -551,8 +546,7 @@
     "is_conjury": false,
     "priority": 3,
     "spell_types": [
-      "remedy",
-      "response"
+      "remedy"
     ],
     "base_set": false,
     "resolve_effects": [
@@ -602,8 +596,7 @@
     "is_conjury": false,
     "priority": 4,
     "spell_types": [
-      "attack",
-      "response"
+      "attack"
     ],
     "base_set": false,
     "resolve_effects": [
@@ -882,8 +875,7 @@
     "is_conjury": true,
     "priority": 3,
     "spell_types": [
-      "attack",
-      "response"
+      "attack"
     ],
     "base_set": false,
     "resolve_effects": [
@@ -1574,7 +1566,6 @@
     "priority": 3,
     "spell_types": [
       "attack",
-      "response",
       "boost"
     ],
     "base_set": false,
@@ -1770,8 +1761,7 @@
     "is_conjury": true,
     "priority": 5,
     "spell_types": [
-      "attack",
-      "response"
+      "attack"
     ],
     "base_set": false,
     "resolve_effects": [
@@ -1948,12 +1938,12 @@
   },
   {
     "id": 46,
-    "card_name": "Punish",
+    "card_name": "Punishment",
     "elephant": "The Matriarch",
     "element": "Nectar",
     "set_name": "46 Nectar 1",
-    "is_conjury": false,
-    "priority": 4,
+    "is_conjury": true,
+    "priority": 5,
     "spell_types": [
       "attack",
       "response",
@@ -2223,7 +2213,6 @@
     "priority": 4,
     "spell_types": [
       "attack",
-      "response",
       "boost"
     ],
     "base_set": false,
