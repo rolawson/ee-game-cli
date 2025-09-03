@@ -1048,9 +1048,15 @@ class ActionHandler:
             # First, check if each option is actually valid
             valid_options = []
             for option in action_data.get('options', []):
-                # Check if the option has valid targets
-                option_targets = self._resolve_target(option, gs, caster, current_card)
-                if option_targets:  # Only include options that have valid targets
+                # For validation, we need to check if targets exist without prompting
+                # Create a copy of the option that forces no prompting
+                validation_option = option.copy()
+                
+                # Check if the option would have valid targets
+                has_valid_targets = self._check_if_targets_exist(validation_option, gs, caster, current_card)
+                
+                
+                if has_valid_targets:  # Only include options that have valid targets
                     valid_options.append(option)
             
             if not valid_options:
@@ -1677,7 +1683,7 @@ class ActionHandler:
                     self._fire_event('spell_recalled', gs, player=caster.name, card_id=target.card.id)
             
             elif action_type == 'advance_from_hand':
-                # Gleam - play spells from hand to future clashes
+                # Gleam/Eventide - play spells from hand to future clashes
                 num_to_play = params.get('value', 1)
                 
                 if not caster.hand:
@@ -1688,6 +1694,14 @@ class ActionHandler:
                 if gs.clash_num >= 4:
                     gs.action_log.append(f"Cannot advance from hand - no future clashes remaining.")
                     return
+                
+                # Check if Break is preventing advances
+                for player in gs.players:
+                    if player != caster:  # Check opponents
+                        for spell in player.board[gs.clash_num - 1]:
+                            if spell.status == 'revealed' and spell.card.name == 'Break':
+                                gs.action_log.append(f"{caster.name} cannot advance cards from hand because {player.name}'s [Break] prevents it!")
+                                return  # Prevent the advance from happening
                 
                 target_clash = gs.clash_num  # Advance always goes to the next clash
                 
@@ -1848,10 +1862,57 @@ class ActionHandler:
                 # Do nothing
                 gs.action_log.append(f"{caster.name} chose to pass.")
 
+    def _check_if_targets_exist(self, action_data: dict, gs: 'GameState', caster: 'Player', current_card: 'Card') -> bool:
+        """Check if valid targets exist for an action without prompting the player"""
+        target_str = action_data.get('target')
+        if target_str is None: return True
+        if target_str == 'self': 
+            # Special case for advance_from_hand - check if player has cards
+            if action_data.get('type') == 'advance_from_hand':
+                return bool(caster.hand and gs.clash_num < 4)
+            return True
+            
+        enemies = [p for p in gs.players if p != caster]
+        valid_enemies = [p for p in enemies if not p.is_invulnerable]
+        active_spells = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'revealed']
+        
+        if target_str in ['prompt_enemy', 'prompt_player']:
+            return bool(valid_enemies)
+        elif target_str == 'prompt_any_active_spell':
+            return bool(active_spells)
+        elif target_str == 'prompt_player_or_conjury':
+            active_conjuries = [s for s in active_spells if s.card.is_conjury]
+            return bool(valid_enemies or active_conjuries)
+        elif target_str == 'prompt_other_friendly_active_spell':
+            friendly_spells = [s for s in active_spells if s.owner == caster and s.card.id != current_card.id]
+            return bool(friendly_spells)
+        elif target_str == 'prompt_enemy_active_spell':
+            enemy_spells = [s for s in active_spells if s.owner != caster]
+            return bool(enemy_spells)
+        elif target_str == 'prompt_enemy_boost_spell':
+            enemy_boost = [s for s in active_spells if s.owner != caster and 'boost' in s.card.types]
+            return bool(enemy_boost)
+        elif target_str == 'all_enemies_and_their_conjuries':
+            return bool(valid_enemies)
+        elif target_str == 'this_spell':
+            for clash_list in caster.board:
+                for spell in clash_list:
+                    if spell.card.id == current_card.id:
+                        return True
+            return False
+        else:
+            # For other target types, assume they exist
+            return True
+    
     def _resolve_target(self, action_data: dict, gs: 'GameState', caster: 'Player', current_card: 'Card') -> list[Any]:
         target_str = action_data.get('target')
         if target_str is None: return [caster]
-        if target_str == 'self': return [caster]
+        if target_str == 'self': 
+            # Special case for advance_from_hand - check if player has cards
+            if action_data.get('type') == 'advance_from_hand':
+                if not caster.hand or gs.clash_num >= 4:
+                    return []  # No valid targets if no cards in hand or no future clashes
+            return [caster]
         if target_str == 'this_spell':
             for clash_list in caster.board:
                 for spell in clash_list:
