@@ -7,7 +7,7 @@ from collections import defaultdict
 from typing import Any
 
 # Import AI classes from separate module
-from ai import EasyAI, MediumAI, HardAI
+from ai import EasyAI, MediumAI, HardAI, ExpertAI
 
 # Import game logger for analytics
 from game_logger import game_logger
@@ -2342,6 +2342,10 @@ class GameEngine:
                     ai = HardAI()
                     if DEBUG_AI:
                         print(f"Created HardAI for player {i}: {name}")
+                elif ai_difficulty == 'expert':
+                    ai = ExpertAI()
+                    if DEBUG_AI:
+                        print(f"Created ExpertAI for player {i}: {name}")
                 else:  # medium (default)
                     ai = MediumAI()
                     if DEBUG_AI:
@@ -3011,15 +3015,17 @@ if __name__ == "__main__":
         print(f"{Colors.HEADER}{'='*25}[ ELEMENTAL ELEPHANTS ]{'='*25}{Colors.ENDC}")
         print("\nChoose AI Difficulty:")
         print("[1] Easy (Random play)")
-        print("[2] Medium (Balanced)")
+        print("[2] Medium (Basic strategy)")
         print("[3] Hard (Strategic)")
+        print("[4] Expert (Overthinks everything)")
         
-        difficulty_choice = input("\nYour choice (1-3): ").strip()
+        difficulty_choice = input("\nYour choice (1-4): ").strip()
         
         difficulty_map = {
             '1': 'easy',
             '2': 'medium',
-            '3': 'hard'
+            '3': 'hard',
+            '4': 'expert'
         }
         
         ai_difficulty = difficulty_map.get(difficulty_choice, 'medium')

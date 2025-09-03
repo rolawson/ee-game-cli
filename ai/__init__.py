@@ -4,5 +4,6 @@ from .base import BaseAI
 from .easy import EasyAI
 from .medium import MediumAI
 from .hard import HardAI
+from .expert import ExpertAI
 
-__all__ = ['BaseAI', 'EasyAI', 'MediumAI', 'HardAI']
+__all__ = ['BaseAI', 'EasyAI', 'MediumAI', 'HardAI', 'ExpertAI']

@@ -11,6 +11,7 @@ from elephants_prototype import GameEngine, GameState, PlayedCard
 from ai.easy import EasyAI
 from ai.medium import MediumAI
 from ai.hard import HardAI
+from ai.expert import ExpertAI
 
 
 class AutoPlayEngine(GameEngine):
@@ -167,6 +168,8 @@ class SpectatorMode:
             return EasyAI()
         elif ai_type == 'hard':
             return HardAI()
+        elif ai_type == 'expert':
+            return ExpertAI()
         else:
             return MediumAI()
     
@@ -254,7 +257,7 @@ if __name__ == "__main__":
         print("  python ai_spectator.py hard easy 0.5      # Fast game")
         print("  python ai_spectator.py hard medium 2.0 5  # 5 slower games")
         print("  python ai_spectator.py hard hard 0        # Maximum speed")
-        print("\nAI types: easy, medium, hard")
+        print("\nAI types: easy, medium, hard, expert")
         print("Delay: seconds between actions (default 1.0)")
     else:
         main()

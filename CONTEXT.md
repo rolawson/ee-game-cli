@@ -66,7 +66,8 @@ ai/
 ├── base.py          # BaseAI abstract class
 ├── easy.py          # Random AI implementation
 ├── medium.py        # Basic strategic AI
-└── hard.py          # Advanced strategic AI
+├── hard.py          # Advanced strategic AI
+└── expert.py        # Complex planning AI
 ```
 
 #### AI Classes:
@@ -85,14 +86,28 @@ ai/
     - Plays aggressively when enemy hand is empty
     - Considers clash timing restrictions
     
--   **`HardAI`** (`ai/hard.py`): Advanced strategic AI with card scoring
-    - Evaluates each card with a scoring system
-    - Considers: health states, enemy threats, card synergies, element matching
-    - Adapts strategy based on hand size and game state
-    - Includes randomness to prevent predictability
+-   **`HardAI`** (`ai/hard.py`): Advanced strategic AI with focused tactical play
+    - **Health awareness**: Prioritizes survival when health < 40%, aggression when healthy
+    - **Enemy threat assessment**: Tracks potential threats in enemy hand/deck
+    - **Immediate combo recognition**: Identifies and executes same-turn combos
+    - **Conjury targeting**: Values conjuries early game, protects own conjuries
+    - **Element synergies**: Rewards playing same element for combo potential
+    - **Strategic hand management**: Clears hand when appropriate to enable draws
+    - **Card counting**: Tracks played cards to predict remaining threats
+    - Includes controlled randomness (5%) to prevent predictability
+    
+-   **`ExpertAI`** (`ai/expert.py`): Complex multi-turn planning AI
+    - **Deep combo awareness**: Identifies 2-3 card combos across multiple turns
+    - **Win condition planning**: Adapts strategy (rush, stabilize, control, combo)
+    - **Enemy threat prediction**: Analyzes all potential threats from remaining cards
+    - **Resource optimization**: Plans card usage and timing across entire game
+    - **Complex health calculations**: Factors in damage races and healing efficiency
+    - **Synergy scoring**: Calculates detailed synergies between all card pairs
+    - **Conjury control**: Sophisticated conjury timing and protection strategies
+    - Overthinks decisions, leading to interesting but not always optimal play
 
 #### Integration:
-- The `GameEngine` accepts an `ai_difficulty` parameter ('easy', 'medium', 'hard')
+- The `GameEngine` accepts an `ai_difficulty` parameter ('easy', 'medium', 'hard', 'expert')
 - AI decision logs are stored during the prepare phase and revealed after the cast phase
 - Each AI instance has a reference to the engine for logging purposes
 

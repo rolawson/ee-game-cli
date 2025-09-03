@@ -17,7 +17,7 @@ import io
 
 # Import game components
 from elephants_prototype import GameEngine, GameState, DashboardDisplay
-from ai import EasyAI, MediumAI, HardAI
+from ai import EasyAI, MediumAI, HardAI, ExpertAI
 from game_logger import game_logger
 
 
@@ -96,8 +96,12 @@ class UnifiedAnalytics:
                 engine.ai_strategies[0] = EasyAI()
             elif ai1_type == 'medium':
                 engine.ai_strategies[0] = MediumAI()
-            else:
+            elif ai1_type == 'hard':
                 engine.ai_strategies[0] = HardAI()
+            elif ai1_type == 'expert':
+                engine.ai_strategies[0] = ExpertAI()
+            else:
+                engine.ai_strategies[0] = HardAI()  # Default
             
             if hasattr(engine.ai_strategies[0], 'engine'):
                 engine.ai_strategies[0].engine = engine
@@ -107,8 +111,12 @@ class UnifiedAnalytics:
                 engine.ai_strategies[1] = EasyAI()
             elif ai2_type == 'medium':
                 engine.ai_strategies[1] = MediumAI()
-            else:
+            elif ai2_type == 'hard':
                 engine.ai_strategies[1] = HardAI()
+            elif ai2_type == 'expert':
+                engine.ai_strategies[1] = ExpertAI()
+            else:
+                engine.ai_strategies[1] = HardAI()  # Default
             
             if hasattr(engine.ai_strategies[1], 'engine'):
                 engine.ai_strategies[1].engine = engine
@@ -135,7 +143,7 @@ class UnifiedAnalytics:
     
     def run_tournament(self, games_per_matchup: int = 20) -> None:
         """Run a full tournament between all AI types"""
-        ai_types = ['easy', 'medium', 'hard']
+        ai_types = ['easy', 'medium', 'hard', 'expert']
         
         print(f"\n{'='*60}")
         print(f"TOURNAMENT MODE: {games_per_matchup} games per matchup")

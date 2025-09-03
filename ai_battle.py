@@ -15,10 +15,12 @@ class AutoGameEngine:
         from ai.easy import EasyAI
         from ai.medium import MediumAI
         from ai.hard import HardAI
+        from ai.expert import ExpertAI
         
         self.EasyAI = EasyAI
         self.MediumAI = MediumAI
         self.HardAI = HardAI
+        self.ExpertAI = ExpertAI
         self.GameState = GameState
         self.DashboardDisplay = DashboardDisplay
         self.ConditionChecker = ConditionChecker
@@ -67,6 +69,8 @@ class AutoGameEngine:
             return self.EasyAI()
         elif ai_type == 'hard':
             return self.HardAI()
+        elif ai_type == 'expert':
+            return self.ExpertAI()
         else:
             return self.MediumAI()
     
@@ -214,7 +218,7 @@ class AIBattleRunner:
     
     def run_tournament(self, games_per_matchup=10):
         """Run a complete tournament"""
-        ai_types = ['easy', 'medium', 'hard']
+        ai_types = ['easy', 'medium', 'hard', 'expert']
         total_games = 0
         
         print("AI Battle Tournament")

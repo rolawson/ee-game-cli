@@ -92,8 +92,22 @@ class HardAI(BaseAI):
         # === SECONDARY SCORING (Medium Priority) ===
         
         # 4. Basic type scoring
-        if 'response' in card.types and gs.clash_num >= 2:
-            score += 35  # Responses better after turn 1
+        if 'response' in card.types:
+            if gs.clash_num >= 2:
+                score += 35  # Responses better after turn 1
+            
+            # Check for advance-triggered responses
+            if 'if_spell_advanced' in str(card.resolve_effects):
+                if gs.clash_num < 3:  # Can still advance
+                    # Check if we have advance cards in hand
+                    has_advance = any('advance' in str(c.resolve_effects + c.advance_effects) for c in player.hand)
+                    if has_advance:
+                        score += 50  # Strong synergy potential
+                        if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                            self.engine.ai_decision_logs.append(
+                                f"\033[90m[AI-RESPONSE] {card.name} can trigger with advance cards in hand\033[0m"
+                            )
+                            
         if 'conjury' in card.types and gs.clash_num <= 2:
             score += 45  # Conjuries best early
         if 'boost' in card.types and len(player.hand) >= 3:
@@ -236,7 +250,7 @@ class HardAI(BaseAI):
         # Check card's own mobility features
         effects_str = str(card.resolve_effects) + str(card.advance_effects)
         
-        # Self-advancing cards (like Flow)
+        # Self-advancing cards
         if 'advance' in effects_str and 'this_spell' in effects_str:
             if gs.clash_num < 3:  # Can advance at least once
                 score += 40
@@ -286,6 +300,7 @@ class HardAI(BaseAI):
         if 'advance' in effects_str and 'prompt' in effects_str:
             # Check if we have good targets to advance
             advance_targets = 0
+            
             for i in range(gs.clash_num):
                 for spell in player.board[i]:
                     if spell.status == 'revealed':
@@ -293,11 +308,13 @@ class HardAI(BaseAI):
                         if spell.card.is_conjury or 'boost' in spell.card.types:
                             advance_targets += 1
             
-            if advance_targets > 0:
-                score += 25 * advance_targets
+            
+            total_value = advance_targets
+            if total_value > 0:
+                score += 25 * total_value
                 if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                     self.engine.ai_decision_logs.append(
-                        f"\033[90m[AI-MOBILITY] {card.name} can advance {advance_targets} high-value targets\033[0m"
+                        f"\033[90m[AI-MOBILITY] {card.name} can advance {advance_targets} targets + {advance_needed_targets} advance-scaling cards\033[0m"
                     )
         
         # Evaluate positioning strategy
@@ -351,6 +368,7 @@ class HardAI(BaseAI):
                 if spell.status == 'revealed' or (include_cancelled and spell.status == 'cancelled'):
                     count += 1
         return count
+    
     
     def _evaluate_hand_synergies(self, card, player, gs):
         """Evaluate synergies between cards in hand for multi-turn planning"""

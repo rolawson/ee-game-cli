@@ -277,31 +277,6 @@ class ExpertAI(BaseAI):
             if self._has_protection(player):
                 score += 30
         
-        # Cards that benefit from being advanced multiple times
-        if 'if_spell_advanced_count' in str(card.resolve_effects):
-            # This card scales with number of advances
-            advances_needed = 2  # Default assumption
-            for effect in card.resolve_effects:
-                if isinstance(effect, dict) and 'condition' in effect:
-                    if effect['condition'].get('type') == 'if_spell_advanced_count':
-                        advances_needed = effect['condition'].get('parameters', {}).get('count', 2)
-            
-            # Calculate if we can achieve the needed advances
-            remaining_clashes = 4 - gs.clash_num
-            if remaining_clashes >= advances_needed:
-                score += 60 * (remaining_clashes - advances_needed + 1)
-                
-                # Check for advance enablers in hand
-                advance_enablers = self._count_advance_enablers(player)
-                if advance_enablers >= advances_needed - 1:  # -1 because it can advance naturally
-                    score += 100  # Full combo very likely
-                    if self.engine and hasattr(self.engine, 'ai_decision_logs'):
-                        self.engine.ai_decision_logs.append(
-                            f"\033[90m[AI-EXPERT] {card.name} can be advanced {advances_needed}x with {advance_enablers} enablers\033[0m"
-                        )
-            else:
-                # Too late to get full value
-                score -= 30
         
         # Priority considerations
         if card.priority == 'A':
@@ -519,26 +494,12 @@ class ExpertAI(BaseAI):
         
         return sorted(rankings, key=lambda x: x[1])
     
-    def _count_advance_enablers(self, player):
-        """Count cards in hand that can advance other spells"""
-        count = 0
-        for card in player.hand:
-            effects_str = str(card.resolve_effects) + str(card.advance_effects)
-            # Check for various advance patterns
-            if ('advance' in effects_str and 
-                ('prompt_other_friendly' in effects_str or 
-                 'prompt_friendly' in effects_str or
-                 'all_friendly' in effects_str or
-                 'advance_from_past_clash' in effects_str)):
-                count += 1
-        return count
     
     def _has_advance_combo(self, player):
         """Check if player has cards that combo with advancing"""
         advance_enablers = any('advance' in str(c.resolve_effects + c.advance_effects) 
                              for c in player.hand)
-        advance_payoffs = any('if_spell_advanced' in str(c.resolve_effects) or
-                            'if_spell_advanced_count' in str(c.resolve_effects)
+        advance_payoffs = any('if_spell_advanced' in str(c.resolve_effects)
                             for c in player.hand)
         return advance_enablers and advance_payoffs
     

@@ -57,6 +57,18 @@ python ai_vs_ai.py tournament 20   # 20 games per matchup
 python ai_vs_ai.py hard medium 10  # 10 games of hard vs medium
 ```
 
+#### AI Win Rate Testing
+```bash
+# Test AI win rates with full game rules
+python ai_winrate_test.py [games_per_matchup]
+python ai_winrate_test.py [ai1] [ai2] [num_games]
+
+# Examples:
+python ai_winrate_test.py              # Quick test with 5 games per matchup
+python ai_winrate_test.py 20           # 20 games per matchup
+python ai_winrate_test.py hard expert 30  # 30 games of hard vs expert
+```
+
 
 ### Analytics and Data Generation
 The game includes comprehensive analytics tracking for balance testing:
@@ -97,7 +109,8 @@ The analytics system tracks:
 ### AI Difficulty Levels
 - **easy**: Random decisions with simple preferences
 - **medium**: Basic strategy and situational awareness
-- **hard**: Advanced strategy with combo awareness, card counting, strategic hand clearing, and conjury targeting
+- **hard**: Advanced strategy with solid fundamentals and tactical play
+- **expert**: Complex multi-turn planning, combo recognition, and overthinking everything
 
 ## Game Rules
 
@@ -125,12 +138,14 @@ The analytics system tracks:
   - `easy.py` - Easy difficulty AI (random with simple preferences)
   - `medium.py` - Medium difficulty AI (basic strategy)
   - `hard.py` - Hard difficulty AI (advanced strategy)
+  - `expert.py` - Expert difficulty AI (complex planning and overthinking)
 
 ### Testing Tools
 - `ai_spectator.py` - Watch AI vs AI games with visual display
 - `ai_battle.py` - Run automated AI battles for statistics
 - `ai_vs_ai.py` - Run AI tournaments with detailed analysis
 - `ai_test.py` - Basic AI testing framework
+- `ai_winrate_test.py` - Test AI win rates using full game engine
 
 ### Analytics Tools
 - `game_logger.py` - Game event logging system for analytics

@@ -109,7 +109,7 @@ def run_all_matchups(games_per_matchup=10):
     # Test each combination
     for i, ai1 in enumerate(ai_types):
         for j, ai2 in enumerate(ai_types):
-            if i <= j:  # Only test each pair once (including mirrors)
+            if ai1 != ai2:  # Skip mirror matches - they don't provide useful data
                 results = test_ai_matchup(ai1, ai2, games_per_matchup)
                 
                 # Store results
@@ -118,7 +118,7 @@ def run_all_matchups(games_per_matchup=10):
     
     # Calculate overall win rates
     print("\n" + "="*60)
-    print("OVERALL WIN RATES (excluding mirror matches)")
+    print("OVERALL WIN RATES")
     print("="*60)
     
     for ai in ai_types:
