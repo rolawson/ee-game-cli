@@ -830,17 +830,34 @@ class ExpertAI(BaseAI):
         # Sort by score
         set_evaluations.sort(key=lambda x: x['score'], reverse=True)
         
+        # Use weighted randomization to avoid always picking the same elements
+        # Convert scores to weights (ensure all positive)
+        min_score = min(e['score'] for e in set_evaluations)
+        weights = [(e['score'] - min_score + 1) for e in set_evaluations]
+        
+        # Select randomly based on weights
+        import random
+        total_weight = sum(weights)
+        r = random.uniform(0, total_weight)
+        
+        upto = 0
+        chosen_eval = set_evaluations[0]  # fallback
+        for i, weight in enumerate(weights):
+            if upto + weight >= r:
+                chosen_eval = set_evaluations[i]
+                break
+            upto += weight
+        
         # Log extensive analysis
         if self.engine and hasattr(self.engine, 'ai_decision_logs'):
-            best = set_evaluations[0]
             self.engine.ai_decision_logs.append(
-                f"\033[90m[AI-EXPERT] Drafted {best['set'][0].elephant} (Score: {best['score']:.1f})\033[0m"
+                f"\033[90m[AI-EXPERT] Drafted {chosen_eval['set'][0].elephant} (Score: {chosen_eval['score']:.1f})\033[0m"
             )
             self.engine.ai_decision_logs.append(
-                f"\033[90m[AI-EXPERT] Strengths: {', '.join(set(best['strengths']))}\033[0m"
+                f"\033[90m[AI-EXPERT] Strengths: {', '.join(set(chosen_eval['strengths']))}\033[0m"
             )
         
-        return set_evaluations[0]['set']
+        return chosen_eval['set']
     
     def _analyze_opponent_drafting_patterns(self):
         """Predict opponent draft choices"""

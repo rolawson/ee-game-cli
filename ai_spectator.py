@@ -108,7 +108,7 @@ class AutoPlayEngine(GameEngine):
 class SpectatorMode:
     """Watch AI games with configurable speed and verbosity"""
     
-    def __init__(self, ai1_type='hard', ai2_type='hard', delay=1.0, verbose=True):
+    def __init__(self, ai1_type='expert', ai2_type='expert', delay=1.0, verbose=True):
         self.ai1_type = ai1_type
         self.ai2_type = ai2_type
         self.delay = delay
@@ -215,8 +215,8 @@ class SpectatorMode:
 
 def main():
     # Parse arguments
-    ai1 = sys.argv[1] if len(sys.argv) > 1 else 'hard'
-    ai2 = sys.argv[2] if len(sys.argv) > 2 else 'medium'
+    ai1 = sys.argv[1] if len(sys.argv) > 1 else 'expert'
+    ai2 = sys.argv[2] if len(sys.argv) > 2 else 'expert'
     
     if len(sys.argv) > 3:
         try:

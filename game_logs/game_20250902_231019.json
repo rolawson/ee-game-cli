@@ -1,0 +1,4919 @@
+{
+  "timestamp": "2025-09-02T23:10:19.919426",
+  "players": {
+    "player1": {
+      "name": "HARD_1",
+      "elements": [
+        "Wood",
+        "Shadow"
+      ],
+      "is_ai": true
+    },
+    "player2": {
+      "name": "EXPERT_2",
+      "elements": [
+        "Metal",
+        "Earth"
+      ],
+      "is_ai": true
+    }
+  },
+  "ai_difficulty": "hard",
+  "events": [
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Familiar",
+      "spell_name": "Familiar",
+      "element": "Shadow",
+      "spell_types": [
+        "attack",
+        "response"
+      ],
+      "is_conjury": false,
+      "clash": 1,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.920169"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "spell_name": "Aftershocks",
+      "element": "Earth",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.920174"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Familiar",
+      "condition_met": true,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for attack, found: Aftershocks(attack,response,boost)]",
+      "clash": 1,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.920205"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "HARD_1",
+      "target_player": "EXPERT_2",
+      "amount": 2,
+      "spell": "Familiar",
+      "element": "Shadow",
+      "clash": 1,
+      "round": 1,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.920215"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 1,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.920227"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.920239"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Prickle",
+      "spell_name": "Prickle",
+      "element": "Wood",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.920824"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "spell_name": "Besiege",
+      "element": "Metal",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.920826"
+    },
+    {
+      "type": "spell_cancelled",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "cancelled_by": "Prickle",
+      "timestamp": "2025-09-02T23:10:19.920873"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.920885"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.920897"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Grow",
+      "spell_name": "Grow",
+      "element": "Wood",
+      "spell_types": [
+        "remedy"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.921085"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Reinforce",
+      "spell_name": "Reinforce",
+      "element": "Metal",
+      "spell_types": [
+        "remedy"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.921086"
+    },
+    {
+      "type": "bolster_done",
+      "source_player": "EXPERT_2",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Reinforce",
+      "element": "Metal",
+      "clash": 3,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.921112"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Grow",
+      "element": "Wood",
+      "clash": 3,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.921122"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.921133"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Besiege",
+      "element": "Metal",
+      "clash": 3,
+      "round": 1,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.921141"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.921150"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Imitate",
+      "spell_name": "Imitate",
+      "element": "Shadow",
+      "spell_types": [],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.921309"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Crush",
+      "spell_name": "Crush",
+      "element": "Earth",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.921311"
+    },
+    {
+      "type": "weaken_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Crush",
+      "element": "Earth",
+      "clash": 4,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.921347"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.921357"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 1,
+      "timestamp": "2025-09-02T23:10:19.921368"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Seed",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.921378"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Quake",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.921382"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Punishment",
+      "spell_name": "Punishment",
+      "element": "Nectar",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 2,
+      "timestamp": "2025-09-02T23:10:19.921893"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Dominion",
+      "spell_name": "Dominion",
+      "element": "Ichor",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 2,
+      "timestamp": "2025-09-02T23:10:19.921895"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Punishment",
+      "condition_met": false,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for boost, found: none]",
+      "clash": 1,
+      "round": 2,
+      "timestamp": "2025-09-02T23:10:19.921918"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Dominion",
+      "element": "Ichor",
+      "clash": 1,
+      "round": 2,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.921931"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Punishment",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.921942"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Root",
+      "spell_name": "Root",
+      "element": "Nectar",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 2,
+      "round": 2,
+      "timestamp": "2025-09-02T23:10:19.922390"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Renew",
+      "spell_name": "Renew",
+      "element": "Ichor",
+      "spell_types": [
+        "remedy"
+      ],
+      "is_conjury": true,
+      "clash": 2,
+      "round": 2,
+      "timestamp": "2025-09-02T23:10:19.922392"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Punishment",
+      "condition_met": false,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for boost, found: none]",
+      "clash": 2,
+      "round": 2,
+      "timestamp": "2025-09-02T23:10:19.922431"
+    },
+    {
+      "type": "bolster_done",
+      "source_player": "EXPERT_2",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Renew",
+      "element": "Ichor",
+      "clash": 2,
+      "round": 2,
+      "timestamp": "2025-09-02T23:10:19.922443"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "EXPERT_2",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Renew",
+      "element": "Ichor",
+      "clash": 2,
+      "round": 2,
+      "timestamp": "2025-09-02T23:10:19.922448"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Punishment",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.922457"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Root",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.922464"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Absorb",
+      "spell_name": "Absorb",
+      "element": "Nectar",
+      "spell_types": [
+        "remedy",
+        "response"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 2,
+      "timestamp": "2025-09-02T23:10:19.922868"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Shrine",
+      "spell_name": "Shrine",
+      "element": "Ichor",
+      "spell_types": [],
+      "is_conjury": true,
+      "clash": 3,
+      "round": 2,
+      "timestamp": "2025-09-02T23:10:19.922870"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Absorb",
+      "condition_met": false,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for attack, found: none]",
+      "clash": 3,
+      "round": 2,
+      "timestamp": "2025-09-02T23:10:19.922907"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Punishment",
+      "condition_met": false,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for boost, found: none]",
+      "clash": 3,
+      "round": 2,
+      "timestamp": "2025-09-02T23:10:19.922916"
+    },
+    {
+      "type": "spell_revealed",
+      "player": "HARD_1",
+      "spell": "Seed",
+      "revealed_by": "EXPERT_2",
+      "timestamp": "2025-09-02T23:10:19.922924"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Punishment",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.922935"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Root",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.922941"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Punishment",
+      "condition_met": false,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for boost, found: none]",
+      "clash": 4,
+      "round": 2,
+      "timestamp": "2025-09-02T23:10:19.922968"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Sap",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.922977"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Defend",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.923067"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.923070"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Turbulence",
+      "spell_name": "Turbulence",
+      "element": "Wind",
+      "spell_types": [
+        "attack",
+        "response"
+      ],
+      "is_conjury": false,
+      "clash": 1,
+      "round": 3,
+      "timestamp": "2025-09-02T23:10:19.923791"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "spell_name": "Aftershocks",
+      "element": "Earth",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 3,
+      "timestamp": "2025-09-02T23:10:19.923793"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Turbulence",
+      "condition_met": false,
+      "condition_type": "if_spell_advanced_count",
+      "clash": 1,
+      "round": 3,
+      "timestamp": "2025-09-02T23:10:19.923818"
+    },
+    {
+      "type": "spell_cancelled",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "cancelled_by": "Turbulence",
+      "timestamp": "2025-09-02T23:10:19.923830"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Gust",
+      "spell_name": "Gust",
+      "element": "Wind",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 3,
+      "timestamp": "2025-09-02T23:10:19.924073"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Defend",
+      "spell_name": "Defend",
+      "element": "Metal",
+      "spell_types": [
+        "remedy",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 3,
+      "timestamp": "2025-09-02T23:10:19.924075"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Defend",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 3,
+      "timestamp": "2025-09-02T23:10:19.924098"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Gust",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.924117"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Defend",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.924123"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Sap",
+      "spell_name": "Sap",
+      "element": "Shadow",
+      "spell_types": [
+        "response"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 3,
+      "timestamp": "2025-09-02T23:10:19.924317"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Seed",
+      "spell_name": "Seed",
+      "element": "Wood",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 3,
+      "timestamp": "2025-09-02T23:10:19.924319"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Sap",
+      "condition_met": true,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for boost, found: Defend(remedy,response,boost), Seed(boost)]",
+      "clash": 3,
+      "round": 3,
+      "timestamp": "2025-09-02T23:10:19.924349"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Gust",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.924390"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.924398"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Seed",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.924402"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Defend",
+      "spell_name": "Defend",
+      "element": "Metal",
+      "spell_types": [
+        "remedy",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 3,
+      "timestamp": "2025-09-02T23:10:19.924427"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Defend",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 3,
+      "timestamp": "2025-09-02T23:10:19.924453"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Familiar",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.924523"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Reinforce",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.924563"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.924565"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Crush",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.924567"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Accelerator",
+      "spell_name": "Accelerator",
+      "element": "Time",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 4,
+      "timestamp": "2025-09-02T23:10:19.925087"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "spell_name": "Besiege",
+      "element": "Metal",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 1,
+      "round": 4,
+      "timestamp": "2025-09-02T23:10:19.925089"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 1,
+      "round": 4,
+      "timestamp": "2025-09-02T23:10:19.925119"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Accelerator",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.925129"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.925135"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Familiar",
+      "spell_name": "Familiar",
+      "element": "Shadow",
+      "spell_types": [
+        "attack",
+        "response"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 4,
+      "timestamp": "2025-09-02T23:10:19.925606"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Reinforce",
+      "spell_name": "Reinforce",
+      "element": "Metal",
+      "spell_types": [
+        "remedy"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 4,
+      "timestamp": "2025-09-02T23:10:19.925608"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Familiar",
+      "condition_met": true,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for attack, found: Besiege(attack,response,boost)]",
+      "clash": 2,
+      "round": 4,
+      "timestamp": "2025-09-02T23:10:19.925645"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "HARD_1",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Familiar",
+      "element": "Shadow",
+      "clash": 2,
+      "round": 4,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.925653"
+    },
+    {
+      "type": "bolster_done",
+      "source_player": "EXPERT_2",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Reinforce",
+      "element": "Metal",
+      "clash": 2,
+      "round": 4,
+      "timestamp": "2025-09-02T23:10:19.925662"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 4,
+      "timestamp": "2025-09-02T23:10:19.925672"
+    },
+    {
+      "type": "spell_cancelled",
+      "player": "EXPERT_2",
+      "spell": "Accelerator",
+      "cancelled_by": "Besiege",
+      "timestamp": "2025-09-02T23:10:19.925685"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.925694"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Quickshot",
+      "spell_name": "Quickshot",
+      "element": "Time",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": true,
+      "clash": 3,
+      "round": 4,
+      "timestamp": "2025-09-02T23:10:19.926117"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Quake",
+      "spell_name": "Quake",
+      "element": "Earth",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 4,
+      "timestamp": "2025-09-02T23:10:19.926119"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "HARD_1",
+      "target_player": "EXPERT_2",
+      "amount": 2,
+      "spell": "Quickshot",
+      "element": "Time",
+      "clash": 3,
+      "round": 4,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.926153"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 4,
+      "timestamp": "2025-09-02T23:10:19.926163"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.926173"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Crush",
+      "spell_name": "Crush",
+      "element": "Earth",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 4,
+      "timestamp": "2025-09-02T23:10:19.926561"
+    },
+    {
+      "type": "weaken_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Crush",
+      "element": "Earth",
+      "clash": 4,
+      "round": 4,
+      "timestamp": "2025-09-02T23:10:19.926582"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 4,
+      "timestamp": "2025-09-02T23:10:19.926592"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Prickle",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.926601"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Dominion",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.926606"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Agonize",
+      "spell_name": "Agonize",
+      "element": "Venom",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 1,
+      "round": 5,
+      "timestamp": "2025-09-02T23:10:19.927178"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Starfall",
+      "spell_name": "Starfall",
+      "element": "Aster",
+      "spell_types": [
+        "attack",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 1,
+      "round": 5,
+      "timestamp": "2025-09-02T23:10:19.927180"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Agonize",
+      "condition_met": false,
+      "condition_type": "if_spell_advanced_this_turn",
+      "clash": 1,
+      "round": 5,
+      "timestamp": "2025-09-02T23:10:19.927203"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Starfall",
+      "element": "Aster",
+      "clash": 1,
+      "round": 5,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.927215"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Agonize",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.927225"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Starfall",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.927231"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Enfeeble",
+      "spell_name": "Enfeeble",
+      "element": "Venom",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 5,
+      "timestamp": "2025-09-02T23:10:19.927775"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Constellation",
+      "spell_name": "Constellation",
+      "element": "Aster",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 2,
+      "round": 5,
+      "timestamp": "2025-09-02T23:10:19.927777"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Agonize",
+      "condition_met": true,
+      "condition_type": "if_spell_advanced_this_turn",
+      "clash": 2,
+      "round": 5,
+      "timestamp": "2025-09-02T23:10:19.927808"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "HARD_1",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Agonize",
+      "element": "Venom",
+      "clash": 2,
+      "round": 5,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.927819"
+    },
+    {
+      "type": "trunk_lost",
+      "player": "EXPERT_2",
+      "round": 5,
+      "remaining_trunks": 2,
+      "timestamp": "2025-09-02T23:10:19.927821",
+      "trunk_lifetime_rounds": 4
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Grow",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.927874"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Imitate",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.927877"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Renew",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.927973"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Shrine",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.927977"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.927979"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Encumber",
+      "spell_name": "Encumber",
+      "element": "Venom",
+      "spell_types": [
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 1,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.929286"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "spell_name": "Aftershocks",
+      "element": "Earth",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.929296"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Encumber",
+      "condition_met": false,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for remedy, found: none]",
+      "clash": 1,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.929335"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 1,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.929352"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Encumber",
+      "condition_met": true,
+      "condition_type": "if_not (advance)",
+      "clash": 1,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.929361"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Encumber",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.929374"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.929385"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Imitate",
+      "spell_name": "Imitate",
+      "element": "Shadow",
+      "spell_types": [],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.930517"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Dominion",
+      "spell_name": "Dominion",
+      "element": "Ichor",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": true,
+      "clash": 2,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.930519"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Encumber",
+      "condition_met": false,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for remedy, found: none]",
+      "clash": 2,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.930570"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.930585"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.930595"
+    },
+    {
+      "type": "spell_cancelled",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "cancelled_by": "Aftershocks",
+      "timestamp": "2025-09-02T23:10:19.930613"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Dominion",
+      "element": "Ichor",
+      "clash": 2,
+      "round": 6,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.930631"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Encumber",
+      "condition_met": true,
+      "condition_type": "if_not (advance)",
+      "clash": 2,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.930639"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Encumber",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.930647"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.930655"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Grow",
+      "spell_name": "Grow",
+      "element": "Wood",
+      "spell_types": [
+        "remedy"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.931703"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Shrine",
+      "spell_name": "Shrine",
+      "element": "Ichor",
+      "spell_types": [],
+      "is_conjury": true,
+      "clash": 3,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.931705"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Encumber",
+      "condition_met": false,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for remedy, found: none]",
+      "clash": 3,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.931745"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Grow",
+      "element": "Wood",
+      "clash": 3,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.931763"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.931775"
+    },
+    {
+      "type": "spell_revealed",
+      "player": "HARD_1",
+      "spell": "Prickle",
+      "revealed_by": "EXPERT_2",
+      "timestamp": "2025-09-02T23:10:19.931783"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Encumber",
+      "condition_met": true,
+      "condition_type": "if_not (advance)",
+      "clash": 3,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.931791"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Encumber",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.931801"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.931807"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Renew",
+      "spell_name": "Renew",
+      "element": "Ichor",
+      "spell_types": [
+        "remedy"
+      ],
+      "is_conjury": true,
+      "clash": 4,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.933874"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Encumber",
+      "condition_met": true,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for remedy, found: Renew(remedy)]",
+      "clash": 4,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.933907"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 6,
+      "timestamp": "2025-09-02T23:10:19.933926"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.933940"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Seed",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.934059"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Reinforce",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.934062"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Quake",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.934064"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Ritual",
+      "spell_name": "Ritual",
+      "element": "Blood",
+      "spell_types": [
+        "attack",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 1,
+      "round": 7,
+      "timestamp": "2025-09-02T23:10:19.935161"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Seed",
+      "spell_name": "Seed",
+      "element": "Wood",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 1,
+      "round": 7,
+      "timestamp": "2025-09-02T23:10:19.935163"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Ritual",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.935229"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Seed",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.935241"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "spell_name": "Besiege",
+      "element": "Metal",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 7,
+      "timestamp": "2025-09-02T23:10:19.936282"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Gleam",
+      "spell_name": "Gleam",
+      "element": "Aster",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 7,
+      "timestamp": "2025-09-02T23:10:19.936284"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 7,
+      "timestamp": "2025-09-02T23:10:19.936345"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Ritual",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.936365"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.936371"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Seed",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.936378"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Overexert",
+      "spell_name": "Overexert",
+      "element": "Blood",
+      "spell_types": [],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 7,
+      "timestamp": "2025-09-02T23:10:19.936531"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Prickle",
+      "spell_name": "Prickle",
+      "element": "Wood",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 7,
+      "timestamp": "2025-09-02T23:10:19.936533"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Reinforce",
+      "spell_name": "Reinforce",
+      "element": "Metal",
+      "spell_types": [
+        "remedy"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 7,
+      "timestamp": "2025-09-02T23:10:19.936535"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Quake",
+      "spell_name": "Quake",
+      "element": "Earth",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 7,
+      "timestamp": "2025-09-02T23:10:19.936536"
+    },
+    {
+      "type": "bolster_done",
+      "source_player": "EXPERT_2",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Reinforce",
+      "element": "Metal",
+      "clash": 3,
+      "round": 7,
+      "timestamp": "2025-09-02T23:10:19.936607"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 7,
+      "timestamp": "2025-09-02T23:10:19.936645"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 3,
+      "spell": "Prickle",
+      "element": "Wood",
+      "clash": 3,
+      "round": 7,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.936668"
+    },
+    {
+      "type": "trunk_lost",
+      "player": "HARD_1",
+      "round": 7,
+      "remaining_trunks": 2,
+      "timestamp": "2025-09-02T23:10:19.936671",
+      "trunk_lifetime_rounds": 6
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Absorb",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.936685"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Punishment",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.936689"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.936693"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Crush",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.936695"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Punishment",
+      "spell_name": "Punishment",
+      "element": "Nectar",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.938667"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Bolts",
+      "spell_name": "Bolts",
+      "element": "Lightning",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.938669"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Punishment",
+      "condition_met": true,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for boost, found: Bolts(attack,response,boost)]",
+      "clash": 1,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.938694"
+    },
+    {
+      "type": "spell_cancelled",
+      "player": "HARD_1",
+      "spell": "Bolts",
+      "cancelled_by": "Punishment",
+      "timestamp": "2025-09-02T23:10:19.938707"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Punishment",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.938717"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Flow",
+      "spell_name": "Flow",
+      "element": "Water",
+      "spell_types": [
+        "remedy",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.939601"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "spell_name": "Besiege",
+      "element": "Metal",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.939603"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Flow",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.939632"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.939643"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Punishment",
+      "condition_met": true,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for boost, found: Besiege(attack,response,boost)]",
+      "clash": 2,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.939653"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "HARD_1",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Punishment",
+      "element": "Nectar",
+      "clash": 2,
+      "round": 8,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.939661"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Punishment",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.939671"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Flow",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.939677"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.939682"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Absorb",
+      "spell_name": "Absorb",
+      "element": "Nectar",
+      "spell_types": [
+        "remedy",
+        "response"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.940474"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Electrocute",
+      "spell_name": "Electrocute",
+      "element": "Lightning",
+      "spell_types": [
+        "attack",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.940476"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Absorb",
+      "condition_met": true,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for attack, found: Besiege(attack,response,boost), Electrocute(attack,boost)]",
+      "clash": 3,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.940523"
+    },
+    {
+      "type": "bolster_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Absorb",
+      "element": "Nectar",
+      "clash": 3,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.940530"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Absorb",
+      "element": "Nectar",
+      "clash": 3,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.940539"
+    },
+    {
+      "type": "spell_discarded",
+      "player": "EXPERT_2",
+      "spell": "Electrocute",
+      "discarded_by": "EXPERT_2",
+      "timestamp": "2025-09-02T23:10:19.940569"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Flow",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.940584"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Flow",
+      "element": "Water",
+      "clash": 3,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.940592"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.940602"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Punishment",
+      "condition_met": true,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for boost, found: Besiege(attack,response,boost)]",
+      "clash": 3,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.940615"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "HARD_1",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Punishment",
+      "element": "Nectar",
+      "clash": 3,
+      "round": 8,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.940622"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Punishment",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.940633"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Flow",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.940638"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.940644"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Nourish",
+      "spell_name": "Nourish",
+      "element": "Water",
+      "spell_types": [
+        "remedy"
+      ],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.940893"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Surge",
+      "spell_name": "Surge",
+      "element": "Lightning",
+      "spell_types": [
+        "attack",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.940898"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Flow",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.940939"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Flow",
+      "element": "Water",
+      "clash": 4,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.940946"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 2,
+      "spell": "Nourish",
+      "element": "Water",
+      "clash": 4,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.940956"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 8,
+      "timestamp": "2025-09-02T23:10:19.940966"
+    },
+    {
+      "type": "spell_cancelled",
+      "player": "EXPERT_2",
+      "spell": "Punishment",
+      "cancelled_by": "Surge",
+      "timestamp": "2025-09-02T23:10:19.940995"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Root",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.941008"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Turbulence",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.941011"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Starfall",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.941015"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Root",
+      "spell_name": "Root",
+      "element": "Nectar",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 9,
+      "timestamp": "2025-09-02T23:10:19.942307"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Crepuscule",
+      "spell_name": "Crepuscule",
+      "element": "Twilight",
+      "spell_types": [
+        "attack",
+        "remedy"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 9,
+      "timestamp": "2025-09-02T23:10:19.942309"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "EXPERT_2",
+      "target_player": "EXPERT_2",
+      "amount": 2,
+      "spell": "Crepuscule",
+      "element": "Twilight",
+      "clash": 1,
+      "round": 9,
+      "timestamp": "2025-09-02T23:10:19.942347"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Root",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.942357"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Turbulence",
+      "spell_name": "Turbulence",
+      "element": "Wind",
+      "spell_types": [
+        "attack",
+        "response"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 9,
+      "timestamp": "2025-09-02T23:10:19.943602"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Eventide",
+      "spell_name": "Eventide",
+      "element": "Twilight",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 9,
+      "timestamp": "2025-09-02T23:10:19.943604"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Turbulence",
+      "condition_met": false,
+      "condition_type": "if_spell_advanced_count",
+      "clash": 2,
+      "round": 9,
+      "timestamp": "2025-09-02T23:10:19.943657"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "HARD_1",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Turbulence",
+      "element": "Wind",
+      "clash": 2,
+      "round": 9,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.943665"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Root",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.943675"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Gravitate",
+      "spell_name": "Gravitate",
+      "element": "Space",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 9,
+      "timestamp": "2025-09-02T23:10:19.944902"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Coalesce",
+      "spell_name": "Coalesce",
+      "element": "Twilight",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 9,
+      "timestamp": "2025-09-02T23:10:19.944906"
+    },
+    {
+      "type": "spell_moved",
+      "player": "HARD_1",
+      "spell": "Gravitate",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.944956"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Root",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.944974"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Coalesce",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.944982"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Impact",
+      "spell_name": "Impact",
+      "element": "Space",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": true,
+      "clash": 4,
+      "round": 9,
+      "timestamp": "2025-09-02T23:10:19.946129"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Daybreak",
+      "spell_name": "Daybreak",
+      "element": "Twilight",
+      "spell_types": [],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 9,
+      "timestamp": "2025-09-02T23:10:19.946131"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Eventide",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.946196"
+    },
+    {
+      "type": "spell_discarded",
+      "player": "HARD_1",
+      "spell": "Turbulence",
+      "discarded_by": "EXPERT_2",
+      "timestamp": "2025-09-02T23:10:19.946204"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "HARD_1",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Impact",
+      "element": "Space",
+      "clash": 4,
+      "round": 9,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.946219"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Sap",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.946268"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Gust",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.946271"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Constellation",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.946407"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Dominion",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.946410"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Shrine",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.946414"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Break",
+      "spell_name": "Break",
+      "element": "Thunder",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 1,
+      "round": 10,
+      "timestamp": "2025-09-02T23:10:19.947616"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Dominion",
+      "spell_name": "Dominion",
+      "element": "Ichor",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 10,
+      "timestamp": "2025-09-02T23:10:19.947618"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Dominion",
+      "element": "Ichor",
+      "clash": 1,
+      "round": 10,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.947652"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Break",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.947663"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Stupefy",
+      "spell_name": "Stupefy",
+      "element": "Thunder",
+      "spell_types": [
+        "attack",
+        "response"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 10,
+      "timestamp": "2025-09-02T23:10:19.948844"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Constellation",
+      "spell_name": "Constellation",
+      "element": "Aster",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 2,
+      "round": 10,
+      "timestamp": "2025-09-02T23:10:19.948846"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Stupefy",
+      "condition_met": false,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for attack, found: none]",
+      "clash": 2,
+      "round": 10,
+      "timestamp": "2025-09-02T23:10:19.948886"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Dominion",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.948900"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Sap",
+      "spell_name": "Sap",
+      "element": "Shadow",
+      "spell_types": [
+        "response"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 10,
+      "timestamp": "2025-09-02T23:10:19.950050"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Starfall",
+      "spell_name": "Starfall",
+      "element": "Aster",
+      "spell_types": [
+        "attack",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 10,
+      "timestamp": "2025-09-02T23:10:19.950052"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Sap",
+      "condition_met": true,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for boost, found: Starfall(attack,boost)]",
+      "clash": 3,
+      "round": 10,
+      "timestamp": "2025-09-02T23:10:19.950074"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Starfall",
+      "spell_name": "Starfall",
+      "element": "Aster",
+      "spell_types": [
+        "attack",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 10,
+      "timestamp": "2025-09-02T23:10:19.950553"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Eventide",
+      "spell_name": "Eventide",
+      "element": "Twilight",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 10,
+      "timestamp": "2025-09-02T23:10:19.950555"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Defend",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.950631"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Blow",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.950634"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.950739"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Renew",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.950743"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Gleam",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.950746"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Ignite",
+      "spell_name": "Ignite",
+      "element": "Fire",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 1,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.951949"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "spell_name": "Aftershocks",
+      "element": "Earth",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.951951"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Ignite",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 1,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.951977"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 1,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.951987"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Ignite",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.951997"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.952006"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Defend",
+      "spell_name": "Defend",
+      "element": "Metal",
+      "spell_types": [
+        "remedy",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.953108"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Dominion",
+      "spell_name": "Dominion",
+      "element": "Ichor",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": true,
+      "clash": 2,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.953110"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Defend",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.953147"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Defend",
+      "element": "Metal",
+      "clash": 2,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.953157"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Ignite",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.953168"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.953181"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 2,
+      "spell": "Aftershocks",
+      "element": "Earth",
+      "clash": 2,
+      "round": 11,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.953189"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 2,
+      "spell": "Dominion",
+      "element": "Ichor",
+      "clash": 2,
+      "round": 11,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.953206"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Ignite",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.953217"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Defend",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.953223"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.953228"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Blow",
+      "spell_name": "Blow",
+      "element": "Wind",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.954284"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Shrine",
+      "spell_name": "Shrine",
+      "element": "Ichor",
+      "spell_types": [],
+      "is_conjury": true,
+      "clash": 3,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.954286"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Defend",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.954323"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Defend",
+      "element": "Metal",
+      "clash": 3,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.954330"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Ignite",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.954340"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.954351"
+    },
+    {
+      "type": "spell_revealed",
+      "player": "HARD_1",
+      "spell": "Fireball",
+      "revealed_by": "EXPERT_2",
+      "timestamp": "2025-09-02T23:10:19.954360"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Ignite",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.954373"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Defend",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.954378"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Dominion",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.954387"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.954393"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Scorch",
+      "spell_name": "Scorch",
+      "element": "Fire",
+      "spell_types": [
+        "attack",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.956199"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Fireball",
+      "spell_name": "Fireball",
+      "element": "Fire",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.956200"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Defend",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.956244"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Defend",
+      "element": "Metal",
+      "clash": 4,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.956251"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Ignite",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 11,
+      "timestamp": "2025-09-02T23:10:19.956261"
+    },
+    {
+      "type": "spell_cancelled",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "cancelled_by": "Ignite",
+      "timestamp": "2025-09-02T23:10:19.956278"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "HARD_1",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Scorch",
+      "element": "Fire",
+      "clash": 4,
+      "round": 11,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.956289"
+    },
+    {
+      "type": "spell_cancelled",
+      "player": "HARD_1",
+      "spell": "Dominion",
+      "cancelled_by": "Scorch",
+      "timestamp": "2025-09-02T23:10:19.956297"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 2,
+      "spell": "Fireball",
+      "element": "Fire",
+      "clash": 4,
+      "round": 11,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.956306"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Repeater",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.956315"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Accelerator",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.956317"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Seed",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.956421"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Prickle",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.956423"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Reinforce",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.956426"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Accelerator",
+      "spell_name": "Accelerator",
+      "element": "Time",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 12,
+      "timestamp": "2025-09-02T23:10:19.957644"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Seed",
+      "spell_name": "Seed",
+      "element": "Wood",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 1,
+      "round": 12,
+      "timestamp": "2025-09-02T23:10:19.957646"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Accelerator",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.957680"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Seed",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.957688"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Reflect",
+      "spell_name": "Reflect",
+      "element": "Sunbeam",
+      "spell_types": [
+        "attack",
+        "response"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 12,
+      "timestamp": "2025-09-02T23:10:19.958838"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Renew",
+      "spell_name": "Renew",
+      "element": "Ichor",
+      "spell_types": [
+        "remedy"
+      ],
+      "is_conjury": true,
+      "clash": 2,
+      "round": 12,
+      "timestamp": "2025-09-02T23:10:19.958839"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Reflect",
+      "condition_met": false,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for attack, found: none]",
+      "clash": 2,
+      "round": 12,
+      "timestamp": "2025-09-02T23:10:19.958877"
+    },
+    {
+      "type": "bolster_done",
+      "source_player": "EXPERT_2",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Renew",
+      "element": "Ichor",
+      "clash": 2,
+      "round": 12,
+      "timestamp": "2025-09-02T23:10:19.958889"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "EXPERT_2",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Renew",
+      "element": "Ichor",
+      "clash": 2,
+      "round": 12,
+      "timestamp": "2025-09-02T23:10:19.958894"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Accelerator",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.958907"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Seed",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.958915"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Repeater",
+      "spell_name": "Repeater",
+      "element": "Time",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 3,
+      "round": 12,
+      "timestamp": "2025-09-02T23:10:19.959994"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Gleam",
+      "spell_name": "Gleam",
+      "element": "Aster",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 12,
+      "timestamp": "2025-09-02T23:10:19.959996"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Accelerator",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.960036"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Repeater",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.960052"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Renew",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.960060"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Seed",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.960066"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Glare",
+      "spell_name": "Glare",
+      "element": "Sunbeam",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": true,
+      "clash": 4,
+      "round": 12,
+      "timestamp": "2025-09-02T23:10:19.960102"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Prickle",
+      "spell_name": "Prickle",
+      "element": "Wood",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 12,
+      "timestamp": "2025-09-02T23:10:19.960104"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Reinforce",
+      "spell_name": "Reinforce",
+      "element": "Metal",
+      "spell_types": [
+        "remedy"
+      ],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 12,
+      "timestamp": "2025-09-02T23:10:19.960105"
+    },
+    {
+      "type": "bolster_done",
+      "source_player": "EXPERT_2",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Reinforce",
+      "element": "Metal",
+      "clash": 4,
+      "round": 12,
+      "timestamp": "2025-09-02T23:10:19.960153"
+    },
+    {
+      "type": "weaken_dealt",
+      "source_player": "HARD_1",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Glare",
+      "element": "Sunbeam",
+      "clash": 4,
+      "round": 12,
+      "timestamp": "2025-09-02T23:10:19.960173"
+    },
+    {
+      "type": "spell_cancelled",
+      "player": "HARD_1",
+      "spell": "Renew",
+      "cancelled_by": "Glare",
+      "timestamp": "2025-09-02T23:10:19.960184"
+    },
+    {
+      "type": "spell_cancelled",
+      "player": "EXPERT_2",
+      "spell": "Accelerator",
+      "cancelled_by": "Prickle",
+      "timestamp": "2025-09-02T23:10:19.960209"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Familiar",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.960234"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Quickshot",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.960237"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.960269"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Quake",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.960271"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Nightglow",
+      "spell_name": "Nightglow",
+      "element": "Moonshine",
+      "spell_types": [
+        "remedy",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 1,
+      "round": 13,
+      "timestamp": "2025-09-02T23:10:19.961619"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Ignite",
+      "spell_name": "Ignite",
+      "element": "Fire",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 1,
+      "round": 13,
+      "timestamp": "2025-09-02T23:10:19.961621"
+    },
+    {
+      "type": "bolster_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Nightglow",
+      "element": "Moonshine",
+      "clash": 1,
+      "round": 13,
+      "timestamp": "2025-09-02T23:10:19.961650"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Ignite",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 1,
+      "round": 13,
+      "timestamp": "2025-09-02T23:10:19.961661"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Nightglow",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type (advance)",
+      "clash": 1,
+      "round": 13,
+      "timestamp": "2025-09-02T23:10:19.961669"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Ignite",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.961677"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Familiar",
+      "spell_name": "Familiar",
+      "element": "Shadow",
+      "spell_types": [
+        "attack",
+        "response"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 13,
+      "timestamp": "2025-09-02T23:10:19.962890"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "spell_name": "Aftershocks",
+      "element": "Earth",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 2,
+      "round": 13,
+      "timestamp": "2025-09-02T23:10:19.962891"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Familiar",
+      "condition_met": true,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for attack, found: Ignite(attack,response,boost), Aftershocks(attack,response,boost)]",
+      "clash": 2,
+      "round": 13,
+      "timestamp": "2025-09-02T23:10:19.962921"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "HARD_1",
+      "target_player": "EXPERT_2",
+      "amount": 3,
+      "spell": "Familiar",
+      "element": "Shadow",
+      "clash": 2,
+      "round": 13,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.962930"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Ignite",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 13,
+      "timestamp": "2025-09-02T23:10:19.962942"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Ignite",
+      "element": "Fire",
+      "clash": 2,
+      "round": 13,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.962950"
+    },
+    {
+      "type": "trunk_lost",
+      "player": "HARD_1",
+      "round": 13,
+      "remaining_trunks": 1,
+      "timestamp": "2025-09-02T23:10:19.962952",
+      "trunk_lifetime_rounds": 6
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Imitate",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.963035"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Sap",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.963038"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.963040"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Crush",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.963155"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.963157"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.963159"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.963162"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "spell_name": "Aftershocks",
+      "element": "Earth",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.964681"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "spell_name": "Aftershocks",
+      "element": "Earth",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.964683"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 1,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.964708"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 1,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.964718"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.964729"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.964735"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Sap",
+      "spell_name": "Sap",
+      "element": "Shadow",
+      "spell_types": [
+        "response"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.966144"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "spell_name": "Besiege",
+      "element": "Metal",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.966146"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Sap",
+      "condition_met": true,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for boost, found: Aftershocks(attack,response,boost), Besiege(attack,response,boost)]",
+      "clash": 2,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.966179"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.966197"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.966207"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.966217"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.966223"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "spell_name": "Besiege",
+      "element": "Metal",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.966831"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "spell_name": "Besiege",
+      "element": "Metal",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.966833"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.966867"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.966878"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.966889"
+    },
+    {
+      "type": "spell_cancelled",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "cancelled_by": "Aftershocks",
+      "timestamp": "2025-09-02T23:10:19.966902"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.966911"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.966918"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.966924"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Prickle",
+      "spell_name": "Prickle",
+      "element": "Wood",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.967116"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Scorch",
+      "spell_name": "Scorch",
+      "element": "Fire",
+      "spell_types": [
+        "attack",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.967117"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 14,
+      "timestamp": "2025-09-02T23:10:19.967155"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "HARD_1",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Prickle",
+      "element": "Wood",
+      "clash": 4,
+      "round": 14,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.967174"
+    },
+    {
+      "type": "trunk_lost",
+      "player": "EXPERT_2",
+      "round": 14,
+      "remaining_trunks": 1,
+      "timestamp": "2025-09-02T23:10:19.967177",
+      "trunk_lifetime_rounds": 9
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.967246"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.967248"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Defend",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.967251"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Reinforce",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.967294"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Ignite",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.967296"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.967299"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Fireball",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.967300"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Quake",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.967303"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "spell_name": "Aftershocks",
+      "element": "Earth",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.969488"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "spell_name": "Aftershocks",
+      "element": "Earth",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.969490"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 1,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.969515"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 1,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.969526"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.969536"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.969542"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Defend",
+      "spell_name": "Defend",
+      "element": "Metal",
+      "spell_types": [
+        "remedy",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.971663"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Ignite",
+      "spell_name": "Ignite",
+      "element": "Fire",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.971665"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Defend",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.971699"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Defend",
+      "element": "Metal",
+      "clash": 2,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.971706"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Ignite",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.971717"
+    },
+    {
+      "type": "spell_cancelled",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "cancelled_by": "Ignite",
+      "timestamp": "2025-09-02T23:10:19.971731"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.971741"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 2,
+      "spell": "Aftershocks",
+      "element": "Earth",
+      "clash": 2,
+      "round": 15,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.971749"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Defend",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.971758"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.971764"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Ignite",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.971769"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "spell_name": "Besiege",
+      "element": "Metal",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.973786"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Quake",
+      "spell_name": "Quake",
+      "element": "Earth",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.973788"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Defend",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.973837"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Defend",
+      "element": "Metal",
+      "clash": 3,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.973844"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.973854"
+    },
+    {
+      "type": "spell_cancelled",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "cancelled_by": "Besiege",
+      "timestamp": "2025-09-02T23:10:19.973868"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Ignite",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.973877"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Ignite",
+      "element": "Fire",
+      "clash": 3,
+      "round": 15,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.973885"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Defend",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.973895"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.973901"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Ignite",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.973906"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Flow",
+      "spell_name": "Flow",
+      "element": "Water",
+      "spell_types": [
+        "remedy",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.974832"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Fireball",
+      "spell_name": "Fireball",
+      "element": "Fire",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.974834"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Defend",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.974872"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Defend",
+      "element": "Metal",
+      "clash": 4,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.974879"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Flow",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.974890"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Flow",
+      "element": "Water",
+      "clash": 4,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.974896"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.974906"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "HARD_1",
+      "target_player": "EXPERT_2",
+      "amount": 1,
+      "spell": "Besiege",
+      "element": "Metal",
+      "clash": 4,
+      "round": 15,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.974914"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Ignite",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 15,
+      "timestamp": "2025-09-02T23:10:19.974924"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Ignite",
+      "element": "Fire",
+      "clash": 4,
+      "round": 15,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.974931"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 2,
+      "spell": "Fireball",
+      "element": "Fire",
+      "clash": 4,
+      "round": 15,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.974940"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.975001"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Accelerator",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.975004"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Repeater",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.975007"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.975081"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.975084"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Scorch",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.975085"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.975087"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Accelerator",
+      "spell_name": "Accelerator",
+      "element": "Time",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.977692"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "spell_name": "Aftershocks",
+      "element": "Earth",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 1,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.977695"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 1,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.977728"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Accelerator",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.977739"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.977744"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "spell_name": "Besiege",
+      "element": "Metal",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.980230"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "spell_name": "Aftershocks",
+      "element": "Earth",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 2,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.980232"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.980272"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.980283"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.980293"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Accelerator",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.980303"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.980310"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.980315"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 2,
+      "to_clash": 3,
+      "timestamp": "2025-09-02T23:10:19.980320"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Repeater",
+      "spell_name": "Repeater",
+      "element": "Time",
+      "spell_types": [
+        "boost"
+      ],
+      "is_conjury": true,
+      "clash": 3,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.982715"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Crush",
+      "spell_name": "Crush",
+      "element": "Earth",
+      "spell_types": [
+        "attack"
+      ],
+      "is_conjury": false,
+      "clash": 3,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.982717"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.982768"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Accelerator",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.982784"
+    },
+    {
+      "type": "weaken_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Crush",
+      "element": "Earth",
+      "clash": 3,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.982794"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.982804"
+    },
+    {
+      "type": "spell_cancelled",
+      "player": "EXPERT_2",
+      "spell": "Repeater",
+      "cancelled_by": "Aftershocks",
+      "timestamp": "2025-09-02T23:10:19.982818"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 3,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.982828"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 2,
+      "spell": "Aftershocks",
+      "element": "Earth",
+      "clash": 3,
+      "round": 16,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.982836"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.982845"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.982850"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "from_clash": 3,
+      "to_clash": 4,
+      "timestamp": "2025-09-02T23:10:19.982855"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Renew",
+      "spell_name": "Renew",
+      "element": "Ichor",
+      "spell_types": [
+        "remedy"
+      ],
+      "is_conjury": true,
+      "clash": 4,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.985212"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "spell_name": "Besiege",
+      "element": "Metal",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 4,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.985214"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Besiege",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.985265"
+    },
+    {
+      "type": "spell_cancelled",
+      "player": "HARD_1",
+      "spell": "Aftershocks",
+      "cancelled_by": "Besiege",
+      "timestamp": "2025-09-02T23:10:19.985281"
+    },
+    {
+      "type": "bolster_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Renew",
+      "element": "Ichor",
+      "clash": 4,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.985292"
+    },
+    {
+      "type": "healing_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Renew",
+      "element": "Ichor",
+      "clash": 4,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.985297"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Besiege",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.985307"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Aftershocks",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 4,
+      "round": 16,
+      "timestamp": "2025-09-02T23:10:19.985319"
+    },
+    {
+      "type": "spell_cancelled",
+      "player": "EXPERT_2",
+      "spell": "Accelerator",
+      "cancelled_by": "Aftershocks",
+      "timestamp": "2025-09-02T23:10:19.985333"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Nightglow",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.985385"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Familiar",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.985389"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "HARD_1",
+      "spell": "Slumber",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.985391"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Quake",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.985468"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Ignite",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.985470"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Fireball",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.985471"
+    },
+    {
+      "type": "spell_recalled",
+      "player": "EXPERT_2",
+      "spell": "Crush",
+      "from_location": "discard",
+      "timestamp": "2025-09-02T23:10:19.985473"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Nightglow",
+      "spell_name": "Nightglow",
+      "element": "Moonshine",
+      "spell_types": [
+        "remedy",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 1,
+      "round": 17,
+      "timestamp": "2025-09-02T23:10:19.987364"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Ignite",
+      "spell_name": "Ignite",
+      "element": "Fire",
+      "spell_types": [
+        "attack",
+        "response",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 1,
+      "round": 17,
+      "timestamp": "2025-09-02T23:10:19.987367"
+    },
+    {
+      "type": "bolster_done",
+      "source_player": "HARD_1",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Nightglow",
+      "element": "Moonshine",
+      "clash": 1,
+      "round": 17,
+      "timestamp": "2025-09-02T23:10:19.987393"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Ignite",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 1,
+      "round": 17,
+      "timestamp": "2025-09-02T23:10:19.987403"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Nightglow",
+      "condition_met": false,
+      "condition_type": "if_caster_has_active_spell_of_type (advance)",
+      "clash": 1,
+      "round": 17,
+      "timestamp": "2025-09-02T23:10:19.987411"
+    },
+    {
+      "type": "spell_advanced",
+      "player": "EXPERT_2",
+      "spell": "Ignite",
+      "from_clash": 1,
+      "to_clash": 2,
+      "timestamp": "2025-09-02T23:10:19.987419"
+    },
+    {
+      "type": "spell_played",
+      "player": "HARD_1",
+      "spell": "Familiar",
+      "spell_name": "Familiar",
+      "element": "Shadow",
+      "spell_types": [
+        "attack",
+        "response"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 17,
+      "timestamp": "2025-09-02T23:10:19.989240"
+    },
+    {
+      "type": "spell_played",
+      "player": "EXPERT_2",
+      "spell": "Scorch",
+      "spell_name": "Scorch",
+      "element": "Fire",
+      "spell_types": [
+        "attack",
+        "boost"
+      ],
+      "is_conjury": false,
+      "clash": 2,
+      "round": 17,
+      "timestamp": "2025-09-02T23:10:19.989245"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "HARD_1",
+      "spell": "Familiar",
+      "condition_met": true,
+      "condition_type": "if_enemy_has_active_spell_of_type [Looking for attack, found: Ignite(attack,response,boost), Scorch(attack,boost)]",
+      "clash": 2,
+      "round": 17,
+      "timestamp": "2025-09-02T23:10:19.989274"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "HARD_1",
+      "target_player": "EXPERT_2",
+      "amount": 2,
+      "spell": "Familiar",
+      "element": "Shadow",
+      "clash": 2,
+      "round": 17,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.989283"
+    },
+    {
+      "type": "response_condition_evaluated",
+      "player": "EXPERT_2",
+      "spell": "Ignite",
+      "condition_met": true,
+      "condition_type": "if_caster_has_active_spell_of_type",
+      "clash": 2,
+      "round": 17,
+      "timestamp": "2025-09-02T23:10:19.989294"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Ignite",
+      "element": "Fire",
+      "clash": 2,
+      "round": 17,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.989303"
+    },
+    {
+      "type": "damage_dealt",
+      "source_player": "EXPERT_2",
+      "target_player": "HARD_1",
+      "amount": 1,
+      "spell": "Scorch",
+      "element": "Fire",
+      "clash": 2,
+      "round": 17,
+      "is_self_damage": false,
+      "timestamp": "2025-09-02T23:10:19.989313"
+    },
+    {
+      "type": "trunk_lost",
+      "player": "HARD_1",
+      "round": 17,
+      "remaining_trunks": 0,
+      "timestamp": "2025-09-02T23:10:19.989315",
+      "trunk_lifetime_rounds": 4
+    }
+  ],
+  "player_elements": {
+    "HARD_1": [
+      "Wood",
+      "Shadow"
+    ],
+    "EXPERT_2": [
+      "Metal",
+      "Earth"
+    ]
+  },
+  "winner": "EXPERT_2",
+  "total_rounds": 16,
+  "result": {
+    "winner": "EXPERT_2",
+    "winner_health": 3,
+    "loser_health": 0,
+    "total_rounds": 16,
+    "end_timestamp": "2025-09-02T23:10:19.989326"
+  }
+}

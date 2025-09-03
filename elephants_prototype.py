@@ -2324,7 +2324,7 @@ class ActionHandler:
 
 # --- MAIN GAME ENGINE ---
 class GameEngine:
-    def __init__(self, player_names, ai_difficulty='medium'):
+    def __init__(self, player_names, ai_difficulty='expert'):
         self.gs = GameState(player_names); self.display = DashboardDisplay()
         self.condition_checker = ConditionChecker(); self.action_handler = ActionHandler(self)
         self.ai_decision_logs = []  # Store AI logs to show after reveal
@@ -3028,7 +3028,7 @@ if __name__ == "__main__":
             '4': 'expert'
         }
         
-        ai_difficulty = difficulty_map.get(difficulty_choice, 'medium')
+        ai_difficulty = difficulty_map.get(difficulty_choice, 'expert')
         
         player_names = ["Human Player", "AI Opponent"]
         engine = GameEngine(player_names, ai_difficulty=ai_difficulty)

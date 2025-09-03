@@ -30,7 +30,7 @@ Play against an AI opponent with full interactive controls. You'll be prompted t
 python ai_spectator.py [ai1_type] [ai2_type] [delay] [num_games]
 
 # Examples:
-python ai_spectator.py                    # Default: hard vs medium, 1s delay
+python ai_spectator.py                    # Default: expert vs expert, 1s delay
 python ai_spectator.py hard easy 0.5      # Fast game: hard vs easy, 0.5s delay
 python ai_spectator.py hard medium 2.0 5  # 5 slower games with 2s delay
 python ai_spectator.py hard hard 0        # Maximum speed (no delay)

@@ -851,8 +851,8 @@ def main():
     parser.add_argument('mode', nargs='?', default='100', 
                        help='Number of games or mode (quick/tournament)')
     parser.add_argument('--games', type=int, help='Games per matchup for tournament')
-    parser.add_argument('--ai1', default='hard', choices=['easy', 'medium', 'hard'])
-    parser.add_argument('--ai2', default='hard', choices=['easy', 'medium', 'hard'])
+    parser.add_argument('--ai1', default='expert', choices=['easy', 'medium', 'hard', 'expert'])
+    parser.add_argument('--ai2', default='expert', choices=['easy', 'medium', 'hard', 'expert'])
     parser.add_argument('--silent', action='store_true', help='Suppress progress messages')
     
     args = parser.parse_args()
