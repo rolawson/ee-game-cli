@@ -42,8 +42,8 @@ class Colors:
 # Element emojis
 ELEMENT_EMOJIS = {
     'Fire': '🔥', 'Water': '💧', 'Wind': '🌪️', 'Earth': '🗿',
-    'Wood': '🌳', 'Metal': '⚔️', 'Time': '⏰', 'Space': '🪐',
-    'Sunbeam': '☀️', 'Moonshine': '🌙', 'Shadow': '🌑', 'Aster': '⭐',
+    'Wood': '🌳', 'Metal': '⚔️', 'Time': '⌛️', 'Space': '🪐',
+    'Sunbeam': '☀️', 'Moonshine': '🌙', 'Shadow': '🌑', 'Aster': '🌟',
     'Blood': '🩸', 'Ichor': '🪽', 'Venom': '☠️', 'Nectar': '🍯',
     'Lightning': '⚡️', 'Thunder': '🫨', 'Twilight': '☯️'
 }
@@ -2389,7 +2389,7 @@ class GameEngine:
                 if isinstance(item, list): 
                     emoji = ELEMENT_EMOJIS.get(item[0].element, '')
                     theme = item[0].theme if hasattr(item[0], 'theme') else ''
-                    display_name = f"The '{item[0].elephant}' Set ({emoji} {item[0].element} | {len(item)} cards)"
+                    display_name = f"The '{item[0].elephant}' Set ({emoji} {item[0].element} | {len(item)} spells)"
                     if theme:
                         print(f"  [{key}] {display_name}")
                         print(f"    {Colors.GREY}Theme: {theme}{Colors.ENDC}")

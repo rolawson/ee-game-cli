@@ -307,7 +307,6 @@
     "is_conjury": false,
     "priority": "A",
     "spell_types": [
-      "boost"
     ],
     "base_set": true,
     "resolve_effects": [],
@@ -468,7 +467,6 @@
     "is_conjury": false,
     "priority": 2,
     "spell_types": [
-      "attack"
     ],
     "base_set": true,
     "resolve_effects": [
@@ -908,7 +906,6 @@
     "is_conjury": false,
     "priority": 1,
     "spell_types": [
-      "boost"
     ],
     "base_set": false,
     "resolve_effects": [
@@ -940,9 +937,7 @@
     "set_name": "23 Space 2",
     "is_conjury": true,
     "priority": 5,
-    "spell_types": [
-      "boost"
-    ],
+    "spell_types": [],
     "base_set": false,
     "resolve_effects": [
       {
@@ -989,10 +984,10 @@
           "type": "always"
         },
         "action": {
-          "type": "damage_per_spell_from_other_clashes",
+          "type": "damage_per_spell",
           "target": "prompt_player_or_conjury",
           "parameters": {
-            "exclude_self": true
+            "exclude_self": false
           }
         }
       }
@@ -1002,7 +997,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": false,
-    "instruction": "💥 DAMAGE for each other active spell that was active in another clash."
+    "instruction": "💥 DAMAGE for each of your active spells."
   },
   {
     "id": 25,
@@ -1382,9 +1377,7 @@
     "set_name": "34 Aster 1",
     "is_conjury": false,
     "priority": "A",
-    "spell_types": [
-      "boost"
-    ],
+    "spell_types": [],
     "base_set": false,
     "resolve_effects": [],
     "advance_effects": [
