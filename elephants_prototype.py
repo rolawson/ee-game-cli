@@ -954,7 +954,7 @@ class ActionHandler:
                 past_spells = []
                 for i in range(gs.clash_num - 1):  # Only past clashes
                     for spell in caster.board[i]:
-                        if spell.status == 'revealed':
+                        if spell.status in ['revealed','cancelled']:
                             past_spells.append(spell)
                 
                 if not past_spells:
@@ -1725,6 +1725,7 @@ class ActionHandler:
                             played_card.status = 'prepared'  # Will be revealed in that clash
                             caster.board[target_clash].append(played_card)
                             gs.action_log.append(f"{caster.name} advanced [{card.name}] from hand to Clash {target_clash + 1}!")
+                            self._fire_event('spell_advanced', gs, player=caster.name, card_id=card.id, round=gs.round_num)
                     else:
                         # AI just plays first card to next clash
                         if caster.hand:
@@ -1733,7 +1734,7 @@ class ActionHandler:
                             played_card.status = 'prepared'
                             caster.board[target_clash].append(played_card)
                             gs.action_log.append(f"{caster.name} advanced [{card.name}] from hand to Clash {target_clash + 1}!")
-            
+                            self._fire_event('spell_advanced', gs, player=caster.name, card_id=card.id, round=gs.round_num)
             elif action_type == 'sequence':
                 # Execute a sequence of actions in order
                 actions = action_data.get('actions', [])
@@ -2199,7 +2200,7 @@ class ActionHandler:
                 past_spells = []
                 for i in range(gs.clash_num - 1):  # Only past clashes
                     for spell in caster.board[i]:
-                        if spell.status == 'revealed':
+                        if spell.status in ['revealed', 'cancelled']:
                             past_spells.append(spell)
                 
                 if not past_spells: return []
