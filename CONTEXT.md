@@ -177,6 +177,61 @@ Elemental Elephants/
 └── test_results/           # AI test results
 ```
 
+## Core Game Files
+  - `elephants_prototype.py` - Main game engine with human vs AI gameplay
+  - `game_logger.py` - Tracks all game events for analytics
+  - `spells.json` - Spell definitions and balance data
+
+  ## AI System
+  - `ai/base.py` - Base AI class with common functionality
+  - `ai/easy.py` - Random play AI (baseline)
+  - `ai/medium.py` - Basic strategy AI
+  - `ai/hard.py` - Advanced strategy with card scoring
+  - `ai/expert.py` - Extreme analysis with win rate data
+
+  ## Analysis Tools
+
+  ### For Watching AI Battles
+  - `tools/ai_spectator.py` - Watch AI vs AI with adjustable speed
+    - Usage: `python tools/ai_spectator.py`
+    - Features: Visual display, speed control, pause/resume
+
+  ### For AI Performance Analysis
+  - `tools/ai_tournament.py` - Run tournaments between AI types
+    - Usage: `python tools/ai_tournament.py [games_per_matchup]`
+    - Output: Win rates for each AI difficulty
+
+  - `tools/ai_winrate_test.py` - Quick win rate testing
+    - Usage: `python tools/ai_winrate_test.py`
+    - Output: Simple win percentage
+
+  ### For Game & Spell Analysis
+  - `tools/analytics.py` - Core analytics engine (SilentGameEngine)
+  - `tools/gameplay_analytics.py` - Analyze battle statistics
+    - Usage: `python tools/gameplay_analytics.py`
+    - Reads from: `test_results/` directory
+
+  - `tools/analyze_real_world_data.py` - Analyze your games
+    - Usage: `python tools/analyze_real_world_data.py`
+    - Input: Game logs from your play sessions
+    - Output: Spell effectiveness, element balance
+
+  ### For Data Generation
+  - `tools/generate_analytics_data.py` - Generate test data
+  - `tools/damage_calculator.py` - Calculate spell damage potential
+
+  ## Data Flow
+  1. Play games (human or AI) → game_logger.py → game logs
+  2. Run analytics tools → test_results/ → analysis reports
+  3. Use reports to balance spells.json
+
+  ## Current Analytics Focus
+  - AI win rates by difficulty
+  - Spell usage and effectiveness
+  - Element balance and matchups
+  - Game flow metrics (damage/healing per round)
+  ,,,
+
 ## Latest Updates
 1. **Element Categories System** - Added element_categories.json configuration:
    - Offense (Fire, Lightning, Venom, Earth, Sunbeam, Blood)
