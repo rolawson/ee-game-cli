@@ -810,7 +810,7 @@ class UnifiedAnalytics:
     
     def save_report(self) -> str:
         """Save report to file"""
-        filename = f"analytics_report_{self.timestamp}.txt"
+        filename = f"analytics_reports/analytics_report_{self.timestamp}.txt"
         with open(filename, 'w') as f:
             f.write('\n'.join(self.report_lines))
         return filename

@@ -136,7 +136,7 @@ def run_all_matchups(games_per_matchup=10):
     
     # Save results
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"ai_winrate_results_{timestamp}.txt"
+    filename = f"ai_winrate_results/ai_winrate_results_{timestamp}.txt"
     
     with open(filename, 'w') as f:
         f.write("AI Win Rate Test Results\n")
