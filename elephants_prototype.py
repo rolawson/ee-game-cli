@@ -164,6 +164,7 @@ class Card:
             'prompt_any_active_spell': 'any active spell',
             'prompt_enemy_past_spell': 'an enemy past spell',
             'each_enemy': 'each enemy',
+            'all_enemy_spells': 'all enemy spells',
             'all_enemy_remedy_spells': 'all enemy remedy spells',
             'all_enemy_attack_spells': 'all enemy attack spells',
             'prompt_enemy_boost_spell': 'an enemy boost spell',
@@ -386,7 +387,7 @@ class DashboardDisplay:
                     print(f"[{i+1}] {emoji} {Colors.BOLD}{card.name}{Colors.ENDC} {type_icons} (P:{card.priority}, {type_str})"); 
                     print(f"    {Colors.GREY}> {card.get_instructions_text()}{Colors.ENDC}")
         print("-" * 89);
-        if gs.action_log: print(f"{Colors.BOLD}LOG:{Colors.ENDC}"); [print(f"  {entry}") for entry in gs.action_log[-5:]]
+        if gs.action_log: print(f"{Colors.BOLD}LOG:{Colors.ENDC}"); [print(f"  {entry}") for entry in gs.action_log[-20:]]
         if prompt: print(f"\n>>> {Colors.WARNING}{prompt}{Colors.ENDC}")
 
 
@@ -1060,13 +1061,20 @@ class ActionHandler:
             return True
 
         if action_type == 'player_choice':
-            # Check if Coalesce is active for this player
-            has_coalesce = False
+            # Check if any spell is modifying choice logic for this player
+            has_choice_modifier = False
             active_spells = [s for p in gs.players for s in p.board[gs.clash_num-1] if s.status == 'revealed']
             for spell in active_spells:
-                if spell.owner == caster and spell.card.name == 'Coalesce':
-                    has_coalesce = True
-                    break
+                if spell.owner == caster:
+                    # Check if this spell modifies choice logic
+                    for effect in spell.card.passive_effects:
+                        if effect.get('type') == 'modify_spell_logic':
+                            params = effect.get('parameters', {})
+                            if params.get('change') == 'or_to_and':
+                                has_choice_modifier = True
+                                break
+                    if has_choice_modifier:
+                        break
             
             # First, check if each option is actually valid
             valid_options = []
@@ -1086,9 +1094,9 @@ class ActionHandler:
                 gs.action_log.append(f"{Colors.GREY}No valid options available.{Colors.ENDC}")
                 return True
             
-            # If Coalesce is active, execute ALL valid options
-            if has_coalesce:
-                gs.action_log.append(f"{caster.name}'s [Coalesce] changes 'Choose one' to 'Do both'!")
+              # If choice modifier is active, execute ALL valid options
+            if has_choice_modifier:
+                gs.action_log.append(f"{caster.name}'s spell changes 'Choose one' to 'Do both'!")
                 for option in valid_options:
                     self._execute_action(option, gs, caster, current_card)
                     self.engine._pause()
@@ -1607,15 +1615,20 @@ class ActionHandler:
                     self.engine._pause()
             
             elif action_type == 'recall_from_board':
-                # Sap - recall an enemy boost spell from the board to your hand
+                # Sap, eg. - recall an enemy boost spell from the board to your hand
                 if isinstance(target, PlayedCard) and 'boost' in target.card.types:
                     owner = target.owner
                     
-                    # Check if Root is protecting this spell in the current clash
+                    # Check if any spell is protecting this spell in the current clash
                     for spell in owner.board[gs.clash_num - 1]:
-                        if spell.status == 'revealed' and spell.card.name == 'Root':
-                            gs.action_log.append(f"[{target.card.name}] is protected by {owner.name}'s [Root] and cannot be recalled!")
-                            return
+                        if spell.status == 'revealed' and spell != target:
+                            # Check if this spell has protection passive effects
+                            for effect in spell.card.passive_effects:
+                                if effect.get('type') == 'protect_from_enemy_effects':
+                                    protected_effects = effect.get('parameters', {}).get('effects', [])
+                                    if 'recall' in protected_effects:
+                                        gs.action_log.append(f"[{target.card.name}] is protected by {owner.name}'s [{spell.card.name}] and cannot be recalled!")
+                                        return
                     
                     # Remove from board
                     clash_num = -1
@@ -1682,12 +1695,17 @@ class ActionHandler:
             elif action_type == 'cancel':
                 # Cancel spells (used by Encumber, Stupefy, etc.)
                 if isinstance(target, PlayedCard):
-                    # Check if Root is protecting this spell in the current clash
+                    # Check if a spell is protecting this spell in the current clash
                     owner = target.owner
                     for spell in owner.board[gs.clash_num - 1]:
-                        if spell.status == 'revealed' and spell.card.name == 'Root':
-                            gs.action_log.append(f"[{target.card.name}] is protected by {owner.name}'s [Root] and cannot be cancelled!")
-                            return
+                        if spell.status == 'revealed' and spell != target:
+                            # Check if this spell has protection passive effects
+                            for effect in spell.card.passive_effects:
+                                if effect.get('type') == 'protect_from_enemy_effects':
+                                    protected_effects = effect.get('parameters', {}).get('effects', [])
+                                    if 'cancel' in protected_effects:
+                                        gs.action_log.append(f"[{target.card.name}] is protected by {owner.name}'s [{spell.card.name}] and cannot be cancelled!")
+                                        return
                     
                     target.status = 'cancelled'
                     gs.action_log.append(f"{caster.name}'s [{current_card.name}] cancelled {target.owner.name}'s [{target.card.name}]!")
@@ -1695,14 +1713,21 @@ class ActionHandler:
                     # For mass cancel effects
                     for spell in target:
                         if isinstance(spell, PlayedCard):
-                            # Check if Root is protecting this spell in the current clash
+                            # Check if any spell is protecting this spell in the current clash
                             owner = spell.owner
                             protected = False
-                            for root_spell in owner.board[gs.clash_num - 1]:
-                                if root_spell.status == 'revealed' and root_spell.card.name == 'Root':
-                                    gs.action_log.append(f"[{spell.card.name}] is protected by {owner.name}'s [Root] and cannot be cancelled!")
-                                    protected = True
-                                    break
+                            for protect_spell in owner.board[gs.clash_num - 1]:
+                                if protect_spell.status == 'revealed' and protect_spell != spell:
+                                    # Check if this spell has protection passive effects
+                                    for effect in protect_spell.card.passive_effects:
+                                        if effect.get('type') == 'protect_from_enemy_effects':
+                                            protected_effects = effect.get('parameters', {}).get('effects', [])
+                                            if 'cancel' in protected_effects:
+                                                gs.action_log.append(f"[{spell.card.name}] is protected by {owner.name}'s [{protect_spell.card.name}] and cannot be cancelled!")
+                                                protected = True
+                                                break
+                                    if protected:
+                                        break
                             
                             if not protected:
                                 spell.status = 'cancelled'
@@ -1794,13 +1819,16 @@ class ActionHandler:
                     gs.action_log.append(f"Cannot advance from hand - no future clashes remaining.")
                     return
                 
-                # Check if Break is preventing advances
-                for player in gs.players:
-                    if player != caster:  # Check opponents
-                        for spell in player.board[gs.clash_num - 1]:
-                            if spell.status == 'revealed' and spell.card.name == 'Break':
-                                gs.action_log.append(f"{caster.name} cannot advance cards from hand because {player.name}'s [Break] prevents it!")
-                                return  # Prevent the advance from happening
+                  # Check if any opponent spell HAD prevent_action effects during resolve phase
+                for effect_data in getattr(gs, 'clash_passive_effects', []):
+                    if effect_data['owner'] != caster:  # From an opponent
+                        for effect in effect_data['effects']:
+                            if effect.get('type') == 'prevent_action':
+                                params = effect.get('parameters', {})
+                                if params.get('action_type') == 'advance':
+                                    gs.action_log.append(f"{caster.name} cannot advance cards from hand because {effect_data['owner'].name}'s [{effect_data['spell_name']}] prevents it!")
+                                    return  # Prevent the advance from happening
+
                 
                 target_clash = gs.clash_num  # Advance always goes to the next clash
                 
@@ -2129,7 +2157,7 @@ class ActionHandler:
                         # Other AIs pick randomly from high-threat conjuries
                         high_threat = [c for c, score in conjury_scores.items() if score >= 30]
                         if high_threat:
-                            return [random.choice(high_threat)]
+                            return conjury_targets + player_targets
                 
                 # Otherwise, standard player targeting
                 low_health_players = [p for p in player_targets if p.health <= 2]
@@ -2166,20 +2194,30 @@ class ActionHandler:
         if target_str == 'prompt_other_friendly_active_or_past_spell':
             # For Electrocute - can discard past spells (any status) or active spells in current clash
             all_board_spells = []
+
             # Add all past spells (regardless of status)
             for i in range(gs.clash_num - 1):  # Only past clashes
                 for spell in caster.board[i]:
                     all_board_spells.append(spell)
-            # Add active spells from current clash (excluding self)
-            for spell in caster.board[gs.clash_num - 1]:
-                if spell.status == 'revealed' and spell.card.id != current_card.id:
-                    all_board_spells.append(spell)
-            
+
+            # During advance phase, use tracked active spells
+            if hasattr(gs, 'advance_phase_active_spells'):
+                for spell_data in gs.advance_phase_active_spells:
+                    if spell_data['owner'] == caster and spell_data['spell'].card.id != current_card.id:
+                        # Check if this spell hasn't already been added
+                        if spell_data['spell'] not in all_board_spells:
+                            all_board_spells.append(spell_data['spell'])
+            else:
+                # During resolve phase, use current board state
+                for spell in caster.board[gs.clash_num - 1]:
+                    if spell.status == 'revealed' and spell.card.id != current_card.id:
+                        all_board_spells.append(spell)
+
             if not all_board_spells: return []
             if len(all_board_spells) == 1: return all_board_spells
             if caster.is_human:
                 options = {i+1: s for i, s in enumerate(all_board_spells)}
-                choice = self.engine._prompt_for_choice(caster, options, "Choose one of your past or active spells to discard:", view_key='card.name')
+                choice = self.engine._prompt_for_choice(caster, options, "Choose one of your past or active spells to recall:", view_key='card.name')
                 if choice is not None: return [options[choice]]
                 else: return []
             else: return [random.choice(all_board_spells)]
@@ -2248,6 +2286,15 @@ class ActionHandler:
         if target_str == 'each_enemy':
             # For Dominion - target all enemies
             return valid_enemies
+        
+        if target_str == 'all_enemy_spells':
+            # All enemy spells in current clash
+            enemy_spells = []
+            for enemy in enemies:
+                for spell in enemy.board[gs.clash_num - 1]:
+                    if spell.status == 'revealed':
+                        enemy_spells.append(spell)
+            return enemy_spells
         
         if target_str == 'all_enemy_remedy_spells':
             # For Encumber - all enemy remedy spells in current clash
@@ -2412,15 +2459,16 @@ class ActionHandler:
     
     def _advance_single_spell(self, target: 'PlayedCard', gs: 'GameState', caster: 'Player', current_card: 'Card', action_data: dict) -> None:
         """Helper method to advance a single spell."""
-        # Check if Break is preventing enemy advances
-        # Break prevents ALL enemy spells from advancing, regardless of who is trying to advance them
-        for player in gs.players:
-            if player != target.owner:  # player is an opponent of the spell's owner
-                for spell in player.board[gs.clash_num - 1]:
-                    if spell.status == 'revealed' and spell.card.name == 'Break':
-                        gs.action_log.append(f"[{target.card.name}] cannot advance because {player.name}'s [Break] prevents it!")
-                        return  # Prevent the advance from happening
-        
+        # Check if any opponent spell HAD prevent_action effects during resolve phase
+        for effect_data in getattr(gs, 'clash_passive_effects', []):
+            if effect_data['owner'] != target.owner:  # From an opponent
+                for effect in effect_data['effects']:
+                    if effect.get('type') == 'prevent_action':
+                        params = effect.get('parameters', {})
+                        if params.get('action_type') == 'advance':
+                            gs.action_log.append(f"[{target.card.name}] cannot advance because {effect_data['owner'].name}'s [{effect_data['spell_name']}] prevents it!")
+                            return  # Prevent the advance from happening
+                                
         # Check if this is a self-advance with a limit
         params = action_data.get('parameters', {})
         if target.card.id == current_card.id and action_data.get('target') == 'this_spell':
@@ -2657,7 +2705,7 @@ class GameEngine:
             if self.gs.game_over: return
 
     def _run_prepare_phase(self) -> None:
-        self.gs.action_log.clear()
+        #self.gs.action_log.clear()
         self.gs.action_log.append(f"--- Clash {self.gs.clash_num}: PREPARE ---")
         
         turn_order_indices = [(self.gs.ringleader_index + i) % len(self.gs.players) for i in range(len(self.gs.players))]
@@ -2709,7 +2757,8 @@ class GameEngine:
             self._pause()
 
     def _run_cast_phase(self):
-        self.gs.action_log.clear(); self.gs.action_log.append(f"--- Clash {self.gs.clash_num}: CAST ---")
+        #self.gs.action_log.clear(); 
+        self.gs.action_log.append(f"--- Clash {self.gs.clash_num}: CAST ---")
         # --- NEW: Flip all prepared cards to active ---
         for p in self.gs.players:
             for spell in p.board[self.gs.clash_num - 1]:
@@ -2749,6 +2798,11 @@ class GameEngine:
     
     def _handle_priority_choices(self) -> None:
         """Allow human players to choose resolution order for their same-priority spells."""
+        
+        def get_turn_order_position(caster_idx):
+            # Calculate position relative to ringleader
+            return (caster_idx - self.gs.ringleader_index) % len(self.gs.players)
+        
         # Group spells by priority and owner
         priority_groups = {}
         for spell_info in self.gs.resolution_queue:
@@ -2759,7 +2813,9 @@ class GameEngine:
         
         # Rebuild queue with player choices
         new_queue = []
-        for key in sorted(priority_groups.keys()):
+        # Sort by (priority, turn_position) not (priority, caster_idx)!
+        sorted_keys = sorted(priority_groups.keys(), key=lambda k: (k[0], get_turn_order_position(k[1])))
+        for key in sorted_keys:
             group = priority_groups[key]
             if len(group) > 1 and self.gs.players[key[1]].is_human:
                 # Human player has multiple spells at same priority
@@ -2796,16 +2852,31 @@ class GameEngine:
         caster_idx = self.gs.players.index(played_card.owner)
         p_val = 99 if played_card.card.priority == 'A' else int(played_card.card.priority)
         
+        def get_turn_order_position(caster_idx):
+            # Calculate position relative to ringleader
+            return (caster_idx - self.gs.ringleader_index) % len(self.gs.players)
+        
         new_spell_info = {'p_val': p_val, 'caster_idx': caster_idx, 'played_card': played_card}
         self.gs.resolution_queue.append(new_spell_info)
-        # Re-sort the queue to respect priority
-        self.gs.resolution_queue.sort(key=lambda x: (x['p_val'], x['caster_idx']))
+        # Re-sort the queue to respect priority AND turn order
+        self.gs.resolution_queue.sort(key=lambda x: (x['p_val'], get_turn_order_position(x['caster_idx'])))
 
     def _run_resolve_phase(self) -> None:
-        self.gs.action_log.clear(); self.gs.action_log.append(f"--- Clash {self.gs.clash_num}: RESOLVE ---")
+        #self.gs.action_log.clear(); 
+        self.gs.action_log.append(f"--- Clash {self.gs.clash_num}: RESOLVE ---")
         
         active_spells = [s for p in self.gs.players for s in p.board[self.gs.clash_num-1] if s.status == 'revealed']
         self.gs.resolution_queue = []
+        
+        # Track passive effects that were active at start of resolve phase
+        self.gs.clash_passive_effects = []
+        for spell in active_spells:
+            if spell.card.passive_effects:
+                self.gs.clash_passive_effects.append({
+                    'owner': spell.owner,
+                    'spell_name': spell.card.name,
+                    'effects': spell.card.passive_effects
+                })
         
         # Fire events for all spells that are active at the start of resolve phase
         # This is needed for conditions like Bolts that check "if you had other active spells this clash"
@@ -2820,24 +2891,45 @@ class GameEngine:
         for player in self.gs.players:
             modifier = 0
             for spell in active_spells:
-                if spell.owner == player and spell.card.name == 'Accelerator' and spell.status == 'revealed':
-                    # Accelerator reduces priority by 2 for other friendly spells
-                    modifier -= 2
+                if spell.owner == player and spell.status == 'revealed':
+                    for effect in spell.card.passive_effects:
+                        if effect.get('type') == 'modify_priority':
+                            params = effect.get('parameters', {})
+                            priority_change = params.get('value', 0)
+                            modifier += priority_change  # Add the modifier (negative values reduce priority)
             if modifier != 0:
                 priority_modifiers[player] = modifier
-        
         for spell in active_spells:
             p_val = 99 if spell.card.priority == 'A' else int(spell.card.priority)
             caster_idx = self.gs.players.index(spell.owner)
             
-            # Apply Accelerator modifier if this isn't Accelerator itself
-            if spell.card.name != 'Accelerator' and spell.owner in priority_modifiers:
+              # Apply priority modifier if this spell doesn't modify priority itself
+            has_modify_priority = False
+            for effect in spell.card.passive_effects:
+                if effect.get('type') == 'modify_priority':
+                    has_modify_priority = True
+                    break
+
+            if not has_modify_priority and spell.owner in priority_modifiers:
                 p_val = max(1, p_val + priority_modifiers[spell.owner])  # Minimum priority of 1
+
             
             self.gs.resolution_queue.append({'p_val': p_val, 'caster_idx': caster_idx, 'played_card': spell})
         
-        self.gs.resolution_queue.sort(key=lambda x: (x['p_val'], x['caster_idx']))
+        def get_turn_order_position(caster_idx):
+            # Calculate position relative to ringleader
+            return (caster_idx - self.gs.ringleader_index) % len(self.gs.players)
+
+        self.gs.resolution_queue.sort(key=lambda x: (x['p_val'], get_turn_order_position(x['caster_idx'])))
         
+        # Debug: Log the resolution order
+        if DEBUG_AI or True:  # Always show for debugging
+            self.gs.action_log.append(f"{Colors.GREY}[DEBUG] Ringleader: {self.gs.players[self.gs.ringleader_index].name} (index {self.gs.ringleader_index}){Colors.ENDC}")
+            for item in self.gs.resolution_queue[:3]:  # Show first 3
+                spell = item['played_card']
+                turn_pos = get_turn_order_position(item['caster_idx'])
+                self.gs.action_log.append(f"{Colors.GREY}  {spell.owner.name}'s {spell.card.name} (P:{item['p_val']}, turn:{turn_pos}){Colors.ENDC}")
+                
         # Let human players choose order for same-priority spells
         self._handle_priority_choices()
         
@@ -2864,7 +2956,7 @@ class GameEngine:
                 self._pause()
                 continue
 
-            self.gs.action_log.clear()
+            #self.gs.action_log.clear()
             formatted_name = self._format_spell_name(played_card.card)
             self.gs.action_log.append(f"--> Resolving {caster.name}'s {Colors.BOLD}{formatted_name}{Colors.ENDC} (P:{played_card.card.priority})")
             self.gs.action_log.append(f"    {Colors.GREY}{played_card.card.get_instructions_text()}{Colors.ENDC}")
@@ -2893,6 +2985,17 @@ class GameEngine:
     def _run_advance_phase(self) -> None:
         # Don't clear logs here - we want to see damage from the last resolved spell
         self.gs.action_log.append(f"--- Clash {self.gs.clash_num}: ADVANCE ---"); self._pause()
+
+        # Track which spells were active at start of advance phase
+        self.gs.advance_phase_active_spells = []
+        for p in self.gs.players:
+            for s in p.board[self.gs.clash_num - 1]:
+                if s.status == 'revealed':
+                    self.gs.advance_phase_active_spells.append({
+                        'spell': s,
+                        'owner': p,
+                        'original_clash': self.gs.clash_num - 1
+                    })
         
         # We need to copy the list as the underlying board state can change
         advancing_spells = [s for p in self.gs.players for s in p.board[self.gs.clash_num - 1] if s.status == 'revealed' and s.card.advance_effects]
@@ -2915,7 +3018,7 @@ class GameEngine:
             
             if not spell_still_in_current_clash:
                 continue  # Skip spells that were moved to future clashes
-            self.gs.action_log.clear()
+            #self.gs.action_log.clear()
             formatted_name = self._format_spell_name(played_card.card)
             self.gs.action_log.append(f"--> Advancing {caster.name}'s {formatted_name}...")
             self._pause()
