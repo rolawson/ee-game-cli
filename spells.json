@@ -114,7 +114,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": true,
-    "instruction": "RESOLVE: If you have other active ATTACK spells: THEN: 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
+    "instruction": "If you have other active ATTACK spells: THEN: 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 4,
@@ -200,7 +200,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": true,
-    "instruction": "RESOLVE: If you have other active REMEDY spells: THEN: 💙 HEAL\nADVANCE: Advance this spell. ⏩"
+    "instruction": "If you have other active REMEDY spells: THEN: 💙 HEAL\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 6,
@@ -370,7 +370,7 @@
     "notfirst": 1,
     "notlast": 2,
     "base": true,
-    "instruction": "Advance this spell or 1 of your other active spells."
+    "instruction": "Advance 1 of your active spells."
   },
   {
     "id": 10,
@@ -391,7 +391,7 @@
         },
         "action": {
           "type": "weaken",
-          "target": "prompt_player",
+          "target": "prompt_player_or_conjury",
           "parameters": {
             "value": 1
           }
@@ -456,7 +456,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": true,
-    "instruction": "RESOLVE: If you have other active ATTACK spells: THEN: 💥 DAMAGE 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
+    "instruction": "If you have other active ATTACK spells: THEN: 💥 DAMAGE 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 12,
@@ -719,7 +719,7 @@
     "notfirst": 1,
     "notlast": 1,
     "base": true,
-    "instruction": "RESOLVE: If you have active REMEDY spells: THEN: 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
+    "instruction": "If you have active REMEDY spells: THEN: 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 18,
@@ -772,7 +772,7 @@
     "notfirst": 1,
     "notlast": 1,
     "base": true,
-    "instruction": "RESOLVE: If you have active ATTACK spells: THEN: 💙 HEAL\nADVANCE: Advance this spell. ⏩"
+    "instruction": "If you have active ATTACK spells: THEN: 💙 HEAL\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 19,
@@ -815,7 +815,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: While this spell is active, shift the priorities of your other active spells up by 2.\nADVANCE: Advance this spell. ⏩"
+    "instruction": "While this spell is active, shift the priorities of your other active spells up by 2.\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 20,
@@ -862,7 +862,7 @@
     "notfirst": 1,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: Advance 1 of your other active spells.\nADVANCE: Advance this spell once. ⏩"
+    "instruction": "Advance 1 of your other active spells.\nADVANCE: Advance this spell once. ⏩"
   },
   {
     "id": 21,
@@ -1056,7 +1056,7 @@
         },
         "action": {
           "type": "weaken",
-          "target": "prompt_player",
+          "target": "prompt_player_or_conjury",
           "parameters": {
             "value": 1
           }
@@ -1159,7 +1159,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": true,
-    "instruction": "RESOLVE: 💙 HEAL\nADVANCE: Advance this spell once. <icon><advance /></icon>"
+    "instruction": "💙 HEAL\nADVANCE: Advance this spell once. <icon><advance /></icon>"
   },
   {
     "id": 29,
@@ -1213,7 +1213,7 @@
     "notfirst": 1,
     "notlast": 0,
     "base": true,
-    "instruction": "RESOLVE: 🛡️ BOLSTER\nADVANCE: If you have other active spells: THEN: Advance this spell once. ⏩"
+    "instruction": "🛡️ BOLSTER\nADVANCE: If you have other active spells: THEN: Advance this spell once. ⏩"
   },
   {
     "id": 30,
@@ -1266,7 +1266,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": true,
-    "instruction": "RESOLVE: 💥 DAMAGE\nADVANCE: If there are other active <icon><attack/></icon> spells: THEN: Advance this spell. ⏩"
+    "instruction": "💥 DAMAGE\nADVANCE: If there are other active <icon><attack/></icon> spells: THEN: Advance this spell. ⏩"
   },
   {
     "id": 31,
@@ -1447,7 +1447,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: 💥 DAMAGE\nADVANCE: Advance this spell once. <icon><advance /></icon>"
+    "instruction": "💥 DAMAGE\nADVANCE: Advance this spell once. <icon><advance /></icon>"
   },
   {
     "id": 36,
@@ -1494,7 +1494,7 @@
     "notfirst": 2,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: Recall 1 of your past spells.\nADVANCE: Advance this spell. <icon><advance /></icon>"
+    "instruction": "Recall 1 of your past spells.\nADVANCE: Advance this spell. <icon><advance /></icon>"
   },
   {
     "id": 37,
@@ -1582,7 +1582,7 @@
                 },
                 {
                   "type": "weaken_per_spell",
-                  "target": "prompt_player",
+                  "target": "prompt_player_or_conjury",
                   "parameters": {
                     "spell_type": "attack",
                     "exclude_self": false
@@ -1615,7 +1615,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: You may 💥 DAMAGE yourself. If you do: THEN: <cardicon>🔻 WEAKEN</cardicon> for each of your active ATTACK spells.\nADVANCE: Advance this spell. <icon><advance /></icon>"
+    "instruction": "You may 💥 DAMAGE yourself. If you do: THEN: <cardicon>🔻 WEAKEN</cardicon> for each of your active ATTACK spells.\nADVANCE: Advance this spell. <icon><advance /></icon>"
   },
   {
     "id": 39,
@@ -1824,7 +1824,7 @@
     "notfirst": 0,
     "notlast": 2,
     "base": false,
-    "instruction": "RESOLVE: If this spell advanced: THEN: 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
+    "instruction": "If this spell advanced: THEN: 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 44,
@@ -1875,7 +1875,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: If enemies have active REMEDY spells: THEN: Cancel their spells.\nADVANCE: Otherwise, advance this spell. ⏩"
+    "instruction": "If enemies have active REMEDY spells: THEN: Cancel their spells.\nADVANCE: Otherwise, advance this spell. ⏩"
   },
   {
     "id": 45,
@@ -1927,7 +1927,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: If enemies have active BOOST spells: THEN: 💥 DAMAGE each of those players.\nADVANCE: THEN: And, advance this spell. ⏩"
+    "instruction": "If enemies have active BOOST spells: THEN: 💥 DAMAGE each of those players.\nADVANCE: THEN: And, advance this spell. ⏩"
   },
   {
     "id": 46,
@@ -1979,7 +1979,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: If enemies have active BOOST spells: THEN: 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
+    "instruction": "If enemies have active BOOST spells: THEN: 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 47,
@@ -2025,7 +2025,7 @@
     "notfirst": 0,
     "notlast": 0,
     "base": false,
-    "instruction": "RESOLVE: Your other spells cannot be cancelled, recalled, or discarded by enemy spells.\nADVANCE: Advance this spell. ⏩"
+    "instruction": "Your other spells cannot be cancelled, recalled, or discarded by enemy spells.\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 48,
@@ -2084,7 +2084,6 @@
     "priority": 5,
     "spell_types": [
       "attack",
-      "response",
       "boost"
     ],
     "base_set": false,
@@ -2095,7 +2094,7 @@
         },
         "action": {
           "type": "weaken",
-          "target": "prompt_player",
+          "target": "prompt_player_or_conjury",
           "parameters": {
             "value": 1,
             "limit": 1
@@ -2103,31 +2102,49 @@
         }
       }
     ],
-    "advance_effects": [
-      {
-        "condition": {
-          "type": "if_caster_has_active_spell_of_type",
+ "advance_effects": [
+    {
+      "condition": {
+        "type": "if_not",
+        "sub_condition": {
+          "type": "if_spell_advanced_count",
           "parameters": {
-            "spell_type": "any",
-            "count": 1,
-            "exclude_self": true
-          }
-        },
-        "action": {
-          "type": "advance",
-          "target": "this_spell",
-          "parameters": {
-            "value": 1,
-            "limit": 1
+            "count": 1
           }
         }
+      },
+      "action": {
+        "type": "player_choice",
+        "options": [
+          {
+            "type": "pass"
+          },
+          {
+            "type": "sequence",
+            "actions": [
+              {
+                "type": "discard",
+                "target": "prompt_other_friendly_active_spell"
+              },
+              {
+                "type": "advance",
+                "target": "this_spell",
+                "parameters": {
+                  "value": 1,
+                  "limit": 1
+                }
+              }
+            ]
+          }
+        ]
       }
-    ],
+    }
+  ],
     "theme": "Cripple persistently!",
     "notfirst": 1,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: 🔻 WEAKEN\nADVANCE: If you have other active spells: THEN: Advance this spell once. ⏩"
+    "instruction": "🔻 WEAKEN\nADVANCE: You may discard 1 of your other active spells to advance this spell once. ⏩"
   },
   {
     "id": 50,
@@ -2154,10 +2171,10 @@
               "type": "sequence",
               "actions": [
                 {
-                  "type": "discard",
-                  "target": "prompt_friendly_past_or_active_spell",
+                  "type": "recall",
+                  "target": "prompt_other_friendly_active_or_past_spell",
                   "parameters": {
-                    "value": 1
+                    "source": "board"
                   }
                 },
                 {
@@ -2194,7 +2211,7 @@
     "notfirst": 1,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: Discard 1 of your past or active spells to choose an enemy. That player must discard 1 spell from their hand.\nADVANCE: Advance this spell. ⏩"
+    "instruction": "You may recall 1 of your other active or past spells to choose an enemy. That enemy must discard 1 spell from their hand.\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 51,
@@ -2215,34 +2232,16 @@
           "type": "always"
         },
         "action": {
-          "type": "player_choice",
-          "options": [
-            {
-              "type": "sequence",
-              "actions": [
-                {
-                  "type": "discard_from_hand",
-                  "target": "self",
-                  "parameters": {
-                    "value": 1
-                  }
-                },
-                {
-                  "type": "damage",
-                  "target": "prompt_player_or_conjury",
-                  "parameters": {
-                    "value": 1
-                  }
-                }
-              ]
-            },
-            {
-              "type": "pass"
-            }
-          ]
+          "type": "discard_from_hand_for_damage",
+          "target": "prompt_enemy",
+          "parameters": {
+            "damage_per_card": 1,
+            "max_cards": 2
+          }
         }
       }
-    ],
+    ]
+    ,
     "advance_effects": [
       {
         "condition": {
@@ -2261,7 +2260,7 @@
     "notfirst": 1,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: You may discard 1 spell from your hand: THEN: 💥 DAMAGE\nADVANCE: Advance this spell. ⏩"
+    "instruction": "You may discard up to 2 spells from your hand: THEN: 💥 DAMAGE for each of them.\nADVANCE: Advance this spell. ⏩"
   },
   {
     "id": 52,
@@ -2309,7 +2308,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: If enemies have 2 or more active spells: THEN: Cancel 1 spell from each of those players.\nADVANCE: THEN: And, advance your active spells. <icon><advance /></icon>"
+    "instruction": "If enemies have 2 or more active spells: THEN: Cancel 1 spell from each of those players.\nADVANCE: THEN: And, advance your active spells. <icon><advance /></icon>"
   },
   {
     "id": 53,
@@ -2352,7 +2351,7 @@
     "notfirst": 0,
     "notlast": 2,
     "base": false,
-    "instruction": "RESOLVE: Enemy spells cannot be advanced.\nADVANCE: Advance this spell once. ⏩"
+    "instruction": "Enemy spells cannot be advanced.\nADVANCE: Advance this spell once. ⏩"
   },
   {
     "id": 54,
@@ -2484,7 +2483,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: Cancel a spell.\nADVANCE: Or, advance a spell from your hand."
+    "instruction": "Cancel a spell.\nADVANCE: Or, advance a spell from your hand."
   },
   {
     "id": 57,
@@ -2567,6 +2566,6 @@
     "notfirst": 0,
     "notlast": 1,
     "base": false,
-    "instruction": "RESOLVE: Replace \"or\" with \"and\" in your active spells' instructions.\nADVANCE: Advance this spell. ⏩"
+    "instruction": "Replace \"or\" with \"and\" in your active spells' instructions.\nADVANCE: Advance this spell. ⏩"
   }
 ]

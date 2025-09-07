@@ -214,6 +214,9 @@ class Card:
         elif action_type == 'damage_per_enemy_spell_type':
             spell_type = params.get('spell_type', 'any')
             return f"Deal damage to each enemy equal to their {spell_type} spells"
+        elif action_type == 'discard_from_hand_for_damage':
+            damage_per = params.get('damage_per_card', 1)
+            return f"Discard cards from your hand to deal {damage_per} damage per card to {target}"
         elif action_type == 'damage_equal_to_enemy_attack_damage':
             return f"Deal damage to each enemy equal to their attack spell's damage"
         elif action_type == 'cancel':
@@ -487,11 +490,31 @@ class ConditionChecker:
                 return count >= required_count
         
         if cond_type == 'if_board_has_active_spell_of_type':
-            params = condition_data['parameters']; count = 0
-            for spell in active_spells_this_clash:
-                if params['spell_type'] in spell.card.types:
-                    if params.get('exclude_self', False) and spell.card.id == current_card.id: continue
-                    count += 1
+            params = condition_data['parameters']
+            spell_type = params['spell_type']
+            count = 0
+
+            # Check if we're in the advance phase
+            in_advance_phase = any(event['type'] == 'spell_resolved' for event in gs.event_log if event['clash'] == gs.clash_num)
+
+            if in_advance_phase:
+                # During advance phase, check the event log for spells that WERE active
+                for event in gs.event_log:
+                    if (event['type'] == 'spell_active_in_clash' and
+                        event['clash'] == gs.clash_num):
+                        # Need to check if this spell matches the type
+                        card = gs.all_cards.get(event['card_id'])
+                        if card and spell_type in card.types:
+                            if params.get('exclude_self', False) and card.id == current_card.id:
+                                continue
+                            count += 1
+            else:
+                # During resolve phase, check current active spells
+                for spell in active_spells_this_clash:
+                    if params['spell_type'] in spell.card.types:
+                        if params.get('exclude_self', False) and spell.card.id == current_card.id: continue
+                        count += 1
+
             return count >= params.get('count', 1)
         
         if cond_type == 'if_not': return not self.check(condition_data['sub_condition'], gs, caster, current_card)
@@ -1286,53 +1309,71 @@ class ActionHandler:
                         self.engine.add_to_resolution_queue(newly_played_card)
                         gs.action_log.append(f"{caster.name} casts an extra spell: [{card_to_cast.name}]!")
             return
-
+        
+    #Action Types
+        # damage_remaining outside of target loop to handle multi-target damage correctly
+        damage_remaining = params.get('value', 1)
+        
         for target in targets:
             if action_type == 'damage':
+                if damage_remaining <= 0:
+                    break
                 if isinstance(target, Player):
                     if not target.is_invulnerable:
-                        damage = params.get('value', 1); original_health = target.health; target.health = max(0, target.health - damage)
-                        gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage} damage to {target.name}. ({target.health}/{target.max_health}){Colors.ENDC}")
-                        self._fire_event('player_damaged', gs, player=caster.name, target=target.name, value=damage, card_id=current_card.id)
+                        damage_to_apply = damage_remaining
+                        original_health = target.health
+                        target.health = max(0, target.health - damage_to_apply)
+                        damage_remaining = 0  # All damage applied to player
+                        gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage_to_apply} damage to {target.name}. ({target.health}/{target.max_health}){Colors.ENDC}")
+                        self._fire_event('player_damaged', gs, player=caster.name, target=target.name, value=damage_to_apply, card_id=current_card.id)
                         if original_health > 0 and target.health <= 0:
                             death_result = self.engine._handle_trunk_loss(target)
                             if death_result == 'game_over':
                                 raise RoundOverException()
                             elif death_result == 'round_over':
                                 raise RoundOverException()
+
                 elif isinstance(target, PlayedCard) and target.card.is_conjury:
-                    target.status = 'cancelled'; gs.action_log.append(f"{caster.name}'s [{current_card.name}] CANCELLED [{target.card.name}].")
-                    self._fire_event('spell_cancelled', gs, player=caster.name, target_card_id=target.card.id, card_id=current_card.id)
-            elif action_type == 'damage_multi_target':
-                 for t in target:
-                     if isinstance(t, Player):
-                         if not t.is_invulnerable:
-                            damage = params.get('value', 1); original_health = t.health; t.health = max(0, t.health - damage)
-                            gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage} damage to {t.name}. ({t.health}/{t.max_health}){Colors.ENDC}")
-                            self._fire_event('player_damaged', gs, player=caster.name, target=t.name, value=damage, card_id=current_card.id)
-                            if original_health > 0 and t.health <= 0:
-                                death_result = self.engine._handle_trunk_loss(t)
-                                if death_result == 'game_over':
-                                    raise RoundOverException()
-                                elif death_result == 'round_over':
-                                    raise RoundOverException()
-                     elif isinstance(t, PlayedCard) and t.card.is_conjury:
-                        t.status = 'cancelled'; gs.action_log.append(f"{caster.name}'s [{current_card.name}] CANCELLED [{t.card.name}].")
-                        self._fire_event('spell_cancelled', gs, player=caster.name, target_card_id=t.card.id, card_id=current_card.id)
-            elif action_type == 'heal':
-                target.health = min(target.max_health, target.health + params.get('value', 1)); gs.action_log.append(f"{Colors.BLUE}{ACTION_EMOJIS['heal']} {caster.name}'s [{current_card.name}] healed {target.name} for {params.get('value', 1)}. ({target.health}/{target.max_health}){Colors.ENDC}")
-                self._fire_event('player_healed', gs, player=target.name, value=params.get('value', 1), card_id=current_card.id)
+                    if target.status != 'cancelled': # Only cancel if not already cancelled
+                        target.status = 'cancelled'
+                        damage_remaining -= 1  # Conjury takes 1 damage to cancel
+                        gs.action_log.append(f"{caster.name}'s [{current_card.name}] CANCELLED [{target.card.name}] (1 damage used).")
+                        self._fire_event('spell_cancelled', gs, player=caster.name, target_card_id=target.card.id, card_id=current_card.id)
+
             elif action_type == 'weaken':
-                if isinstance(target, Player):
+                if isinstance(target, PlayedCard) and target.card.is_conjury:
+                    # Weakening a conjury cancels it
+                    target.status = 'cancelled'
+                    gs.action_log.append(f"{caster.name}'s [{current_card.name}] weakened and CANCELLED [{target.card.name}].")
+                    break
+                elif isinstance(target, Player):
                     weaken_amount = params.get('value', 1)
                     target.max_health = max(0, target.max_health - weaken_amount); target.health = min(target.health, target.max_health)
                     gs.action_log.append(f"{Colors.YELLOW}{ACTION_EMOJIS['weaken']} {caster.name}'s [{current_card.name}] weakened {target.name} by {weaken_amount}. Max health now {target.max_health}.{Colors.ENDC}")
                     # Log weaken event separately
                     self._fire_event('player_weakened', gs, player=caster.name, target=target.name, value=weaken_amount, card_id=current_card.id)
-                elif isinstance(target, PlayedCard) and target.card.is_conjury:
-                    # Weakening a conjury cancels it
-                    target.status = 'cancelled'
-                    gs.action_log.append(f"{caster.name}'s [{current_card.name}] weakened and CANCELLED [{target.card.name}].")
+
+            elif action_type == 'damage_multi_target':
+                for t in target:
+                    if isinstance(t, Player):
+                        if not t.is_invulnerable:
+                            damage = params.get('value', 1); original_health = t.health; t.health = max(0, t.health - damage)
+                        gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {damage} damage to {t.name}. ({t.health}/{t.max_health}){Colors.ENDC}")
+                        self._fire_event('player_damaged', gs, player=caster.name, target=t.name, value=damage, card_id=current_card.id)
+                        if original_health > 0 and t.health <= 0:
+                            death_result = self.engine._handle_trunk_loss(t)
+                            if death_result == 'game_over':
+                                raise RoundOverException()
+                            elif death_result == 'round_over':
+                                raise RoundOverException()
+                    elif isinstance(t, PlayedCard) and t.card.is_conjury:
+                        t.status = 'cancelled'; gs.action_log.append(f"{caster.name}'s [{current_card.name}] CANCELLED [{t.card.name}].")
+                        self._fire_event('spell_cancelled', gs, player=caster.name, target_card_id=t.card.id, card_id=current_card.id)
+
+            elif action_type == 'heal':
+                target.health = min(target.max_health, target.health + params.get('value', 1)); gs.action_log.append(f"{Colors.BLUE}{ACTION_EMOJIS['heal']} {caster.name}'s [{current_card.name}] healed {target.name} for {params.get('value', 1)}. ({target.health}/{target.max_health}){Colors.ENDC}")
+                self._fire_event('player_healed', gs, player=target.name, value=params.get('value', 1), card_id=current_card.id)
+            
             elif action_type == 'bolster':
                 bolster_amount = params.get('value', 1)
                 target.max_health += bolster_amount; gs.action_log.append(f"{Colors.GREEN}{ACTION_EMOJIS['bolster']} {caster.name}'s [{current_card.name}] bolstered {target.name}. Max health now {target.max_health}.{Colors.ENDC}")
@@ -1455,7 +1496,54 @@ class ActionHandler:
                             gs.action_log.append(f"Only discarded {discarded_count} of {num_to_discard} required cards.")
                 else:
                     gs.action_log.append(f"{target.name} has no cards to discard.")
+
+            elif action_type == 'discard_from_hand_for_damage':
+                damage_per_card = params.get('damage_per_card', 1)
+                max_cards = params.get('max_cards', float('inf'))  # Default to unlimited if not specified
+
+                if not caster.hand:
+                    gs.action_log.append(f"{caster.name} has no cards to discard.")
+                    return
+
+                discarded_count = 0
+                if caster.is_human:
+                    cards_to_discard = []
+                    while caster.hand and discarded_count < max_cards:
+                        options = {i+1: c for i, c in enumerate(caster.hand)}
+                        prompt = f"Choose cards to discard for {damage_per_card} damage each (up to {max_cards} spells, or 'done'):"
+                        choice = self.engine._prompt_for_choice(caster, options, prompt)
+                        if choice == 'done':
+                            break
+                        if choice is not None:
+                            card = caster.hand.pop(choice-1)
+                            caster.discard_pile.append(card)
+                            cards_to_discard.append(card)
+                            discarded_count += 1
+                else:
+                    # AI logic - discard low-value cards
+                    while caster.hand and discarded_count < min(3, max_cards):  # Limit AI to 3 or max_cards, whichever is lower
+                        card = caster.hand.pop(0)
+                        caster.discard_pile.append(card)
+                        discarded_count += 1
+
+                # Deal damage based on cards discarded
+                if discarded_count > 0 and isinstance(target, Player) and not target.is_invulnerable:
+                    total_damage = discarded_count * damage_per_card
+                    original_health = target.health
+                    target.health = max(0, target.health - total_damage)
+                    gs.action_log.append(f"{Colors.FAIL}{ACTION_EMOJIS['damage']} {caster.name}'s [{current_card.name}] dealt {total_damage} damage to {target.name} ({discarded_count} cards discarded). ({target.health}/{target.max_health}){Colors.ENDC}")
+                    self._fire_event('player_damaged', gs, player=caster.name, target=target.name, value=total_damage, card_id=current_card.id)
+                    if original_health > 0 and target.health <= 0:
+                        death_result = self.engine._handle_trunk_loss(target)
+                        if death_result == 'game_over':
+                            raise RoundOverException()
+                        elif death_result == 'round_over':
+                            raise RoundOverException()
+                else:
+                    gs.action_log.append(f"{caster.name} chose not to discard any cards.")
             
+# End of action types that require target looping (TODO: shfit around)
+
             elif action_type == 'advance':
                 # Handle multiple targets (for Clap's advance effect)
                 if isinstance(target, list):
@@ -1670,6 +1758,17 @@ class ActionHandler:
             elif action_type == 'recall':
                 # Constellation - recall a spell from past clashes
                 source = params.get('source', 'discard')
+                if source == 'board' and isinstance(target, PlayedCard):
+                    # Remove from board and add to hand
+                    owner = target.owner
+                    for clash_list in owner.board:
+                        if target in clash_list:
+                            clash_list.remove(target)
+                            break
+                    caster.hand.append(target.card)
+                    gs.action_log.append(f"{caster.name} recalled [{target.card.name}] from the board!")
+                    self._fire_event('spell_recalled', gs, player=caster.name, card_id=target.card.id)
+
                 if source == 'friendly_past_spells' and isinstance(target, PlayedCard):
                     # Remove from board
                     owner = target.owner
@@ -1741,15 +1840,21 @@ class ActionHandler:
                 for i, act in enumerate(actions):
                     # Special handling for actions that might fail
                     if act.get('type') == 'discard' and i == 0:
-                        # For Electrocute's sequence, check if we can actually discard
+                        # For sequences requiring discard from the board, check if we can actually discard
                         targets = self._resolve_target(act, gs, caster, current_card)
                         if not targets:
-                            gs.action_log.append(f"Sequence stopped - no valid targets for discard.")
+                            gs.action_log.append(f"Sequence stopped - no valid spells to discard.")
+                            break
+                    elif act.get('type') == 'recall' and i == 0:
+                        # For Electrocute-like sequence, check if there are valid targets to recall
+                        targets = self._resolve_target(act, gs, caster, current_card)
+                        if not targets:
+                            gs.action_log.append(f"Sequence stopped - no valid spells to recall.")
                             break
                     elif act.get('type') == 'discard_from_hand' and act.get('target') == 'self' and i == 0:
                         # For Surge's sequence, check if caster has cards to discard
                         if not caster.hand:
-                            gs.action_log.append(f"Sequence stopped - no cards to discard.")
+                            gs.action_log.append(f"Sequence stopped - no valid spells to discard.")
                             break
                     
                     self._execute_action(act, gs, caster, current_card)
@@ -1941,8 +2046,30 @@ class ActionHandler:
         if target_str == 'prompt_player_or_conjury':
             all_possible_targets = valid_enemies + [c for c in active_conjuries if c.owner in valid_enemies]
             if not all_possible_targets: return []
+
             if caster.is_human:
+                 # Auto-target if only one option
                 if len(all_possible_targets) == 1: return all_possible_targets
+
+                # Simplified targeting for 2-player games
+                if len(gs.players) == 2 and len(all_possible_targets) > 1:
+                    conjury_targets = [c for c in all_possible_targets if isinstance(c, PlayedCard)]
+                    player_targets = [p for p in all_possible_targets if isinstance(p, Player)]
+
+                    if conjury_targets and player_targets:
+                        # Offer simplified choices
+                        print("\nTargeting options:")
+                        print("1. Target conjuries first")
+                        print("2. Target player only")
+                        print("3. Choose specific target")
+
+                        choice = input("Your choice (1-3): ").strip()
+                        if choice == '1':
+                            return conjury_targets + player_targets  # Return conjuries first, then players
+                        elif choice == '2':
+                            return player_targets
+                        # Fall through to specific targeting for option 3
+
                 options = {i+1: t for i, t in enumerate(all_possible_targets)}; choice = self.engine._prompt_for_choice(caster, options, "Choose a target (enemy or conjury):")
                 if choice is not None: return [options[choice]]
                 else: return []
@@ -2036,16 +2163,16 @@ class ActionHandler:
                 else: return []
             else: return [random.choice(past_spells)]
         
-        if target_str == 'prompt_friendly_past_or_active_spell':
+        if target_str == 'prompt_other_friendly_active_or_past_spell':
             # For Electrocute - can discard past spells (any status) or active spells in current clash
             all_board_spells = []
             # Add all past spells (regardless of status)
             for i in range(gs.clash_num - 1):  # Only past clashes
                 for spell in caster.board[i]:
                     all_board_spells.append(spell)
-            # Add active spells from current clash
+            # Add active spells from current clash (excluding self)
             for spell in caster.board[gs.clash_num - 1]:
-                if spell.status == 'revealed':
+                if spell.status == 'revealed' and spell.card.id != current_card.id:
                     all_board_spells.append(spell)
             
             if not all_board_spells: return []
@@ -2468,7 +2595,7 @@ class GameEngine:
             if p.is_human:
                 options = {i+1: c for i, c in enumerate(p.discard_pile)}; hand_choices = []
                 while len(hand_choices) < 4:
-                    prompt = f"{p.name}, choose card {len(hand_choices)+1}/4 for your starting hand:"; choice = self._prompt_for_choice(p, options, prompt); hand_choices.append(options.pop(choice))
+                    prompt = f"{p.name}, choose spell {len(hand_choices)+1}/4 for your starting hand:"; choice = self._prompt_for_choice(p, options, prompt); hand_choices.append(options.pop(choice))
                 p.hand = hand_choices; p.discard_pile = list(options.values())
             else: random.shuffle(p.discard_pile); p.hand = p.discard_pile[:4]; p.discard_pile = p.discard_pile[4:]
         
@@ -2846,7 +2973,7 @@ class GameEngine:
                 if p.is_human:
                     options = {i+1: c for i, c in enumerate(p.hand)}; kept_cards = []
                     while True:
-                        prompt = "Choose cards to KEEP from your hand (type 'done' when finished):"; choice = self._prompt_for_choice(p, options, prompt)
+                        prompt = "Choose spells to KEEP from your hand (type 'done' when finished):"; choice = self._prompt_for_choice(p, options, prompt)
                         if choice == 'done': break
                         if choice is not None: kept_cards.append(options.pop(choice))
                     for card in options.values(): p.discard_pile.append(card)
