@@ -231,6 +231,8 @@ class Card:
             source = params.get('source', 'discard')
             if source == 'friendly_past_spells':
                 return f"Recall a spell from past clashes to your hand"
+            elif source == 'friendly_active_or_past_spells':
+                return f"Recall one of your spells from the board to your hand"
             return f"Recall a spell from {source}"
         elif action_type == 'protect_from_enemy_effects':
             # This is a passive effect, shown differently
@@ -298,7 +300,7 @@ class GameState:
         sets = defaultdict(list);
         for data in SPELL_DATA: sets[data['elephant']].append(self.all_cards[data['id']])
         self.main_deck: list[list[Card]] = list(sets.values()); random.shuffle(self.main_deck)
-        self.round_num: int = 1; self.clash_num: int = 1; self.ringleader_index: int = 0
+        self.round_num: int = 1; self.clash_num: int = 1; self.ringleader_index: int = random.randint(0, len(self.players) - 1)
         self.action_log: list[str] = ["Game has started!"]
         self.event_log: list[dict] = []
         self.game_over: bool = False
@@ -833,6 +835,7 @@ class ActionHandler:
     def _execute_single_action(self, action_data, gs: 'GameState', caster: 'Player', current_card: 'Card') -> None:
         action_type = action_data.get('type')
         params = action_data.get('parameters', {})
+        targets = []  # Initialize targets to avoid UnboundLocalError
         
         # Handle actions that don't use standard targeting first
         if action_type == 'recall_from_enemy_hand':
@@ -997,6 +1000,38 @@ class ActionHandler:
                         target = options[choice]
                 else:
                     target = random.choice(past_spells)
+                
+                # Process the recall
+                targets = [target]
+            elif source == 'friendly_active_or_past_spells' and action_data.get('target') == 'self':
+                # Constellation (buffed) - let player choose from active OR past spells
+                available_spells = []
+                # Add active spells from current clash first
+                for spell in caster.board[gs.clash_num - 1]:
+                    if spell.status == 'revealed':
+                        available_spells.append(spell)
+                # Add past spells
+                for i in range(gs.clash_num - 1):  # Only past clashes
+                    for spell in caster.board[i]:
+                        if spell.status in ['revealed','cancelled']:
+                            available_spells.append(spell)
+                
+                if not available_spells:
+                    gs.action_log.append(f"{caster.name} has no spells on the board to recall.")
+                    return True
+                
+                if caster.is_human:
+                    if len(available_spells) == 1:
+                        target = available_spells[0]
+                    else:
+                        options = {i+1: s for i, s in enumerate(available_spells)}
+                        prompt = "Choose a spell to recall from the board:"
+                        choice = self.engine._prompt_for_choice(caster, options, prompt, view_key='card.name')
+                        if choice is None:
+                            return True
+                        target = options[choice]
+                else:
+                    target = random.choice(available_spells)
                 
                 # Process the recall
                 targets = [target]
@@ -1805,6 +1840,22 @@ class ActionHandler:
                     caster.hand.append(target.card)
                     gs.action_log.append(f"{caster.name} recalled [{target.card.name}] from past clashes!")
                     self._fire_event('spell_recalled', gs, player=caster.name, card_id=target.card.id)
+                elif source == 'friendly_active_or_past_spells' and isinstance(target, PlayedCard):
+                    # Remove from board
+                    owner = target.owner
+                    clash_num = -1
+                    for i, clash_list in enumerate(owner.board):
+                        if target in clash_list:
+                            clash_list.remove(target)
+                            clash_num = i + 1
+                            break
+                    # Add to hand
+                    caster.hand.append(target.card)
+                    if clash_num == gs.clash_num:
+                        gs.action_log.append(f"{caster.name} recalled [{target.card.name}] from the current clash!")
+                    else:
+                        gs.action_log.append(f"{caster.name} recalled [{target.card.name}] from Clash {clash_num}!")
+                    self._fire_event('spell_recalled', gs, player=caster.name, card_id=target.card.id)
             
             elif action_type == 'advance_from_hand':
                 # Gleam/Eventide - play spells from hand to future clashes
@@ -2386,6 +2437,27 @@ class ActionHandler:
                     else: return []
                 else:
                     return [random.choice(past_spells)] if past_spells else []
+            elif source == 'friendly_active_or_past_spells':
+                available_spells = []
+                # Add active spells from current clash first
+                for spell in caster.board[gs.clash_num - 1]:
+                    if spell.status == 'revealed':
+                        available_spells.append(spell)
+                # Add past spells
+                for i in range(gs.clash_num - 1):  # Only past clashes
+                    for spell in caster.board[i]:
+                        if spell.status in ['revealed', 'cancelled']:
+                            available_spells.append(spell)
+                
+                if not available_spells: return []
+                if caster.is_human:
+                    if len(available_spells) == 1: return available_spells
+                    options = {i+1: s for i, s in enumerate(available_spells)}
+                    choice = self.engine._prompt_for_choice(caster, options, "Choose a spell to recall from the board:", view_key='card.name')
+                    if choice is not None: return [options[choice]]
+                    else: return []
+                else:
+                    return [random.choice(available_spells)] if available_spells else []
         
         if target_str == 'prompt_enemy_past_spell':
             # For Daybreak - find enemy past spells
@@ -2620,6 +2692,7 @@ class GameEngine:
     def _setup_game(self):
         self._check_and_rebuild_deck()
         self.gs.action_log.clear(); self.gs.action_log.append("--- Game Setup ---")
+        self.gs.action_log.append(f"The starting Ringleader is: {self.gs.players[self.gs.ringleader_index].name}")
         for _ in range(2):
             for p in self.gs.players:
                 self._check_and_rebuild_deck()
