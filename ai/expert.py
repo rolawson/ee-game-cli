@@ -63,7 +63,9 @@ class ExpertAI(BaseAI):
             score += self._evaluate_damage_efficiency(card, player, gs) * 0.10
             
             # 6. Response threat evaluation (NEW)
-            score += self._evaluate_response_threat_for_attack(card, player, gs) * 0.15
+            # Increase weight when health is low
+            response_weight = 0.25 if player.health <= 5 else 0.20
+            score += self._evaluate_response_threat_for_attack(card, player, gs) * response_weight
             
             # 7. Board state synergy evaluation (NEW)
             score += self._evaluate_board_state_synergy(card, player, gs) * 0.15
@@ -83,6 +85,14 @@ class ExpertAI(BaseAI):
             self.engine.ai_decision_logs.append(
                 f"\033[90m[AI-EXPERT] Final choice: {chosen_card.name} (Score: {best_score:.1f})\033[0m"
             )
+            
+            # Log if we avoided attacks due to response threats
+            if player.health <= 5 and 'attack' not in chosen_card.types:
+                attack_options = [player.hand[i] for i in valid_indices if 'attack' in player.hand[i].types]
+                if attack_options:
+                    self.engine.ai_decision_logs.append(
+                        f"\033[90m[AI-EXPERT] Avoided {len(attack_options)} attack options due to low health ({player.health} HP) and response threats\033[0m"
+                    )
         
         return best_index
     
@@ -550,13 +560,14 @@ class ExpertAI(BaseAI):
             
             # Current active spells
             active_count = 0
-            for spell in player.board[clash_num - 1]:
-                if spell.status == 'revealed':
-                    if spell_type == 'any' or spell_type in spell.card.types:
-                        active_count += 1
+            if player and hasattr(player, 'board'):
+                for spell in player.board[clash_num - 1]:
+                    if spell.status == 'revealed':
+                        if spell_type == 'any' or spell_type in spell.card.types:
+                            active_count += 1
             
             # Estimate additional spells we might play
-            if clash_num == gs.clash_num:
+            if clash_num == gs.clash_num and player and hasattr(player, 'hand'):
                 # Current clash - add expected plays from hand
                 for other_card in player.hand:
                     if other_card != card:  # Don't count self twice
@@ -1061,6 +1072,13 @@ class ExpertAI(BaseAI):
         threat_score = 0
         weights = self.threat_data.get('threat_evaluation_weights', {})
         
+        # Health-based multiplier for threat perception
+        health_multiplier = 1.0
+        if player.health <= 3:
+            health_multiplier = 3.0  # Triple threat concern when we could die
+        elif player.health <= 5:
+            health_multiplier = 2.0  # Double threat concern when vulnerable
+        
         # Check each opponent
         for enemy in gs.players:
             if enemy == player:
@@ -1093,6 +1111,21 @@ class ExpertAI(BaseAI):
                                 f"\033[90m[AI-EXPERT] {card.name} vulnerable to {element} response "
                                 f"(Impact: {impact:.1f}, Likelihood: {likelihood:.1%})\033[0m"
                             )
+        
+        # Apply health multiplier to the threat score
+        threat_score *= health_multiplier
+        
+        # Check if our attack would be lethal to the enemy
+        our_damage = self._estimate_card_damage_in_context(card, player, gs)
+        for enemy in gs.players:
+            if enemy != player and enemy.health <= our_damage:
+                # If we can kill them, reduce threat concern by 50%
+                threat_score *= 0.5
+                if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                    self.engine.ai_decision_logs.append(
+                        f"\033[90m[AI-EXPERT] {card.name} could be lethal ({our_damage} dmg vs {enemy.health} hp) - accepting risk\033[0m"
+                    )
+                break
         
         return -threat_score  # Negative because threats reduce desirability
     
@@ -1187,10 +1220,19 @@ class ExpertAI(BaseAI):
         level_impacts = {'high': 50, 'medium': 30, 'low': 10}
         impact += level_impacts.get(threat_level, 20)
         
-        # Damage threat
+        # Damage threat - use spell database info
         damage = spell_info.get('damage', 0)
+        
+        # For response spells, also check if they have conditional damage
+        if 'response' in spell_info.get('types', []):
+            # Response spells often have higher damage than regular attacks
+            # Give them extra weight since they're reactive
+            damage_multiplier = 1.5
+        else:
+            damage_multiplier = 1.0
+            
         if damage > 0:
-            damage_impact = damage * weights.get('damage_per_point', 10)
+            damage_impact = damage * weights.get('damage_per_point', 10) * damage_multiplier
             
             # Extra impact if we're low health
             if player.health <= damage:
@@ -1226,6 +1268,7 @@ class ExpertAI(BaseAI):
     def _estimate_threat_likelihood(self, threat_info, enemy, gs):
         """Estimate likelihood of enemy having/playing a threat"""
         spell_name = threat_info.get('spell_name')
+        spell_info = threat_info.get('spell_info', {})
         
         # Base likelihood
         likelihood = 0.4  # 40% base chance
@@ -1233,6 +1276,13 @@ class ExpertAI(BaseAI):
         # Increase if we've seen this spell before
         if self._has_played_spell(enemy.name, spell_name):
             likelihood = 0.7
+        
+        # Response spells are more likely to be saved for the right moment
+        if 'response' in spell_info.get('types', []):
+            # Players tend to hold response spells when facing attack-heavy opponents
+            our_attack_count = sum(1 for c in self.current_player.hand if 'attack' in c.types)
+            if our_attack_count >= 3:
+                likelihood *= 1.3  # More likely to have responses ready
         
         # Adjust based on hand size
         if len(enemy.hand) >= 4:
@@ -1244,6 +1294,10 @@ class ExpertAI(BaseAI):
         if gs.clash_num >= 3:
             # Late game, more likely to have key spells
             likelihood *= 1.1
+        
+        # If we're low health, enemies are more likely to save damage responses
+        if self.current_player and self.current_player.health <= 3:
+            likelihood *= 1.2
         
         # Cap at reasonable bounds
         return min(0.9, max(0.1, likelihood))
@@ -1834,7 +1888,7 @@ class ExpertAI(BaseAI):
         # 2. Evaluate against enemy active spells
         for enemy_spell in enemy_active_spells:
             # Check if this card counters or is countered by enemy spell
-            interaction = self._evaluate_spell_interaction(card, enemy_spell.card, player, gs)
+            interaction = self._evaluate_spell_interaction(card, enemy_spell, player, gs)
             score += interaction
             
             if self.engine and hasattr(self.engine, 'ai_decision_logs') and abs(interaction) > 20:
@@ -1931,13 +1985,15 @@ class ExpertAI(BaseAI):
         
         return synergy
     
-    def _evaluate_spell_interaction(self, our_card, enemy_card, player, gs):
+    def _evaluate_spell_interaction(self, our_card, enemy_spell, player, gs):
         """Evaluate how our card interacts with an enemy's active spell"""
         interaction = 0
+        enemy_card = enemy_spell.card
+        enemy_owner = enemy_spell.owner
         
         # Check if enemy spell threatens us
         if 'attack' in enemy_card.types:
-            enemy_damage = self._estimate_card_damage_in_context(enemy_card, None, gs)
+            enemy_damage = self._estimate_card_damage_in_context(enemy_card, enemy_owner, gs)
             
             # Our responses to enemy attacks
             if 'cancel' in str(our_card.resolve_effects):

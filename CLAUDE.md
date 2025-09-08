@@ -2,6 +2,9 @@ You are making and refining a digital version of a card game called Elemental El
 
 Read HOWTOPLAY.md, CONTEXT.md, README.md, and spells.json files to understand the game.
 
+When you need to look at game logs, use the game_logs directory.
+
+
 Where applicable, use diagrams and examples.
 
 Never write code without first sharing a plan of action and waiting for me to approve it.

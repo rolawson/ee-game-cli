@@ -105,12 +105,15 @@ class AITournament:
         print(f"{'='*80}\n")
         
         self.start_time = time.time()
-        total_matchups = len(ai_types) * len(ai_types)
+        # Calculate total matchups excluding self-matches
+        total_matchups = len(ai_types) * (len(ai_types) - 1)
         matchup_count = 0
         
-        # Test each AI against each other (including mirror matches)
+        # Test each AI against each other (excluding mirror matches)
         for ai1 in ai_types:
             for ai2 in ai_types:
+                if ai1 == ai2:
+                    continue  # Skip same AI matchups
                 matchup_count += 1
                 print(f"\n[{matchup_count}/{total_matchups}] {ai1.upper()} vs {ai2.upper()}")
                 print("-" * 40)
@@ -225,8 +228,11 @@ class AITournament:
             for ai1 in ai_types:
                 f.write(f"{ai1:>8} ")
                 for ai2 in ai_types:
-                    win_rate = self.results[ai1].get(ai2, 0)
-                    f.write(f"{win_rate:>11.1%} ")
+                    if ai1 == ai2:
+                        f.write(f"{'---':>11} ")
+                    else:
+                        win_rate = self.results[ai1].get(ai2, 0)
+                        f.write(f"{win_rate:>11.1%} ")
                 f.write("\n")
             
             # Overall win rates (excluding mirror matches)
