@@ -14,6 +14,7 @@ class BaseAI(ABC):
     def __init__(self):
         self.engine = None  # Will be set by GameEngine
         self.opponent_history = {}  # Track what opponents have played
+        self.opponent_drafted_elements = {}  # Track which elements opponents drafted
         self._load_element_categories()
         self.element_win_rates = self._load_element_win_rates()
     
@@ -255,6 +256,9 @@ class BaseAI(ABC):
         Returns:
             The chosen spell set
         """
+        # Track what elements other players have drafted
+        self._update_opponent_draft_tracking(gs)
+        
         # Default implementation - random choice
         # Subclasses should override with strategic choices
         import random
@@ -275,3 +279,23 @@ class BaseAI(ABC):
             # Keep remedy cards when hurt
             return [c for c in player.hand if 'remedy' in c.types]
         return player.hand  # Keep all cards by default
+    
+    def _update_opponent_draft_tracking(self, gs):
+        """Track which elements opponents have drafted"""
+        for p in gs.players:
+            if p.name not in self.opponent_drafted_elements:
+                self.opponent_drafted_elements[p.name] = []
+            
+            # Check discard pile for drafted elements
+            drafted_elements = set()
+            for card in p.discard_pile:
+                drafted_elements.add(card.element)
+            
+            # Update tracked elements
+            for element in drafted_elements:
+                if element not in self.opponent_drafted_elements[p.name]:
+                    self.opponent_drafted_elements[p.name].append(element)
+    
+    def get_opponent_elements(self, player_name):
+        """Get list of elements an opponent has drafted"""
+        return self.opponent_drafted_elements.get(player_name, [])

@@ -295,7 +295,7 @@ class Player:
     def __repr__(self) -> str: return f"Player({self.name})"
 class GameState:
     def __init__(self, player_names: list[str]):
-        self.players: list[Player] = [Player(name, is_human=(i==0)) for i, name in enumerate(player_names)]
+        self.players: list[Player] = [Player(name, is_human=("Human" in name)) for name in player_names]
         self.all_cards: dict[int, Card] = {data['id']: Card(data) for data in SPELL_DATA}
         sets = defaultdict(list);
         for data in SPELL_DATA: sets[data['elephant']].append(self.all_cards[data['id']])
@@ -2573,7 +2573,11 @@ class ActionHandler:
 # --- MAIN GAME ENGINE ---
 class GameEngine:
     def __init__(self, player_names, ai_difficulty='expert'):
-        self.gs = GameState(player_names); self.display = DashboardDisplay()
+        # Randomize player order for fair drafting
+        randomized_players = player_names[:]
+        random.shuffle(randomized_players)
+        
+        self.gs = GameState(randomized_players); self.display = DashboardDisplay()
         self.condition_checker = ConditionChecker(); self.action_handler = ActionHandler(self)
         self.ai_decision_logs = []  # Store AI logs to show after reveal
         self.ai_difficulty = ai_difficulty  # Store for logging

@@ -1,0 +1,58 @@
+{
+  "response_threats": {
+    "high_damage_responses": {
+      "description": "Response spells that deal significant damage when triggered",
+      "threat_level": "high",
+      "identifying_features": {
+        "min_damage": 3,
+        "spell_types": ["response"],
+        "trigger_conditions": ["if_enemy_has_active_spell_of_type"]
+      }
+    },
+    "counter_responses": {
+      "description": "Response spells that negate or counter enemy actions",
+      "threat_level": "medium",
+      "identifying_features": {
+        "spell_types": ["response"],
+        "effects": ["cancel", "prevent", "negate"]
+      }
+    },
+    "defensive_responses": {
+      "description": "Response spells that provide healing or protection",
+      "threat_level": "low",
+      "identifying_features": {
+        "spell_types": ["response", "remedy"],
+        "effects": ["heal", "bolster", "protect"]
+      }
+    }
+  },
+  "element_archetypes": {
+    "aggressive": {
+      "typical_spell_types": ["attack"],
+      "threat_profile": "vulnerable_to_responses",
+      "counter_strategy": "use_non_attack_spells"
+    },
+    "defensive": {
+      "typical_spell_types": ["remedy", "response"],
+      "threat_profile": "strong_responses",
+      "counter_strategy": "use_fast_priority_spells"
+    },
+    "balanced": {
+      "typical_spell_types": ["attack", "remedy", "boost"],
+      "threat_profile": "moderate_responses",
+      "counter_strategy": "mixed_approach"
+    },
+    "control": {
+      "typical_spell_types": ["response", "boost"],
+      "threat_profile": "reactive_threats",
+      "counter_strategy": "use_conjuries"
+    }
+  },
+  "threat_evaluation_weights": {
+    "damage_per_point": 10,
+    "healing_reduction": 5,
+    "cancel_threat": 50,
+    "priority_advantage": 15,
+    "lethal_threshold_multiplier": 3
+  }
+}

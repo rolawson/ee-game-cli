@@ -14,6 +14,8 @@ class ExpertAI(BaseAI):
         super().__init__()
         self.win_rate_data = self._load_win_rate_data()
         self.current_player = None  # Track current player for analysis
+        self.threat_data = self._load_threat_data()
+        self.spell_database = self._build_spell_database()
     
     def _load_win_rate_data(self):
         """Load win rate data from JSON file"""
@@ -45,14 +47,26 @@ class ExpertAI(BaseAI):
             card = player.hand[idx]
             score = 0
             
-            # 1. Immediate tactical evaluation
-            score += self._evaluate_immediate_tactics(card, player, gs) * 0.3
+            # 1. Immediate tactical evaluation (now with context-aware damage)
+            score += self._evaluate_immediate_tactics(card, player, gs) * 0.15
             
             # 2. Multi-turn strategic value
-            score += self._evaluate_strategic_value(card, player, gs, game_plan) * 0.4
+            score += self._evaluate_strategic_value(card, player, gs, game_plan) * 0.15
             
             # 3. Future combo potential
-            score += self._evaluate_future_combos(card, player, gs) * 0.3
+            score += self._evaluate_future_combos(card, player, gs) * 0.15
+            
+            # 4. Same-clash combo potential
+            score += self._evaluate_clash_combo_potential(card, player, gs) * 0.15
+            
+            # 5. Context-aware damage efficiency
+            score += self._evaluate_damage_efficiency(card, player, gs) * 0.10
+            
+            # 6. Response threat evaluation (NEW)
+            score += self._evaluate_response_threat_for_attack(card, player, gs) * 0.15
+            
+            # 7. Board state synergy evaluation (NEW)
+            score += self._evaluate_board_state_synergy(card, player, gs) * 0.15
             
             # Log extensive analysis
             if self.engine and hasattr(self.engine, 'ai_decision_logs'):
@@ -230,14 +244,23 @@ class ExpertAI(BaseAI):
         return timings
     
     def _evaluate_immediate_tactics(self, card, player, gs):
-        """Detailed tactical evaluation of immediate play value"""
+        """Enhanced tactical evaluation with context-aware damage assessment"""
         score = 0
         
         # Basic type values with context
         if 'attack' in card.types:
             # Value attacks based on enemy health and defenses
             enemy = next(p for p in gs.players if p != player)
-            damage = self._estimate_card_damage(card)
+            
+            # Use context-aware damage calculation
+            damage = self._estimate_card_damage_in_context(card, player, gs)
+            static_damage = self._estimate_card_damage(card)
+            
+            # Log if context damage differs significantly
+            if self.engine and hasattr(self.engine, 'ai_decision_logs') and abs(damage - static_damage) > 1:
+                self.engine.ai_decision_logs.append(
+                    f"\033[90m[AI-EXPERT] {card.name} - Static DMG: {static_damage}, Context DMG: {damage:.1f}\033[0m"
+                )
             
             if enemy.health <= damage:
                 score += 200  # Lethal
@@ -245,6 +268,16 @@ class ExpertAI(BaseAI):
                 score += 100  # Near lethal
             else:
                 score += 30 + (damage * 10)
+            
+            # Consider weakening as pseudo-damage for long-term value
+            weaken = self._estimate_card_weaken(card, player, gs)
+            if weaken > 0:
+                score += self._evaluate_weaken_timing(weaken, enemy, gs)
+            
+            # Bonus for multi-turn damage (advance effects)
+            if card.advance_effects and gs.clash_num < 4:
+                future_damage = self._estimate_card_damage_in_context(card, player, gs, gs.clash_num + 1)
+                score += future_damage * 5
             
             # Check for enemy responses
             enemy_responses = self._count_enemy_responses(enemy, gs)
@@ -470,6 +503,215 @@ class ExpertAI(BaseAI):
                 healing += action.get('parameters', {}).get('value', 0)
         return healing
     
+    def _estimate_card_damage_in_context(self, card, player, gs, clash_num=None):
+        """Estimate damage with board state context"""
+        if clash_num is None:
+            clash_num = gs.clash_num
+        
+        damage = 0
+        
+        # Calculate damage from resolve effects
+        for effect in card.resolve_effects:
+            action = effect.get('action', {})
+            if isinstance(action, dict):
+                damage += self._calculate_action_damage(action, card, player, gs, clash_num)
+            elif isinstance(action, list):
+                # Handle action arrays
+                for sub_action in action:
+                    if isinstance(sub_action, dict):
+                        damage += self._calculate_action_damage(sub_action, card, player, gs, clash_num)
+        
+        # Also check advance effects if we expect to advance
+        if clash_num < 4 and card.advance_effects:
+            for effect in card.advance_effects:
+                action = effect.get('action', {})
+                if isinstance(action, dict):
+                    # Only count if we expect to advance (70% confidence)
+                    damage += self._calculate_action_damage(action, card, player, gs, clash_num + 1) * 0.7
+        
+        return damage
+    
+    def _calculate_action_damage(self, action, card, player, gs, clash_num):
+        """Calculate damage for a specific action considering board state"""
+        action_type = action.get('type')
+        params = action.get('parameters', {})
+        
+        if action_type == 'damage':
+            return params.get('value', 0)
+        
+        elif action_type == 'damage_multi_target':
+            # Multi-target damage
+            return params.get('value', 0)
+        
+        elif action_type == 'damage_per_spell':
+            # Count expected active spells
+            spell_type = params.get('spell_type', 'any')
+            exclude_self = params.get('exclude_self', False)
+            
+            # Current active spells
+            active_count = 0
+            for spell in player.board[clash_num - 1]:
+                if spell.status == 'revealed':
+                    if spell_type == 'any' or spell_type in spell.card.types:
+                        active_count += 1
+            
+            # Estimate additional spells we might play
+            if clash_num == gs.clash_num:
+                # Current clash - add expected plays from hand
+                for other_card in player.hand:
+                    if other_card != card:  # Don't count self twice
+                        if spell_type == 'any' or spell_type in other_card.types:
+                            # 50% chance we play it
+                            active_count += 0.5
+            
+            if exclude_self:
+                active_count = max(0, active_count - 1)
+            
+            return active_count
+        
+        elif action_type == 'damage_per_enemy_spell_type':
+            # Estimate enemy spells
+            spell_type = params.get('spell_type', 'any')
+            enemy_count = 0
+            
+            for enemy in gs.players:
+                if enemy != player:
+                    # Count current enemy spells
+                    for spell in enemy.board[clash_num - 1]:
+                        if spell.status == 'revealed' and spell_type in spell.card.types:
+                            enemy_count += 1
+                    
+                    # Predict future enemy spells based on history
+                    if clash_num == gs.clash_num and hasattr(self, 'opponent_history'):
+                        history = self.analyze_opponent_patterns(enemy.name)
+                        type_preference = dict(history.get('preferred_types', []))
+                        if spell_type in type_preference:
+                            # Add expected value based on preference
+                            enemy_count += type_preference[spell_type] * 0.3
+            
+            return enemy_count
+        
+        elif action_type == 'damage_per_spell_from_other_clashes':
+            # Count spells in other clashes (like Impact)
+            count = 0
+            for i in range(4):
+                if i != clash_num - 1:
+                    for p in gs.players:
+                        for spell in p.board[i]:
+                            if spell.status == 'revealed':
+                                count += 1
+            return count
+        
+        elif action_type == 'damage_equal_to_enemy_attack_damage':
+            # Familiar - calculate enemy attack spell damage
+            total_damage = 0
+            for enemy in gs.players:
+                if enemy != player:
+                    for spell in enemy.board[clash_num - 1]:
+                        if spell.status == 'revealed' and 'attack' in spell.card.types:
+                            # Recursively calculate that spell's damage
+                            total_damage += self._estimate_card_damage(spell.card)
+            return total_damage
+        
+        elif action_type == 'player_choice':
+            # For choices, evaluate the best damage option
+            max_damage = 0
+            for option in action.get('options', []):
+                if isinstance(option, dict):
+                    option_damage = self._calculate_action_damage(option, card, player, gs, clash_num)
+                    max_damage = max(max_damage, option_damage)
+            return max_damage
+        
+        elif action_type == 'sequence':
+            # For sequences, sum up all damage actions
+            total_damage = 0
+            for seq_action in action.get('actions', []):
+                if isinstance(seq_action, dict):
+                    total_damage += self._calculate_action_damage(seq_action, card, player, gs, clash_num)
+            return total_damage
+        
+        return 0
+    
+    def _estimate_card_weaken(self, card, player, gs, clash_num=None):
+        """Estimate weakening potential of a card"""
+        if clash_num is None:
+            clash_num = gs.clash_num
+        
+        weaken = 0
+        
+        for effect in card.resolve_effects:
+            action = effect.get('action', {})
+            if isinstance(action, dict):
+                weaken += self._calculate_action_weaken(action, card, player, gs, clash_num)
+            elif isinstance(action, list):
+                for sub_action in action:
+                    if isinstance(sub_action, dict):
+                        weaken += self._calculate_action_weaken(sub_action, card, player, gs, clash_num)
+        
+        return weaken
+    
+    def _calculate_action_weaken(self, action, card, player, gs, clash_num):
+        """Calculate weakening for a specific action"""
+        action_type = action.get('type')
+        params = action.get('parameters', {})
+        
+        if action_type == 'weaken':
+            return params.get('value', 0)
+        
+        elif action_type == 'weaken_per_spell':
+            # Similar calculation to damage_per_spell
+            spell_type = params.get('spell_type', 'any')
+            exclude_self = params.get('exclude_self', False)
+            
+            # Use same logic as damage_per_spell
+            return self._calculate_action_damage(
+                {'type': 'damage_per_spell', 'parameters': params}, 
+                card, player, gs, clash_num
+            )
+        
+        elif action_type == 'player_choice':
+            # Check options for weaken
+            max_weaken = 0
+            for option in action.get('options', []):
+                if isinstance(option, dict):
+                    option_weaken = self._calculate_action_weaken(option, card, player, gs, clash_num)
+                    max_weaken = max(max_weaken, option_weaken)
+            return max_weaken
+        
+        elif action_type == 'sequence':
+            # Sum up weaken in sequences
+            total_weaken = 0
+            for seq_action in action.get('actions', []):
+                if isinstance(seq_action, dict):
+                    total_weaken += self._calculate_action_weaken(seq_action, card, player, gs, clash_num)
+            return total_weaken
+        
+        return 0
+    
+    def _evaluate_weaken_timing(self, weaken_amount, enemy, gs):
+        """Evaluate how valuable weakening is at this point"""
+        score = 0
+        
+        # Weakening is more valuable when:
+        # 1. Enemy has high max health
+        if enemy.max_health > 5:
+            score += weaken_amount * 15
+        else:
+            score += weaken_amount * 10
+        
+        # 2. We're planning a longer game
+        if hasattr(self, 'win_condition') and self.win_condition == 'value_grind':
+            score += weaken_amount * 10
+        
+        # 3. Enemy is at full health (reduces their effective healing)
+        if enemy.health == enemy.max_health:
+            score += weaken_amount * 5
+        
+        # 4. Early in the round (more time to benefit)
+        score += weaken_amount * (5 - gs.clash_num)
+        
+        return score
+    
     def _rank_cards_for_discard(self, hand):
         """Rank cards by discard priority (lower = discard first)"""
         rankings = []
@@ -555,23 +797,574 @@ class ExpertAI(BaseAI):
                 return True
         return False
     
+    def _evaluate_clash_combo_potential(self, card, player, gs):
+        """Evaluate how well this card combos with other cards we might play this clash"""
+        score = 0
+        
+        # Check other cards in hand for same-clash combos
+        for other_card in player.hand:
+            if other_card == card:
+                continue
+            
+            # Check if other_card boosts this card's damage
+            if 'boost' in other_card.types and 'attack' in card.types:
+                # Estimate bonus damage from having a boost spell active
+                base_damage = self._estimate_card_damage(card)
+                context_damage = self._estimate_card_damage_in_context(card, player, gs)
+                bonus_damage = max(0, context_damage - base_damage) * 0.3
+                score += bonus_damage * 10
+            
+            # Check if this card has damage_per_spell and other card matches
+            for effect in card.resolve_effects:
+                action = effect.get('action', {})
+                if isinstance(action, dict) and action.get('type') == 'damage_per_spell':
+                    params = action.get('parameters', {})
+                    spell_type = params.get('spell_type', 'any')
+                    if spell_type == 'any' or spell_type in other_card.types:
+                        score += 15  # Bonus for each potential combo piece
+                elif isinstance(action, dict) and action.get('type') == 'weaken_per_spell':
+                    params = action.get('parameters', {})
+                    spell_type = params.get('spell_type', 'any')
+                    if spell_type == 'any' or spell_type in other_card.types:
+                        score += 12  # Weaken combos are valuable too
+            
+            # Check condition synergies
+            if self._cards_have_condition_synergy(card, other_card):
+                score += 25
+            
+            # Check for protection synergies (protect our valuable spells)
+            if card.is_conjury and self._provides_protection(other_card):
+                score += 30
+            
+            # Check for advance synergies within same clash
+            if 'advance' in str(other_card.resolve_effects) and card.advance_effects:
+                score += 20
+        
+        # Bonus if we have multiple cards that work together
+        synergistic_cards = 0
+        for other_card in player.hand:
+            if other_card != card and self._cards_have_any_synergy(card, other_card):
+                synergistic_cards += 1
+        
+        if synergistic_cards >= 2:
+            score += 20  # Multi-card combo bonus
+        
+        return score
+    
+    def _cards_have_condition_synergy(self, card1, card2):
+        """Check if two cards have conditions that work well together"""
+        c1_str = str(card1.resolve_effects) + str(card1.advance_effects)
+        c2_str = str(card2.resolve_effects) + str(card2.advance_effects)
+        
+        # Advance synergies
+        if 'advance' in c1_str and 'if_spell_advanced' in c2_str:
+            return True
+        if 'advance' in c2_str and 'if_spell_advanced' in c1_str:
+            return True
+        
+        # Spell type synergies
+        if 'if_caster_has_active_spell_of_type' in c1_str:
+            for spell_type in card2.types:
+                if spell_type in c1_str:
+                    return True
+        if 'if_caster_has_active_spell_of_type' in c2_str:
+            for spell_type in card1.types:
+                if spell_type in c2_str:
+                    return True
+        
+        # Protection synergies
+        if card1.is_conjury and 'protect' in c2_str.lower():
+            return True
+        if card2.is_conjury and 'protect' in c1_str.lower():
+            return True
+        
+        return False
+    
+    def _cards_have_any_synergy(self, card1, card2):
+        """Quick check if cards have any synergy"""
+        # Type combinations
+        type_synergies = [
+            ('boost', 'attack'),
+            ('response', 'attack'),
+            ('remedy', 'boost'),
+            ('attack', 'attack')  # Multiple attacks can overwhelm
+        ]
+        
+        for type1, type2 in type_synergies:
+            if (type1 in card1.types and type2 in card2.types) or \
+               (type2 in card1.types and type1 in card2.types):
+                return True
+        
+        # Same element synergy
+        if card1.element == card2.element:
+            return True
+        
+        # Condition synergies
+        return self._cards_have_condition_synergy(card1, card2)
+    
+    def _provides_protection(self, card):
+        """Check if a card provides protection effects"""
+        effects_str = str(card.resolve_effects) + str(card.advance_effects) + str(card.passive_effects)
+        protection_keywords = ['protect', 'prevent', 'cancel', 'immune']
+        return any(keyword in effects_str.lower() for keyword in protection_keywords)
+    
+    def _evaluate_damage_efficiency(self, card, player, gs):
+        """Evaluate damage efficiency considering context vs static damage"""
+        score = 0
+        
+        # Calculate both static and context damage
+        static_damage = self._estimate_card_damage(card)
+        context_damage = self._estimate_card_damage_in_context(card, player, gs)
+        
+        # Also consider weaken effects
+        static_weaken = 0
+        context_weaken = self._estimate_card_weaken(card, player, gs)
+        
+        # Combined effectiveness
+        static_total = static_damage + (static_weaken * 0.7)  # Weaken is worth ~70% of damage
+        context_total = context_damage + (context_weaken * 0.7)
+        
+        if static_total > 0:
+            # Efficiency ratio - how much better is context damage?
+            efficiency_ratio = context_total / static_total
+            
+            # Highly efficient cards get bonus points
+            if efficiency_ratio > 2.0:  # More than double effectiveness
+                score += 50
+            elif efficiency_ratio > 1.5:  # 50% more effective
+                score += 30
+            elif efficiency_ratio > 1.2:  # 20% more effective
+                score += 15
+            
+            # Log significant differences
+            if self.engine and hasattr(self.engine, 'ai_decision_logs') and efficiency_ratio > 1.3:
+                self.engine.ai_decision_logs.append(
+                    f"\033[90m[AI-EXPERT] {card.name} - Efficiency: {efficiency_ratio:.1f}x (Static: {static_total}, Context: {context_total:.1f})\033[0m"
+                )
+        
+        # Bonus for scaling damage (damage_per_spell, etc)
+        effects_str = str(card.resolve_effects) + str(card.advance_effects)
+        if 'damage_per_spell' in effects_str or 'weaken_per_spell' in effects_str:
+            score += 20
+        
+        # Bonus for multi-target damage
+        if 'damage_multi_target' in effects_str:
+            score += 15
+        
+        return score
+    
+    def _load_threat_data(self):
+        """Load threat evaluation data from JSON"""
+        try:
+            threat_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'spell_threats.json')
+            if os.path.exists(threat_file):
+                with open(threat_file, 'r') as f:
+                    return json.load(f)
+        except (IOError, json.JSONDecodeError):
+            pass
+        
+        # Fallback to basic threat data
+        return {
+            'response_threats': {},
+            'element_archetypes': {},
+            'threat_evaluation_weights': {
+                'damage_per_point': 10,
+                'healing_reduction': 5,
+                'cancel_threat': 50,
+                'priority_advantage': 15,
+                'lethal_threshold_multiplier': 3
+            }
+        }
+    
+    def _build_spell_database(self):
+        """Build a database of all spells with their properties"""
+        spell_db = {}
+        
+        # Load spell data
+        try:
+            spells_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'spells.json')
+            if os.path.exists(spells_file):
+                with open(spells_file, 'r') as f:
+                    spell_data = json.load(f)
+                    
+                for spell in spell_data:
+                    spell_name = spell.get('card_name')
+                    if spell_name:
+                        # Extract key properties
+                        spell_db[spell_name] = {
+                            'element': spell.get('element'),
+                            'priority': spell.get('priority'),
+                            'types': spell.get('spell_types', []),
+                            'is_conjury': spell.get('is_conjury', False),
+                            'damage': self._extract_spell_damage(spell),
+                            'healing': self._extract_spell_healing(spell),
+                            'conditions': self._extract_spell_conditions(spell),
+                            'effects': self._extract_spell_effects(spell)
+                        }
+        except Exception as e:
+            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                self.engine.ai_decision_logs.append(
+                    f"\033[90m[AI-EXPERT] Warning: Could not load spell database: {e}\033[0m"
+                )
+        
+        return spell_db
+    
+    def _extract_spell_damage(self, spell_data):
+        """Extract damage values from spell data"""
+        total_damage = 0
+        
+        for effect in spell_data.get('resolve_effects', []):
+            action = effect.get('action', {})
+            if isinstance(action, dict) and action.get('type') == 'damage':
+                total_damage += action.get('parameters', {}).get('value', 0)
+        
+        return total_damage
+    
+    def _extract_spell_healing(self, spell_data):
+        """Extract healing values from spell data"""
+        total_healing = 0
+        
+        for effect in spell_data.get('resolve_effects', []):
+            action = effect.get('action', {})
+            if isinstance(action, dict) and action.get('type') == 'heal':
+                total_healing += action.get('parameters', {}).get('value', 0)
+        
+        return total_healing
+    
+    def _extract_spell_conditions(self, spell_data):
+        """Extract condition types from spell data"""
+        conditions = []
+        
+        for effect in spell_data.get('resolve_effects', []):
+            condition = effect.get('condition', {})
+            if condition:
+                conditions.append(condition.get('type'))
+        
+        return conditions
+    
+    def _extract_spell_effects(self, spell_data):
+        """Extract effect types from spell data"""
+        effects = []
+        
+        for effect in spell_data.get('resolve_effects', []):
+            action = effect.get('action', {})
+            if isinstance(action, dict):
+                effects.append(action.get('type'))
+        
+        return effects
+    
+    def _evaluate_response_threat_for_attack(self, card, player, gs):
+        """Evaluate how dangerous enemy responses are to this attack spell"""
+        if 'attack' not in card.types:
+            return 0
+        
+        threat_score = 0
+        weights = self.threat_data.get('threat_evaluation_weights', {})
+        
+        # Check each opponent
+        for enemy in gs.players:
+            if enemy == player:
+                continue
+            
+            # Get opponent's drafted elements
+            enemy_elements = self.get_opponent_elements(enemy.name)
+            
+            # Analyze potential response threats from those elements
+            for element in enemy_elements:
+                element_threats = self._analyze_element_response_threats(element)
+                
+                for threat_info in element_threats:
+                    # Check if this response could trigger against our attack
+                    if self._could_response_trigger_against_attack(threat_info, card):
+                        # Calculate threat impact
+                        impact = self._calculate_generic_threat_impact(
+                            threat_info, card, player, weights
+                        )
+                        
+                        # Estimate likelihood based on game state
+                        likelihood = self._estimate_threat_likelihood(
+                            threat_info, enemy, gs
+                        )
+                        
+                        threat_score += impact * likelihood
+                        
+                        if self.engine and hasattr(self.engine, 'ai_decision_logs') and impact > 20:
+                            self.engine.ai_decision_logs.append(
+                                f"\033[90m[AI-EXPERT] {card.name} vulnerable to {element} response "
+                                f"(Impact: {impact:.1f}, Likelihood: {likelihood:.1%})\033[0m"
+                            )
+        
+        return -threat_score  # Negative because threats reduce desirability
+    
+    def _analyze_element_response_threats(self, element):
+        """Analyze what response threats an element might have"""
+        threats = []
+        
+        # Look up all spells for this element in our database
+        for spell_name, spell_info in self.spell_database.items():
+            if spell_info.get('element') == element and 'response' in spell_info.get('types', []):
+                # Classify the threat level based on properties
+                threat_level = self._classify_response_threat(spell_info)
+                
+                if threat_level:
+                    threats.append({
+                        'spell_name': spell_name,
+                        'spell_info': spell_info,
+                        'threat_level': threat_level
+                    })
+        
+        return threats
+    
+    def _classify_response_threat(self, spell_info):
+        """Classify how threatening a response spell is"""
+        response_threats = self.threat_data.get('response_threats', {})
+        
+        # Check each threat category
+        for category, criteria in response_threats.items():
+            features = criteria.get('identifying_features', {})
+            
+            # Check if spell matches this threat category
+            matches = True
+            
+            # Check damage threshold
+            if 'min_damage' in features:
+                if spell_info.get('damage', 0) < features['min_damage']:
+                    matches = False
+            
+            # Check spell types
+            if 'spell_types' in features:
+                spell_types = spell_info.get('types', [])
+                if not any(t in spell_types for t in features['spell_types']):
+                    matches = False
+            
+            # Check conditions
+            if 'trigger_conditions' in features:
+                conditions = spell_info.get('conditions', [])
+                if not any(c in conditions for c in features['trigger_conditions']):
+                    matches = False
+            
+            # Check effects
+            if 'effects' in features:
+                effects = spell_info.get('effects', [])
+                if not any(e in effects for e in features['effects']):
+                    matches = False
+            
+            if matches:
+                return criteria.get('threat_level', 'medium')
+        
+        return None
+    
+    def _could_response_trigger_against_attack(self, threat_info, our_card):
+        """Check if a response could trigger against our attack"""
+        spell_info = threat_info.get('spell_info', {})
+        conditions = spell_info.get('conditions', [])
+        
+        # Common response conditions that trigger on attacks
+        attack_triggers = [
+            'if_enemy_has_active_spell_of_type',  # Often checks for 'attack'
+            'if_enemy_played_spell_this_clash',
+            'if_any_spell_dealt_damage'
+        ]
+        
+        # If it has attack-related conditions, it might trigger
+        for condition in conditions:
+            if any(trigger in condition for trigger in attack_triggers):
+                return True
+        
+        # If it's a response with no conditions, it might be always active
+        if not conditions and 'response' in spell_info.get('types', []):
+            return True
+        
+        return False
+    
+    def _calculate_generic_threat_impact(self, threat_info, our_card, player, weights):
+        """Calculate impact of a threat without hardcoding specific spells"""
+        impact = 0
+        spell_info = threat_info.get('spell_info', {})
+        threat_level = threat_info.get('threat_level', 'medium')
+        
+        # Base impact from threat level
+        level_impacts = {'high': 50, 'medium': 30, 'low': 10}
+        impact += level_impacts.get(threat_level, 20)
+        
+        # Damage threat
+        damage = spell_info.get('damage', 0)
+        if damage > 0:
+            damage_impact = damage * weights.get('damage_per_point', 10)
+            
+            # Extra impact if we're low health
+            if player.health <= damage:
+                damage_impact *= weights.get('lethal_threshold_multiplier', 3)
+            elif player.health <= damage * 2:
+                damage_impact *= 1.5
+            
+            impact += damage_impact
+        
+        # Healing reduction (enemy healing reduces our damage effectiveness)
+        healing = spell_info.get('healing', 0)
+        if healing > 0:
+            impact += healing * weights.get('healing_reduction', 5)
+        
+        # Cancel/negate effects
+        if any(e in spell_info.get('effects', []) for e in ['cancel', 'prevent', 'negate']):
+            impact += weights.get('cancel_threat', 50)
+        
+        # Priority consideration
+        their_priority = spell_info.get('priority', 99)
+        our_priority = our_card.priority
+        
+        # Convert to comparable values
+        their_p = 99 if their_priority == 'A' else int(their_priority)
+        our_p = 99 if our_priority == 'A' else int(our_priority)
+        
+        if their_p < our_p:
+            # They resolve first, more dangerous
+            impact += weights.get('priority_advantage', 15)
+        
+        return impact
+    
+    def _estimate_threat_likelihood(self, threat_info, enemy, gs):
+        """Estimate likelihood of enemy having/playing a threat"""
+        spell_name = threat_info.get('spell_name')
+        
+        # Base likelihood
+        likelihood = 0.4  # 40% base chance
+        
+        # Increase if we've seen this spell before
+        if self._has_played_spell(enemy.name, spell_name):
+            likelihood = 0.7
+        
+        # Adjust based on hand size
+        if len(enemy.hand) >= 4:
+            likelihood *= 1.2
+        elif len(enemy.hand) <= 2:
+            likelihood *= 0.7
+        
+        # Adjust based on game state
+        if gs.clash_num >= 3:
+            # Late game, more likely to have key spells
+            likelihood *= 1.1
+        
+        # Cap at reasonable bounds
+        return min(0.9, max(0.1, likelihood))
+    
+    def _response_could_trigger(self, threat, our_card, us, enemy, gs):
+        """Check if a response threat could trigger against our card"""
+        condition = threat['condition']
+        
+        if condition == 'if_enemy_has_active_spell_of_type_attack':
+            return 'attack' in our_card.types
+        elif condition == 'if_enemy_has_active_spell_of_type_any':
+            return True
+        elif condition == 'if_caster_has_active_spell_of_type_response':
+            # Check if enemy has response spells
+            for spell in enemy.board[gs.clash_num - 1]:
+                if spell.status == 'revealed' and 'response' in spell.card.types:
+                    return True
+        elif condition == 'if_caster_has_active_spell_of_type_remedy':
+            # Check if enemy has remedy spells
+            for spell in enemy.board[gs.clash_num - 1]:
+                if spell.status == 'revealed' and 'remedy' in spell.card.types:
+                    return True
+        
+        return False
+    
+    def _calculate_response_impact(self, threat, our_card, player):
+        """Calculate how much impact a response threat has"""
+        impact = 0
+        
+        # Direct damage to us
+        damage = threat.get('damage', 0)
+        if damage > 0:
+            # More impact if we're low health
+            if player.health <= damage:
+                impact += 100  # Could be lethal
+            elif player.health <= damage * 2:
+                impact += 50  # Very dangerous
+            else:
+                impact += damage * 10
+        
+        # Enemy healing (reduces our damage effectiveness)
+        healing = threat.get('healing', 0)
+        if healing > 0:
+            impact += healing * 5
+        
+        # Priority comparison
+        threat_priority = threat['priority']
+        our_priority = our_card.priority
+        
+        # Convert to comparable values
+        threat_p_val = 99 if threat_priority == 'A' else int(threat_priority)
+        our_p_val = 99 if our_priority == 'A' else int(our_priority)
+        
+        # If response resolves before us, it might cancel us
+        if threat_p_val < our_p_val and 'cancel' in threat.get('effect', ''):
+            impact += 50
+        
+        return impact
+    
+    def _has_played_spell(self, opponent_name, spell_name):
+        """Check if opponent has played a specific spell before"""
+        if opponent_name not in self.opponent_history:
+            return False
+        
+        history = self.opponent_history[opponent_name]
+        for spell_info in history['spells_played']:
+            if spell_info['name'] == spell_name:
+                return True
+        
+        return False
+    
     def _assess_threat_level(self, spell, clash_idx, gs):
         """Assess threat level of an enemy spell"""
         threat = 0
         
-        # Immediate threats
+        # Get the spell's owner for context
+        spell_owner = None
+        for player in gs.players:
+            for board_spell in player.board[clash_idx]:
+                if board_spell == spell:
+                    spell_owner = player
+                    break
+        
+        # Immediate threats with context-aware damage
         if 'attack' in spell.card.types:
-            threat += self._estimate_card_damage(spell.card) * 20
+            # Use context-aware damage for accurate threat assessment
+            if spell_owner:
+                damage = self._estimate_card_damage_in_context(spell.card, spell_owner, gs, clash_idx + 1)
+            else:
+                damage = self._estimate_card_damage(spell.card)
+            
+            threat += damage * 20
+            
+            # Extra threat if attack-boost that has advanced
+            if 'boost' in spell.card.types and clash_idx < gs.clash_num - 1:
+                # This is an advanced attack-boost, very dangerous
+                threat += 30
+        
         if spell.card.is_conjury:
             threat += 40
+        
         if 'cancel' in str(spell.card.resolve_effects):
             threat += 35
+        
+        # Response threats
+        if 'response' in spell.card.types:
+            threat += 25
+        
+        # Boost threats (enemy setup)
+        if 'boost' in spell.card.types and 'attack' not in spell.card.types:
+            threat += 20
         
         # Timing multiplier
         if clash_idx == gs.clash_num - 1:
             threat *= 1.5  # Immediate threats
         elif clash_idx == gs.clash_num:
             threat *= 1.2  # Next turn threats
+        
+        # Advanced spell multiplier
+        if spell.card.advance_effects and clash_idx < gs.clash_num - 1:
+            threat *= 1.3  # Advanced spells are more threatening
         
         return threat
     
@@ -766,8 +1559,11 @@ class ExpertAI(BaseAI):
         if not available_sets:
             return None
         
-        # Analyze opponent's likely draft choices
-        opponent_analysis = self._analyze_opponent_drafting_patterns()
+        # Track what elements other players have drafted
+        self._update_opponent_draft_tracking(gs)
+        
+        # Analyze opponent's actual draft choices
+        opponent_analysis = self._analyze_opponent_drafting_patterns(gs)
         
         set_evaluations = []
         
@@ -859,15 +1655,60 @@ class ExpertAI(BaseAI):
         
         return chosen_eval['set']
     
-    def _analyze_opponent_drafting_patterns(self):
-        """Predict opponent draft choices"""
-        # In a real implementation, this would track history
-        # For now, return common patterns
-        return {
-            'likely_elements': ['Fire', 'Sunbeam', 'Thunder'],  # High win rate elements
-            'likely_types': ['attack', 'remedy'],
-            'aggression_level': 0.6
+    def _analyze_opponent_drafting_patterns(self, gs):
+        """Analyze opponent draft choices based on what they've actually drafted"""
+        analysis = {
+            'drafted_elements': [],
+            'likely_types': [],
+            'aggression_level': 0.5,
+            'has_responses': False
         }
+        
+        # Check all opponents
+        for player in gs.players:
+            if player == self.current_player:
+                continue
+            
+            opponent_elements = self.get_opponent_elements(player.name)
+            analysis['drafted_elements'].extend(opponent_elements)
+            
+            # Check for response-heavy elements
+            for element in opponent_elements:
+                response_count = self._count_element_response_spells(element)
+                if response_count > 0:
+                    analysis['has_responses'] = True
+                    
+                    # Check for high-threat responses
+                    element_threats = self._analyze_element_response_threats(element)
+                    high_threats = [t for t in element_threats if t.get('threat_level') == 'high']
+                    if high_threats:
+                        analysis['aggression_level'] = 0.3  # Be more cautious
+        
+        # If no elements tracked yet (early draft), use win rate data
+        if not analysis['drafted_elements']:
+            # Use elements with highest win rates as likely choices
+            if hasattr(self, 'win_rate_data') and self.win_rate_data:
+                win_rates = self.win_rate_data.get('win_rates', {})
+                sorted_elements = sorted(win_rates.items(), key=lambda x: x[1], reverse=True)
+                analysis['drafted_elements'] = [elem[0] for elem in sorted_elements[:3]]
+            else:
+                analysis['drafted_elements'] = []  # No assumptions
+            
+            analysis['likely_types'] = ['attack', 'remedy']  # Common types
+        else:
+            # Analyze likely spell types based on element archetypes
+            for element in analysis['drafted_elements']:
+                archetype = self._get_element_archetype(element)
+                if archetype == 'defensive':
+                    analysis['likely_types'].append('response')
+                    analysis['likely_types'].append('remedy')
+                elif archetype == 'aggressive':
+                    analysis['likely_types'].append('attack')
+                elif archetype == 'control':
+                    analysis['likely_types'].append('response')
+                    analysis['likely_types'].append('boost')
+        
+        return analysis
     
     def _calculate_set_synergies(self, spell_set):
         """Calculate internal synergies within a set"""
@@ -895,19 +1736,242 @@ class ExpertAI(BaseAI):
         
         # Element category matchups
         our_category = self.get_element_category(element)
+        our_archetype = self._get_element_archetype(element)
         
-        for enemy_element in opponent_analysis['likely_elements']:
+        # Use actual drafted elements
+        enemy_elements = opponent_analysis.get('drafted_elements', [])
+        
+        for enemy_element in enemy_elements:
             enemy_category = self.get_element_category(enemy_element)
+            enemy_archetype = self._get_element_archetype(enemy_element)
             
-            # Simple category advantages
+            # Category-based advantages
             if our_category == 'defense' and enemy_category == 'offense':
                 counter_score += 20
             elif our_category == 'mobility' and enemy_category == 'defense':
                 counter_score += 15
             elif our_category == 'offense' and enemy_category == 'mobility':
                 counter_score += 15
+            
+            # Archetype-based matchups
+            if enemy_archetype == 'defensive' and our_archetype == 'aggressive':
+                # Aggressive vs defensive with strong responses
+                counter_score -= 15
+            elif enemy_archetype == 'defensive' and our_archetype == 'control':
+                # Control can handle defensive strategies
+                counter_score += 10
+            
+            # If enemy has response threats, adjust our preference
+            enemy_response_count = self._count_element_response_spells(enemy_element)
+            if enemy_response_count > 0:
+                # Penalize attack-heavy strategies
+                if our_archetype == 'aggressive':
+                    counter_score -= enemy_response_count * 10
+                # Favor control/defensive strategies
+                elif our_archetype in ['control', 'defensive']:
+                    counter_score += enemy_response_count * 5
         
         return counter_score
+    
+    def _get_element_archetype(self, element):
+        """Get the strategic archetype of an element based on its spells"""
+        # Count spell types for this element
+        type_counts = defaultdict(int)
+        spell_count = 0
+        
+        for spell_name, spell_info in self.spell_database.items():
+            if spell_info.get('element') == element:
+                spell_count += 1
+                for spell_type in spell_info.get('types', []):
+                    type_counts[spell_type] += 1
+        
+        if spell_count == 0:
+            return 'balanced'  # Default if no data
+        
+        # Determine archetype based on spell type distribution
+        attack_ratio = type_counts.get('attack', 0) / spell_count
+        response_ratio = type_counts.get('response', 0) / spell_count
+        remedy_ratio = type_counts.get('remedy', 0) / spell_count
+        
+        if attack_ratio > 0.5:
+            return 'aggressive'
+        elif response_ratio > 0.3 or remedy_ratio > 0.3:
+            return 'defensive'
+        elif response_ratio > 0.2 and type_counts.get('boost', 0) > 0:
+            return 'control'
+        else:
+            return 'balanced'
+    
+    def _count_element_response_spells(self, element):
+        """Count how many response spells an element has"""
+        count = 0
+        
+        for spell_name, spell_info in self.spell_database.items():
+            if spell_info.get('element') == element and 'response' in spell_info.get('types', []):
+                count += 1
+        
+        return count
+    
+    def _evaluate_board_state_synergy(self, card, player, gs):
+        """Evaluate how well this card synergizes with the current board state"""
+        score = 0
+        
+        # Check our own board for synergies
+        our_active_spells = self._get_active_spells(player, gs)
+        enemy_active_spells = self._get_active_spells_for_enemies(player, gs)
+        
+        # 1. Evaluate synergies with our active spells
+        for spell in our_active_spells:
+            # Check if this card benefits from the active spell
+            synergy = self._calculate_active_spell_synergy(card, spell.card, gs)
+            score += synergy
+            
+            if self.engine and hasattr(self.engine, 'ai_decision_logs') and synergy > 20:
+                self.engine.ai_decision_logs.append(
+                    f"\033[90m[AI-EXPERT] {card.name} synergizes with active {spell.card.name} (+{synergy})\033[0m"
+                )
+        
+        # 2. Evaluate against enemy active spells
+        for enemy_spell in enemy_active_spells:
+            # Check if this card counters or is countered by enemy spell
+            interaction = self._evaluate_spell_interaction(card, enemy_spell.card, player, gs)
+            score += interaction
+            
+            if self.engine and hasattr(self.engine, 'ai_decision_logs') and abs(interaction) > 20:
+                self.engine.ai_decision_logs.append(
+                    f"\033[90m[AI-EXPERT] {card.name} vs enemy {enemy_spell.card.name} ({interaction:+.0f})\033[0m"
+                )
+        
+        # 3. Special consideration for advancing spells
+        advancing_threats = self._get_advancing_enemy_spells(gs)
+        if advancing_threats:
+            # Prioritize immediate answers or aggressive plays
+            if 'cancel' in str(card.resolve_effects):
+                score += 40  # Can potentially stop threats
+            elif 'attack' in card.types and card.priority in ['1', '2']:
+                score += 30  # Fast damage before threats resolve
+            elif 'remedy' in card.types:
+                score += 25  # Defensive preparation
+                
+            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                self.engine.ai_decision_logs.append(
+                    f"\033[90m[AI-EXPERT] {len(advancing_threats)} enemy spells advancing!\033[0m"
+                )
+        
+        return score
+    
+    def _get_active_spells(self, player, gs):
+        """Get all active spells for a player on current clash"""
+        if gs.clash_num <= 0 or gs.clash_num > 4:
+            return []
+        
+        active_spells = []
+        for spell in player.board[gs.clash_num - 1]:
+            if spell.status == 'revealed':
+                active_spells.append(spell)
+        
+        return active_spells
+    
+    def _get_active_spells_for_enemies(self, player, gs):
+        """Get all active enemy spells on current clash"""
+        enemy_spells = []
+        
+        for enemy in gs.players:
+            if enemy == player:
+                continue
+            enemy_spells.extend(self._get_active_spells(enemy, gs))
+        
+        return enemy_spells
+    
+    def _get_advancing_enemy_spells(self, gs):
+        """Get enemy spells that will advance to next clash"""
+        if gs.clash_num >= 4:
+            return []  # No advancing on clash 4
+        
+        advancing = []
+        for player in gs.players:
+            for spell in player.board[gs.clash_num - 1]:
+                if spell.status == 'revealed' and spell.card.advance_effects:
+                    advancing.append(spell)
+        
+        return advancing
+    
+    def _calculate_active_spell_synergy(self, new_card, active_card, gs):
+        """Calculate synergy between a new card and an active spell"""
+        synergy = 0
+        
+        # Type-based synergies
+        if 'boost' in active_card.types:
+            if 'attack' in new_card.types:
+                synergy += 25  # Boost enhances attacks
+            elif 'remedy' in new_card.types:
+                synergy += 15  # Boost can enhance healing
+        
+        if 'response' in active_card.types:
+            if 'attack' in new_card.types:
+                synergy += 20  # Response protects attackers
+        
+        # Check for specific condition synergies
+        new_effects = str(new_card.resolve_effects) + str(new_card.advance_effects)
+        
+        # If new card requires active spell types
+        if 'if_caster_has_active_spell_of_type' in new_effects:
+            for spell_type in active_card.types:
+                if spell_type in new_effects:
+                    synergy += 40  # Strong synergy
+        
+        # If active card is advancing, value cards that benefit next turn
+        if active_card.advance_effects and gs.clash_num < 4:
+            if 'if_spell_advanced' in new_effects:
+                synergy += 30  # Will benefit from the advancing spell
+        
+        # Element synergy
+        if new_card.element == active_card.element:
+            synergy += 10
+        
+        return synergy
+    
+    def _evaluate_spell_interaction(self, our_card, enemy_card, player, gs):
+        """Evaluate how our card interacts with an enemy's active spell"""
+        interaction = 0
+        
+        # Check if enemy spell threatens us
+        if 'attack' in enemy_card.types:
+            enemy_damage = self._estimate_card_damage_in_context(enemy_card, None, gs)
+            
+            # Our responses to enemy attacks
+            if 'cancel' in str(our_card.resolve_effects):
+                interaction += enemy_damage * 15  # Can cancel the damage
+            elif 'remedy' in our_card.types:
+                healing = self._estimate_card_healing(our_card)
+                interaction += min(healing, enemy_damage) * 10  # Mitigate damage
+            elif 'attack' in our_card.types:
+                # Race consideration
+                our_damage = self._estimate_card_damage_in_context(our_card, player, gs)
+                if our_damage > enemy_damage:
+                    interaction += 10  # We're winning the race
+                else:
+                    interaction -= 5  # We're losing the race
+        
+        # If enemy has boost, our attacks are less valuable
+        if 'boost' in enemy_card.types and 'attack' in our_card.types:
+            interaction -= 15  # They're set up better
+        
+        # If enemy has response, our attacks might trigger it
+        if 'response' in enemy_card.types and 'attack' in our_card.types:
+            # This is already handled by response threat evaluation
+            # Just add a small penalty for redundancy
+            interaction -= 5
+        
+        # If enemy spell is advancing, consider future threat
+        if enemy_card.advance_effects:
+            # Advancing enemy spells are more threatening
+            if 'attack' in enemy_card.types:
+                interaction -= 10  # Growing threat
+            elif 'boost' in enemy_card.types:
+                interaction -= 5  # Enemy getting stronger
+        
+        return interaction
     
     def choose_cards_to_keep(self, player, gs):
         """Expert end-of-round hand management"""

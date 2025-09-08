@@ -104,6 +104,10 @@ ai/
     - **Complex health calculations**: Factors in damage races and healing efficiency
     - **Synergy scoring**: Calculates detailed synergies between all card pairs
     - **Conjury control**: Sophisticated conjury timing and protection strategies
+    - **Context-aware damage estimation**: Evaluates damage_per_spell and weaken_per_spell cards based on actual board state
+    - **Same-clash combo evaluation**: Identifies synergies between cards playable in the same clash
+    - **Damage efficiency scoring**: Rewards cards that scale well with board state vs static damage
+    - **Weaken effect valuation**: Properly values weakening effects based on enemy health and game length
     - Overthinks decisions, leading to interesting but not always optimal play
 
 #### Integration:
