@@ -2399,21 +2399,31 @@ class ActionHandler:
                 if choice is not None: return [options[choice]]
                 else: return []
             else:
-                # AI logic - for cancel, prefer enemy spells
+                # AI logic - for cancel, use AI strategy's cancellation logic
                 if action_data.get('type') == 'cancel':
-                    enemy_spells = [s for s in all_active_spells if s.owner != caster]
-                    if enemy_spells:
-                        # Prefer high priority enemy spells
-                        priority_spells = sorted(enemy_spells, key=lambda s: int(s.card.priority) if str(s.card.priority).isdigit() else 99)
-                        return [priority_spells[0]]
-                    # If no enemy spells, might cancel own low-value spell
-                    own_spells = [s for s in all_active_spells if s.owner == caster]
-                    if own_spells:
-                        # Only cancel own spell if it's low priority/value
-                        low_priority = [s for s in own_spells if (int(s.card.priority) if str(s.card.priority).isdigit() else 99) >= 4]
-                        if low_priority:
-                            return [low_priority[0]]
-                    return []
+                    # Get AI strategy for this player
+                    ai_index = gs.players.index(caster)
+                    ai_strategy = self.engine.ai_strategies.get(ai_index)
+                    
+                    if ai_strategy and hasattr(ai_strategy, 'choose_cancellation_target'):
+                        # Use AI's strategic cancellation logic
+                        target = ai_strategy.choose_cancellation_target(all_active_spells, caster, gs, current_card)
+                        return [target] if target else []
+                    else:
+                        # Fallback to old logic if no AI strategy
+                        enemy_spells = [s for s in all_active_spells if s.owner != caster]
+                        if enemy_spells:
+                            # Prefer high priority enemy spells
+                            priority_spells = sorted(enemy_spells, key=lambda s: int(s.card.priority) if str(s.card.priority).isdigit() else 99)
+                            return [priority_spells[0]]
+                        # If no enemy spells, might cancel own low-value spell
+                        own_spells = [s for s in all_active_spells if s.owner == caster]
+                        if own_spells:
+                            # Only cancel own spell if it's low priority/value
+                            low_priority = [s for s in own_spells if (int(s.card.priority) if str(s.card.priority).isdigit() else 99) >= 4]
+                            if low_priority:
+                                return [low_priority[0]]
+                        return []
                 else:
                     # For non-cancel actions, pick any spell
                     return [random.choice(all_active_spells)]
@@ -2508,9 +2518,18 @@ class ActionHandler:
                             if choice is not None:
                                 targets_to_cancel.append(options[choice])
                     else:
-                        # AI picks the highest priority spell
-                        priority_spells = sorted(enemy_spells, key=lambda s: int(s.card.priority) if str(s.card.priority).isdigit() else 99)
-                        targets_to_cancel.append(priority_spells[0])
+                        # AI uses strategic cancellation logic
+                        ai_index = gs.players.index(caster)
+                        ai_strategy = self.engine.ai_strategies.get(ai_index)
+                        
+                        if ai_strategy and hasattr(ai_strategy, 'choose_cancellation_target'):
+                            target = ai_strategy.choose_cancellation_target(enemy_spells, caster, gs, current_card)
+                            if target:
+                                targets_to_cancel.append(target)
+                        else:
+                            # Fallback to priority-based selection
+                            priority_spells = sorted(enemy_spells, key=lambda s: int(s.card.priority) if str(s.card.priority).isdigit() else 99)
+                            targets_to_cancel.append(priority_spells[0])
             
             return targets_to_cancel
         
@@ -2632,7 +2651,12 @@ class GameEngine:
                 
         return False
     
-    def _pause(self, message=""): prompt = f"{message} {Colors.GREY}[Press Enter to continue...]{Colors.ENDC}"; self.display.draw(self.gs, prompt=prompt); input()
+    def _pause(self, message=""): 
+        prompt = f"{message} {Colors.GREY}[Press Enter to continue...]{Colors.ENDC}"
+        # Always show from human player's perspective
+        human_index = next((i for i, p in enumerate(self.gs.players) if p.is_human), 0)
+        self.display.draw(self.gs, pov_player_index=human_index, prompt=prompt)
+        input()
     def _prompt_for_choice(self, player, options, prompt_message, view_key='name'):
         while True:
             self.display.draw(self.gs, self.gs.players.index(player), prompt=prompt_message)
@@ -2697,8 +2721,12 @@ class GameEngine:
         self._check_and_rebuild_deck()
         self.gs.action_log.clear(); self.gs.action_log.append("--- Game Setup ---")
         self.gs.action_log.append(f"The starting Ringleader is: {self.gs.players[self.gs.ringleader_index].name}")
+        # Draft in turn order starting from ringleader
+        turn_order_indices = [(self.gs.ringleader_index + i) % len(self.gs.players) for i in range(len(self.gs.players))]
+        
         for _ in range(2):
-            for p in self.gs.players:
+            for player_index in turn_order_indices:
+                p = self.gs.players[player_index]
                 self._check_and_rebuild_deck()
                 if p.is_human:
                     options = {idx+1: s for idx, s in enumerate(self.gs.main_deck) if s}; choice = self._prompt_for_choice(p, options, f"{p.name}, choose a spell set to draft:")

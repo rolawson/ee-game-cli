@@ -299,3 +299,98 @@ class BaseAI(ABC):
     def get_opponent_elements(self, player_name):
         """Get list of elements an opponent has drafted"""
         return self.opponent_drafted_elements.get(player_name, [])
+    
+    def choose_cancellation_target(self, potential_targets, caster, gs, current_card):
+        """Choose which spell to cancel from a list of potential targets
+        
+        Args:
+            potential_targets: List of PlayedCard objects that can be cancelled
+            caster: The player doing the cancelling
+            gs: Current game state
+            current_card: The card with the cancel effect
+            
+        Returns:
+            The chosen target to cancel, or None if no good target
+        """
+        if not potential_targets:
+            return None
+            
+        # Default implementation - pick highest priority enemy spell
+        # Subclasses should override with smarter logic
+        enemy_targets = [t for t in potential_targets if t.owner != caster]
+        if enemy_targets:
+            # Sort by priority (lower number = higher priority)
+            priority_sorted = sorted(enemy_targets, 
+                                   key=lambda s: int(s.card.priority) if str(s.card.priority).isdigit() else 99)
+            return priority_sorted[0]
+        return potential_targets[0] if potential_targets else None
+    
+    def _evaluate_spell_threat(self, spell, caster, gs):
+        """Evaluate the threat level of a spell
+        
+        Returns a numeric threat score (higher = more threatening)
+        """
+        threat_score = 0
+        card = spell.card
+        owner = spell.owner
+        
+        # Priority gives base threat (lower priority = higher threat)
+        priority = int(card.priority) if str(card.priority).isdigit() else 99
+        threat_score += (10 - priority) * 2
+        
+        # Conjuries are more threatening (ongoing effects)
+        if card.is_conjury:
+            threat_score += 15
+        
+        # Calculate damage potential
+        damage = self._calculate_spell_damage(card, owner, gs)
+        threat_score += damage * 10
+        
+        # Spell types affect threat level
+        if 'attack' in card.types:
+            threat_score += 10
+        if 'remedy' in card.types and owner.health < owner.max_health * 0.5:
+            threat_score += 15  # High threat if they're low health
+        if 'boost' in card.types:
+            threat_score += 5
+        
+        # Check for weaken effects
+        for effect in card.resolve_effects:
+            action = effect.get('action', {})
+            if isinstance(action, dict) and action.get('type') == 'weaken':
+                value = action.get('parameters', {}).get('value', 0)
+                threat_score += value * 15  # Weaken is very threatening
+            elif isinstance(action, dict) and action.get('type') == 'bolster':
+                value = action.get('parameters', {}).get('value', 0)
+                threat_score += value * 8
+        
+        return threat_score
+    
+    def _calculate_spell_damage(self, card, owner, gs):
+        """Calculate the potential damage from a spell"""
+        damage = 0
+        
+        # Check resolve effects for damage
+        for effect in card.resolve_effects:
+            action = effect.get('action', {})
+            if isinstance(action, dict):
+                if action.get('type') == 'damage':
+                    damage += action.get('parameters', {}).get('value', 0)
+                elif action.get('type') == 'damage_multi_target':
+                    damage += action.get('parameters', {}).get('value', 0)
+                elif action.get('type') == 'player_choice':
+                    # Check choices for damage options
+                    for option in action.get('options', []):
+                        if option.get('type') == 'damage':
+                            option_damage = option.get('parameters', {}).get('value', 0)
+                            damage = max(damage, option_damage)
+                elif action.get('type') == 'damage_per_spell':
+                    # Estimate based on active spells
+                    active_spells = [s for s in owner.board[gs.clash_num-1] if s.status == 'revealed']
+                    spell_type = action.get('parameters', {}).get('spell_type', 'any')
+                    if spell_type == 'any':
+                        damage += len(active_spells)
+                    else:
+                        damage += len([s for s in active_spells if spell_type in s.card.types])
+        
+        return damage

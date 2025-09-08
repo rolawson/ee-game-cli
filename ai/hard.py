@@ -1775,3 +1775,68 @@ class HardAI(BaseAI):
         # TODO: Should use real win rate data instead of hardcoded relationships
         # For now, return False to avoid using incorrect assumptions
         return False
+    
+    def choose_cancellation_target(self, potential_targets, caster, gs, current_card):
+        """Hard AI - strategic threat assessment considering multiple factors"""
+        if not potential_targets:
+            return None
+        
+        # Separate enemy and friendly targets
+        enemy_targets = [t for t in potential_targets if t.owner != caster]
+        
+        if enemy_targets:
+            # Use full threat evaluation system
+            threat_scores = {}
+            for target in enemy_targets:
+                # Use the base class threat evaluation
+                score = self._evaluate_spell_threat(target, caster, gs)
+                
+                # Additional Hard AI considerations
+                
+                # Game state context
+                if target.owner.health <= 2:
+                    # Enemy is low health, their remedy spells are more threatening
+                    if 'remedy' in target.card.types:
+                        score += 20
+                
+                # Check if this spell enables combos
+                other_enemy_spells = [s for s in target.owner.board[gs.clash_num-1] 
+                                     if s.status == 'revealed' and s != target]
+                for other_spell in other_enemy_spells:
+                    # Check if other spells have conditions this spell satisfies
+                    for effect in other_spell.card.resolve_effects:
+                        condition = effect.get('condition', {})
+                        if condition.get('type') == 'if_caster_has_active_spell_of_type':
+                            params = condition.get('parameters', {})
+                            spell_type = params.get('spell_type', 'any')
+                            if spell_type == 'any' or spell_type in target.card.types:
+                                score += 15  # This spell enables another
+                
+                # Element synergy consideration
+                if hasattr(self, '_is_bad_element_matchup'):
+                    if self._is_bad_element_matchup(caster.element if hasattr(caster, 'element') else 'Unknown', 
+                                                   [target.card.element]):
+                        score += 10  # Extra reason to cancel bad matchup spells
+                
+                threat_scores[target] = score
+            
+            # Log threat evaluation
+            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                sorted_threats = sorted(threat_scores.items(), key=lambda x: x[1], reverse=True)[:3]
+                threat_info = ", ".join([f"{t.card.name}:{s}" for t, s in sorted_threats])
+                self.engine.ai_decision_logs.append(
+                    f"\\033[90m[AI-HARD] Threat scores: {threat_info}\\033[0m"
+                )
+            
+            # Pick the highest threat
+            best_target = max(threat_scores.items(), key=lambda x: x[1])[0]
+            
+            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                self.engine.ai_decision_logs.append(
+                    f"\\033[90m[AI-HARD] {caster.name} chose to cancel {best_target.card.name} (threat: {threat_scores[best_target]})\\033[0m"
+                )
+            
+            return best_target
+        
+        # No enemy targets, use default logic
+        return super().choose_cancellation_target(potential_targets, caster, gs, current_card)

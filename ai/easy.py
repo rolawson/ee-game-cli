@@ -96,3 +96,19 @@ class EasyAI(BaseAI):
         # Pick highest scoring (but still quite random)
         best_idx = max(set_scores.items(), key=lambda x: x[1])[0]
         return available_sets[best_idx]
+    
+    def choose_cancellation_target(self, potential_targets, caster, gs, current_card):
+        """Easy AI - just pick a random target"""
+        if not potential_targets:
+            return None
+        
+        # Randomly pick any target
+        target = random.choice(potential_targets)
+        
+        # Debug logging
+        if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+            self.engine.ai_decision_logs.append(
+                f"\033[90m[AI-EASY] {caster.name} randomly chose to cancel: {target.card.name}\033[0m"
+            )
+        
+        return target

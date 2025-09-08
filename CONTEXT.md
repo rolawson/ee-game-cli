@@ -79,12 +79,14 @@ ai/
 -   **`EasyAI`** (`ai/easy.py`): Random decision making for beginners
     - Picks randomly from valid cards
     - No strategic consideration
+    - Cancels targets randomly when given the choice
     
 -   **`MediumAI`** (`ai/medium.py`): Basic heuristics-based AI
     - Prioritizes healing when health ≤ 2
     - Attacks when enemy health ≤ 2
     - Plays aggressively when enemy hand is empty
     - Considers clash timing restrictions
+    - Cancels high-damage threats and conjuries
     
 -   **`HardAI`** (`ai/hard.py`): Advanced strategic AI with focused tactical play
     - **Health awareness**: Prioritizes survival when health < 40%, aggression when healthy
@@ -94,6 +96,7 @@ ai/
     - **Element synergies**: Rewards playing same element for combo potential
     - **Strategic hand management**: Clears hand when appropriate to enable draws
     - **Card counting**: Tracks played cards to predict remaining threats
+    - **Smart cancellation**: Evaluates threats based on damage, combos, and game state
     - Includes controlled randomness (5%) to prevent predictability
     
 -   **`ExpertAI`** (`ai/expert.py`): Complex multi-turn planning AI
@@ -108,6 +111,7 @@ ai/
     - **Same-clash combo evaluation**: Identifies synergies between cards playable in the same clash
     - **Damage efficiency scoring**: Rewards cards that scale well with board state vs static damage
     - **Weaken effect valuation**: Properly values weakening effects based on enemy health and game length
+    - **Comprehensive cancellation**: Analyzes immediate damage, combo enablement, future threats, defensive value, and tempo impact
     - Overthinks decisions, leading to interesting but not always optimal play
 
 #### Integration:

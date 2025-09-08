@@ -1974,11 +1974,21 @@ class ExpertAI(BaseAI):
         return interaction
     
     def choose_cards_to_keep(self, player, gs):
-        """Expert end-of-round hand management"""
+        """Expert end-of-round hand management with strategic drafting"""
         if not player.hand:
             return []
         
-        # Build comprehensive retention strategy
+        # First, evaluate if we should draft a new set
+        should_draft = self._should_draft_new_set(player, gs)
+        
+        if should_draft:
+            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                self.engine.ai_decision_logs.append(
+                    f"\033[90m[AI-EXPERT] Strategic decision: Drafting new set!\033[0m"
+                )
+            return []  # Discard everything to draft
+        
+        # Otherwise, evaluate cards to keep
         retention_scores = {}
         
         for card in player.hand:
@@ -2010,6 +2020,141 @@ class ExpertAI(BaseAI):
             )
         
         return cards_to_keep
+    
+    def _should_draft_new_set(self, player, gs):
+        """Evaluate whether to draft a new set strategically"""
+        # Don't draft if no sets available
+        if not hasattr(gs, 'main_deck') or not gs.main_deck:
+            return False
+        
+        # Calculate various factors
+        hand_size = len(player.hand)
+        health_ratio = player.health / player.max_health
+        rounds_remaining = 10 - gs.round_num  # Estimate
+        
+        draft_score = 0
+        
+        # 1. Resource starvation (40% weight)
+        if hand_size <= 2:
+            draft_score += 40
+        elif hand_size == 3:
+            draft_score += 20
+        
+        # 2. Hand quality assessment (30% weight)
+        hand_quality = self._evaluate_hand_quality(player.hand, player, gs)
+        if hand_quality < 40:  # Poor hand
+            draft_score += 30
+        elif hand_quality < 60:  # Mediocre hand
+            draft_score += 15
+        
+        # 3. Health-card mismatch (20% weight)
+        mismatch_score = self._evaluate_health_card_mismatch(player)
+        draft_score += mismatch_score * 0.2
+        
+        # 4. Late game desperation (10% weight)
+        # Late game = someone has 1 trunk left
+        min_trunks = min(p.trunks for p in gs.players)
+        if min_trunks <= 1 and health_ratio < 0.5:
+            draft_score += 10
+        elif min_trunks <= 1 and player.trunks <= 1:
+            # We're on our last trunk - be more willing to pivot
+            draft_score += 15
+        
+        # 5. Enemy element counters (bonus)
+        if self._current_elements_are_countered(player, gs):
+            draft_score += 15
+        
+        # Log decision factors
+        if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+            min_trunks = min(p.trunks for p in gs.players)
+            self.engine.ai_decision_logs.append(
+                f"\033[90m[AI-EXPERT] Draft evaluation - Score: {draft_score}, "
+                f"Hand: {hand_size}, Quality: {hand_quality:.1f}, Health: {health_ratio:.1%}, "
+                f"Trunks: {player.trunks} (min: {min_trunks})\033[0m"
+            )
+        
+        # Draft if score exceeds threshold
+        return draft_score >= 50
+    
+    def _evaluate_hand_quality(self, hand, player, gs):
+        """Evaluate overall quality of current hand"""
+        if not hand:
+            return 0
+        
+        total_score = 0
+        for card in hand:
+            # Use existing card quality evaluation
+            card_score = self._evaluate_card_quality(card)
+            
+            # Adjust for current game state
+            if player.health <= 3 and 'remedy' in card.types:
+                card_score *= 1.5
+            elif player.health >= player.max_health * 0.8 and 'attack' in card.types:
+                card_score *= 1.2
+            
+            total_score += card_score
+        
+        # Average quality, normalized to 0-100
+        return min(100, (total_score / len(hand)) * 0.8)
+    
+    def _evaluate_health_card_mismatch(self, player):
+        """Check if hand composition matches health situation"""
+        mismatch = 0
+        
+        attack_count = sum(1 for c in player.hand if 'attack' in c.types)
+        remedy_count = sum(1 for c in player.hand if 'remedy' in c.types)
+        
+        health_ratio = player.health / player.max_health
+        
+        # Low health but few remedies
+        if health_ratio < 0.4 and remedy_count == 0:
+            mismatch += 80
+        elif health_ratio < 0.6 and remedy_count <= 1:
+            mismatch += 40
+        
+        # High health but no attacks
+        if health_ratio > 0.8 and attack_count == 0:
+            mismatch += 60
+        
+        # Mid game with no flexibility
+        if len(set(c.types[0] if c.types else 'none' for c in player.hand)) == 1:
+            mismatch += 30  # All cards same type
+        
+        return mismatch
+    
+    def _current_elements_are_countered(self, player, gs):
+        """Check if current elements are heavily countered by opponents"""
+        # Get our current elements
+        our_elements = set()
+        for card in player.hand:
+            our_elements.add(card.element)
+        
+        if not our_elements:
+            return False
+        
+        # Check if opponents have drafted elements that counter ours
+        counter_score = 0
+        
+        for enemy in gs.players:
+            if enemy == player:
+                continue
+            
+            enemy_elements = self.get_opponent_elements(enemy.name)
+            for our_elem in our_elements:
+                for enemy_elem in enemy_elements:
+                    # Check if enemy element counters ours
+                    if self._element_counters(enemy_elem, our_elem):
+                        counter_score += 1
+        
+        return counter_score >= 2  # Heavily countered
+    
+    def _element_counters(self, elem1, elem2):
+        """Check if elem1 counters elem2 based on response threats"""
+        # High response count means it counters attack-heavy elements
+        elem1_responses = self._count_element_response_spells(elem1)
+        elem2_archetype = self._get_element_archetype(elem2)
+        
+        return elem1_responses >= 2 and elem2_archetype == 'aggressive'
     
     def _evaluate_card_quality(self, card):
         """Base quality assessment of a card"""
@@ -2078,3 +2223,127 @@ class ExpertAI(BaseAI):
         
         # Never keep more than 3 (need room for new cards)
         return min(base_keep, len(player.hand), 3)
+    
+    def choose_cancellation_target(self, potential_targets, caster, gs, current_card):
+        """Expert AI - comprehensive threat analysis with predictive modeling"""
+        if not potential_targets:
+            return None
+        
+        # Separate enemy and friendly targets
+        enemy_targets = [t for t in potential_targets if t.owner != caster]
+        
+        if enemy_targets:
+            # Comprehensive threat evaluation
+            threat_analysis = {}
+            
+            for target in enemy_targets:
+                # Base threat score
+                base_score = self._evaluate_spell_threat(target, caster, gs)
+                
+                # Expert-level analysis
+                analysis = {
+                    'base_threat': base_score,
+                    'immediate_damage': self._calculate_spell_damage(target.card, target.owner, gs),
+                    'is_conjury': target.card.is_conjury,
+                    'enables_combos': 0,
+                    'future_threat': 0,
+                    'defensive_value': 0,
+                    'tempo_impact': 0
+                }
+                
+                # 1. Combo enablement analysis
+                other_enemy_spells = [s for s in target.owner.board[gs.clash_num-1] 
+                                     if s.status == 'revealed' and s != target]
+                for other_spell in other_enemy_spells:
+                    for effect in other_spell.card.resolve_effects:
+                        condition = effect.get('condition', {})
+                        if self._spell_satisfies_condition(target.card, condition):
+                            analysis['enables_combos'] += 20
+                
+                # 2. Future threat (advance effects, scaling damage)
+                if target.card.advance_effects:
+                    analysis['future_threat'] += len(target.card.advance_effects) * 15
+                
+                # Check for damage that scales or repeats
+                for effect in target.card.resolve_effects:
+                    action = effect.get('action', {})
+                    if isinstance(action, dict):
+                        if action.get('type') in ['damage_per_spell', 'damage_per_enemy_spell_type']:
+                            analysis['future_threat'] += 25
+                
+                # 3. Defensive value for opponent
+                if target.owner.health <= 3:
+                    if 'remedy' in target.card.types:
+                        analysis['defensive_value'] = 30 + (3 - target.owner.health) * 10
+                    if 'bolster' in str(target.card.resolve_effects):
+                        analysis['defensive_value'] += 20
+                
+                # 4. Tempo impact
+                priority = int(target.card.priority) if str(target.card.priority).isdigit() else 99
+                if priority <= 2:
+                    analysis['tempo_impact'] = 25  # Fast spells have high tempo impact
+                
+                # Calculate total threat
+                total_threat = (
+                    analysis['base_threat'] +
+                    analysis['enables_combos'] +
+                    analysis['future_threat'] +
+                    analysis['defensive_value'] +
+                    analysis['tempo_impact']
+                )
+                
+                # Context adjustments
+                if gs.round_num >= 3 and target.owner.trunks == 1:
+                    # Late game, low trunks - defensive spells are critical
+                    if 'remedy' in target.card.types:
+                        total_threat *= 1.5
+                
+                # Known combos from opponent history
+                if hasattr(self, 'opponent_history'):
+                    history = self.opponent_history.get(target.owner.name, {})
+                    spell_history = history.get('spells_played', [])
+                    # Check if this spell is part of known combo patterns
+                    for past_spell in spell_history[-5:]:
+                        if past_spell.get('element') == target.card.element:
+                            total_threat += 10  # Element synergy pattern
+                
+                threat_analysis[target] = {
+                    'total': total_threat,
+                    'breakdown': analysis
+                }
+            
+            # Make decision
+            best_target = max(threat_analysis.items(), key=lambda x: x[1]['total'])[0]
+            best_analysis = threat_analysis[best_target]
+            
+            # Log detailed analysis
+            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                # Summary of top threats
+                sorted_threats = sorted(threat_analysis.items(), key=lambda x: x[1]['total'], reverse=True)[:3]
+                for spell, data in sorted_threats:
+                    self.engine.ai_decision_logs.append(
+                        f"\\033[90m[AI-EXPERT] {spell.card.name}: Total={data['total']:.0f} "
+                        f"(Dmg={data['breakdown']['immediate_damage']}, "
+                        f"Combo={data['breakdown']['enables_combos']}, "
+                        f"Future={data['breakdown']['future_threat']})\\033[0m"
+                    )
+                
+                self.engine.ai_decision_logs.append(
+                    f"\\033[90m[AI-EXPERT] {caster.name} chose to cancel {best_target.card.name}\\033[0m"
+                )
+            
+            return best_target
+        
+        # No enemy targets, use default logic
+        return super().choose_cancellation_target(potential_targets, caster, gs, current_card)
+    
+    def _spell_satisfies_condition(self, spell_card, condition):
+        """Check if a spell would satisfy a given condition"""
+        cond_type = condition.get('type')
+        if cond_type == 'if_caster_has_active_spell_of_type':
+            params = condition.get('parameters', {})
+            spell_type = params.get('spell_type', 'any')
+            if spell_type == 'any':
+                return True
+            return spell_type in spell_card.types
+        return False

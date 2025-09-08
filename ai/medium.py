@@ -384,3 +384,44 @@ class MediumAI(BaseAI):
             )
         
         return chosen_set
+    
+    def choose_cancellation_target(self, potential_targets, caster, gs, current_card):
+        """Medium AI - basic threat assessment focusing on damage"""
+        if not potential_targets:
+            return None
+        
+        # Separate enemy and friendly targets
+        enemy_targets = [t for t in potential_targets if t.owner != caster]
+        
+        if enemy_targets:
+            # Evaluate threats based on damage potential
+            threat_scores = {}
+            for target in enemy_targets:
+                score = 0
+                
+                # Calculate damage potential
+                damage = self._calculate_spell_damage(target.card, target.owner, gs)
+                score += damage * 20  # Damage is primary concern for Medium AI
+                
+                # Conjuries get a small bonus
+                if target.card.is_conjury:
+                    score += 10
+                
+                # Priority bonus (lower priority = higher threat)
+                priority = int(target.card.priority) if str(target.card.priority).isdigit() else 99
+                score += (10 - priority)
+                
+                threat_scores[target] = score
+            
+            # Pick the highest threat
+            best_target = max(threat_scores.items(), key=lambda x: x[1])[0]
+            
+            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                self.engine.ai_decision_logs.append(
+                    f"\\033[90m[AI-MEDIUM] {caster.name} chose to cancel {best_target.card.name} (threat score: {threat_scores[best_target]})\\033[0m"
+                )
+            
+            return best_target
+        
+        # No enemy targets, use default logic
+        return super().choose_cancellation_target(potential_targets, caster, gs, current_card)
