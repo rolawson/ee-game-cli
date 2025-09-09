@@ -131,6 +131,7 @@ The analytics system tracks:
 - **medium**: Basic strategy and situational awareness
 - **hard**: Advanced strategy with solid fundamentals and tactical play
 - **expert**: Complex multi-turn planning, combo recognition, and overthinking everything
+
 - **claude**: LLM-powered AI that uses natural language reasoning (requires ANTHROPIC_API_KEY environment variable)
 
 ## Game Rules

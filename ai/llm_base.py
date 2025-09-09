@@ -6,8 +6,23 @@ from abc import abstractmethod
 from typing import Dict, List, Optional, Any, Tuple
 from concurrent.futures import ThreadPoolExecutor
 import time
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from .base import BaseAI
+
+# Import Colors from main game
+try:
+    from elephants_prototype import Colors
+except ImportError:
+    # Fallback if Colors not available
+    class Colors:
+        HEADER = '\033[95m'
+        GREY = '\033[90m'
+        ENDC = '\033[0m'
+        WARNING = '\033[93m'
+        FAIL = '\033[91m'
 
 
 class LLMBaseAI(BaseAI):
@@ -21,11 +36,19 @@ class LLMBaseAI(BaseAI):
         self.fallback_ai = None  # Will be set to a traditional AI for fallback
         self.timeout_seconds = 10  # API timeout
         self.last_communication = ""  # Store last message for display
+        self.round_history = []  # Track plays for end-of-round analysis
         
     def _select_card(self, player, gs, valid_indices):
         """Select a card using LLM reasoning"""
         # Build game state context
         context = self._build_game_context(player, gs, valid_indices)
+        
+        # Show loading indicator (without blocking input since AI is processing)
+        if self.engine and hasattr(self.engine, 'display'):
+            # Find POV player index
+            pov_index = next((i for i, p in enumerate(gs.players) if p.is_human), 0)
+            self.engine.display.draw(gs, pov_player_index=pov_index, 
+                                   prompt=f"{Colors.GREY}{player.name} is contemplating their next move...{Colors.ENDC}")
         
         # Get LLM decision
         try:
@@ -39,9 +62,7 @@ class LLMBaseAI(BaseAI):
                 reasoning = decision.get("reasoning", "")
                 message = decision.get("message", "")
                 
-                # Store communication for display
-                if message and self.communication_enabled:
-                    self._store_communication(message)
+                # We don't need per-move messages anymore since we do end-of-round analysis
                 
                 # Log reasoning
                 if reasoning and self.engine and hasattr(self.engine, 'ai_decision_logs'):
@@ -51,6 +72,13 @@ class LLMBaseAI(BaseAI):
                 
                 # Validate choice
                 if chosen_index in valid_indices:
+                    # Track the play for end-of-round analysis
+                    self.round_history.append({
+                        'round': gs.round_num,
+                        'clash': gs.clash_num,
+                        'card': player.hand[chosen_index].name,
+                        'reasoning': reasoning
+                    })
                     return chosen_index
         
         except Exception as e:
@@ -88,8 +116,12 @@ class LLMBaseAI(BaseAI):
         except Exception:
             pass
         
-        # Fallback
-        return super().make_choice(valid_options, caster, gs, current_card)
+        # Fallback to traditional AI or first option
+        if self.fallback_ai and hasattr(self.fallback_ai, 'make_choice'):
+            return self.fallback_ai.make_choice(valid_options, caster, gs, current_card)
+        
+        # Ultimate fallback - choose first option
+        return valid_options[0] if valid_options else None
     
     def choose_draft_set(self, player, gs, available_sets):
         """Choose a spell set during drafting using LLM reasoning"""
@@ -117,8 +149,13 @@ class LLMBaseAI(BaseAI):
         except Exception:
             pass
         
-        # Fallback
-        return super().choose_draft_set(player, gs, available_sets)
+        # Fallback to traditional AI or random choice
+        if self.fallback_ai and hasattr(self.fallback_ai, 'choose_draft_set'):
+            return self.fallback_ai.choose_draft_set(player, gs, available_sets)
+        
+        # Ultimate fallback - choose randomly
+        import random
+        return random.choice(available_sets) if available_sets else None
     
     def _build_game_context(self, player, gs, valid_indices) -> Dict[str, Any]:
         """Build a structured context for the LLM"""
@@ -294,11 +331,15 @@ class LLMBaseAI(BaseAI):
         """Store AI communication for display"""
         self.last_communication = message
         
-        # Add to engine logs if available
-        if self.engine and hasattr(self.engine, 'ai_decision_logs'):
-            self.engine.ai_decision_logs.append(
-                f"\\033[94m[Claude]: {message}\\033[0m"
+        # Add to game action log so it's always visible
+        if self.engine and hasattr(self.engine, 'gs') and hasattr(self.engine.gs, 'action_log'):
+            self.engine.gs.action_log.append(
+                f"{Colors.HEADER}[Claude]: {message}{Colors.ENDC}"
             )
+            
+            # Also show as a pause message so it's immediately visible
+            if hasattr(self.engine, '_pause'):
+                self.engine._pause(f"{Colors.HEADER}[Claude speaks]: {message}{Colors.ENDC}")
     
     def _fallback_decision(self, player, gs, valid_indices):
         """Fallback to a traditional AI when LLM fails"""
@@ -323,3 +364,41 @@ class LLMBaseAI(BaseAI):
     async def _get_llm_decision(self, context: Dict[str, Any], decision_type: str) -> Optional[Dict[str, Any]]:
         """Get a decision from the LLM - must be implemented by subclasses"""
         raise NotImplementedError
+    
+    def provide_round_analysis(self, gs):
+        """Provide teaching analysis at the end of each round"""
+        # Build context for round analysis
+        context = {
+            'round': gs.round_num,
+            'round_plays': [h for h in self.round_history if h['round'] == gs.round_num],
+            'player_health': [(p.name, p.health, p.max_health) for p in gs.players],
+            'player_trunks': [(p.name, p.trunks) for p in gs.players]
+        }
+        
+        # Debug log
+        if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+            self.engine.ai_decision_logs.append(
+                f"\033[90m[LLM-AI] Requesting round {gs.round_num} analysis...\033[0m"
+            )
+        
+        try:
+            # Get analysis from LLM
+            future = self.executor.submit(self._get_llm_decision_sync, context, "round_analysis")
+            result = future.result(timeout=self.timeout_seconds)
+            
+            if result and isinstance(result, dict):
+                message = result.get("analysis", "")
+                if message:
+                    # Display the analysis
+                    if self.engine and hasattr(self.engine, '_pause'):
+                        self.engine._pause(f"\n{Colors.HEADER}=== Claude's Round {gs.round_num} Analysis ==={Colors.ENDC}\n{message}")
+                    else:
+                        # Fallback: add to action log
+                        if hasattr(gs, 'action_log'):
+                            gs.action_log.append(f"{Colors.HEADER}[Claude Analysis]: {message}{Colors.ENDC}")
+        except Exception as e:
+            # Log the error
+            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                self.engine.ai_decision_logs.append(
+                    f"\033[90m[LLM-AI] Round analysis error: {str(e)}\033[0m"
+                )

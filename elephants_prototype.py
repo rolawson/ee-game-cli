@@ -3170,6 +3170,14 @@ class GameEngine:
 
     def _run_end_of_round(self) -> None:
         self.gs.action_log.clear(); self.gs.action_log.append(f"--- End of Round {self.gs.round_num} ---")
+        
+        # Claude provides end-of-round analysis BEFORE board is cleared
+        # This allows the AI to reference the current board state and spells played
+        for i, player in enumerate(self.gs.players):
+            ai = self.ai_strategies.get(i)
+            if ai and hasattr(ai, 'provide_round_analysis'):
+                ai.provide_round_analysis(self.gs)
+        
         for p in self.gs.players:
             for clash_list in p.board:
                 for spell in clash_list: p.discard_pile.append(spell.card)
