@@ -204,7 +204,7 @@ class AITournament:
     def _generate_report(self):
         """Generate comprehensive tournament report"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        report_file = f"ai_tournament_report_{timestamp}.txt"
+        report_file = f"ai_tournament_reports/ai_tournament_report_{timestamp}.txt"
         
         ai_types = ['easy', 'medium', 'hard', 'expert']
         
@@ -310,7 +310,7 @@ class AITournament:
         print(f"\nReport saved to: {report_file}")
         
         # Also save raw data as JSON
-        json_file = f"ai_tournament_data_{timestamp}.json"
+        json_file = f"ai_tournament_data/ai_tournament_data_{timestamp}.json"
         json_data = {
             'timestamp': datetime.now().isoformat(),
             'games_per_matchup': self.games_per_matchup,
