@@ -115,6 +115,83 @@ ai/
     - **Mobility pattern recognition**: Identifies and values cards based on movement behaviors without hardcoding
     - Overthinks decisions, leading to interesting but not always optimal play
 
+### LLM-Based AI System
+
+The game now supports AI players powered by Large Language Models (LLMs), starting with Claude Sonnet. These AIs use natural language reasoning to make decisions and can communicate with players.
+
+#### Architecture:
+
+**New AI Classes**:
+- **`LLMBaseAI`** (`ai/llm_base.py`): Base class for all LLM-powered AIs
+  - Inherits from `BaseAI` to maintain compatibility
+  - Provides common LLM interaction patterns
+  - Handles prompt construction and response parsing
+  - Manages persona configuration
+
+- **`ClaudeAI`** (`ai/claude_ai.py`): Claude Sonnet implementation
+  - Uses Anthropic's API for decision-making
+  - Configurable difficulty levels and personas
+  - Can explain reasoning in natural language
+  - Supports player communication (one-way from AI to player)
+
+#### Persona System:
+
+LLM AIs can be configured with different personas that affect their:
+- **Play Style**: Aggressive, defensive, chaotic, methodical
+- **Communication**: Friendly, stoic, theatrical, analytical
+- **Skill Level**: From novice to expert
+- **Personality Traits**: Risk-taking, cautious, show-off, teacher
+
+Example personas:
+- **"The Scholar"**: Analytical, explains moves, medium difficulty
+- **"The Trickster"**: Chaotic play style, makes surprising moves, talks in riddles
+- **"The Mentor"**: Helpful, gives hints, slightly below optimal play
+- **"The Rival"**: Competitive, taunts, expert-level play
+- **"The Novice"**: Learning the game, makes mistakes, asks questions
+
+#### Integration:
+
+**Initialization**:
+```python
+# Using specific persona
+engine = GameEngine(player_names, ai_difficulty='claude:scholar')
+
+# Using default Claude AI
+engine = GameEngine(player_names, ai_difficulty='claude')
+
+# Mixed AI types
+engine = GameEngine(player_names, ai_strategies={
+    0: None,  # Human
+    1: 'expert',  # Traditional expert AI
+    2: 'claude:trickster'  # LLM with trickster persona
+})
+```
+
+**Communication Features**:
+- Pre-game introductions based on persona
+- Commentary during play (can be toggled)
+- Post-game analysis and feedback
+- Contextual reactions to game events
+
+#### Implementation Details:
+
+**Prompt Engineering**:
+- Structured game state representation
+- Clear decision constraints
+- Persona instructions
+- Move history context
+
+**Response Parsing**:
+- Structured JSON responses for moves
+- Natural language for communication
+- Fallback to traditional AI on errors
+
+**Performance**:
+- Asynchronous API calls to prevent blocking
+- Response caching for similar game states
+- Timeout handling with fallback AI
+- Rate limiting compliance
+
 #### Key AI Features:
 
 **Combo Recognition**:
@@ -265,7 +342,10 @@ Elemental Elephants/
 │   ├── base.py             # Abstract base AI class
 │   ├── easy.py             # Random AI
 │   ├── medium.py           # Heuristic-based AI
-│   └── hard.py             # Strategic scoring AI
+│   ├── hard.py             # Strategic scoring AI
+│   ├── expert.py           # Complex planning AI
+│   ├── llm_base.py         # Base class for LLM AIs
+│   └── claude_ai.py        # Claude Sonnet AI
 ├── spells.json             # Card definitions
 ├── element_categories.json # Element categorization and synergies
 ├── HOWTOPLAY.md            # Game rules

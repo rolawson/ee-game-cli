@@ -1,0 +1,325 @@
+"""Base class for LLM-powered AI players"""
+
+import json
+import asyncio
+from abc import abstractmethod
+from typing import Dict, List, Optional, Any, Tuple
+from concurrent.futures import ThreadPoolExecutor
+import time
+
+from .base import BaseAI
+
+
+class LLMBaseAI(BaseAI):
+    """Base class for all LLM-powered AI implementations"""
+    
+    def __init__(self):
+        super().__init__()
+        self.communication_enabled = True
+        self.response_cache = {}  # Cache for similar game states
+        self.executor = ThreadPoolExecutor(max_workers=1)
+        self.fallback_ai = None  # Will be set to a traditional AI for fallback
+        self.timeout_seconds = 10  # API timeout
+        self.last_communication = ""  # Store last message for display
+        
+    def _select_card(self, player, gs, valid_indices):
+        """Select a card using LLM reasoning"""
+        # Build game state context
+        context = self._build_game_context(player, gs, valid_indices)
+        
+        # Get LLM decision
+        try:
+            # Run async operation in thread pool
+            future = self.executor.submit(self._get_llm_decision_sync, context, "select_card")
+            decision = future.result(timeout=self.timeout_seconds)
+            
+            # Parse decision
+            if decision and isinstance(decision, dict):
+                chosen_index = decision.get("card_index")
+                reasoning = decision.get("reasoning", "")
+                message = decision.get("message", "")
+                
+                # Store communication for display
+                if message and self.communication_enabled:
+                    self._store_communication(message)
+                
+                # Log reasoning
+                if reasoning and self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                    self.engine.ai_decision_logs.append(
+                        f"\\033[90m[LLM-AI] Reasoning: {reasoning}\\033[0m"
+                    )
+                
+                # Validate choice
+                if chosen_index in valid_indices:
+                    return chosen_index
+        
+        except Exception as e:
+            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                self.engine.ai_decision_logs.append(
+                    f"\\033[90m[LLM-AI] Error: {str(e)}, falling back\\033[0m"
+                )
+        
+        # Fallback to traditional AI
+        return self._fallback_decision(player, gs, valid_indices)
+    
+    def make_choice(self, valid_options, caster, gs, current_card):
+        """Make a choice using LLM reasoning"""
+        # Build choice context
+        context = self._build_choice_context(valid_options, caster, gs, current_card)
+        
+        try:
+            # Get LLM decision
+            future = self.executor.submit(self._get_llm_decision_sync, context, "make_choice")
+            decision = future.result(timeout=self.timeout_seconds)
+            
+            # Parse decision
+            if decision and isinstance(decision, dict):
+                choice_index = decision.get("choice_index", 0)
+                message = decision.get("message", "")
+                
+                # Store communication
+                if message and self.communication_enabled:
+                    self._store_communication(message)
+                
+                # Validate choice
+                if 0 <= choice_index < len(valid_options):
+                    return valid_options[choice_index]
+        
+        except Exception:
+            pass
+        
+        # Fallback
+        return super().make_choice(valid_options, caster, gs, current_card)
+    
+    def choose_draft_set(self, player, gs, available_sets):
+        """Choose a spell set during drafting using LLM reasoning"""
+        # Build draft context
+        context = self._build_draft_context(player, gs, available_sets)
+        
+        try:
+            # Get LLM decision
+            future = self.executor.submit(self._get_llm_decision_sync, context, "draft")
+            decision = future.result(timeout=self.timeout_seconds)
+            
+            # Parse decision
+            if decision and isinstance(decision, dict):
+                set_index = decision.get("set_index", 0)
+                message = decision.get("message", "")
+                
+                # Store communication
+                if message and self.communication_enabled:
+                    self._store_communication(message)
+                
+                # Validate choice
+                if 0 <= set_index < len(available_sets):
+                    return available_sets[set_index]
+        
+        except Exception:
+            pass
+        
+        # Fallback
+        return super().choose_draft_set(player, gs, available_sets)
+    
+    def _build_game_context(self, player, gs, valid_indices) -> Dict[str, Any]:
+        """Build a structured context for the LLM"""
+        # Get valid cards
+        valid_cards = [player.hand[i] for i in valid_indices]
+        
+        # Build player state
+        player_state = {
+            "name": player.name,
+            "health": player.health,
+            "max_health": player.max_health,
+            "hand_size": len(player.hand),
+            "trunks": player.trunks
+        }
+        
+        # Build enemy states
+        enemies = []
+        for p in gs.players:
+            if p != player:
+                enemies.append({
+                    "name": p.name,
+                    "health": p.health,
+                    "max_health": p.max_health,
+                    "hand_size": len(p.hand),
+                    "trunks": p.trunks
+                })
+        
+        # Build board state
+        board_state = self._summarize_board_state(gs)
+        
+        # Build card options
+        card_options = []
+        for i, idx in enumerate(valid_indices):
+            card = player.hand[idx]
+            card_options.append({
+                "index": idx,
+                "name": card.name,
+                "element": card.element,
+                "types": card.types,
+                "priority": card.priority,
+                "is_conjury": card.is_conjury,
+                "description": self._summarize_card_effects(card)
+            })
+        
+        return {
+            "round": gs.round_num,
+            "clash": gs.clash_num,
+            "player": player_state,
+            "enemies": enemies,
+            "board": board_state,
+            "valid_cards": card_options
+        }
+    
+    def _build_choice_context(self, valid_options, caster, gs, current_card) -> Dict[str, Any]:
+        """Build context for player_choice decisions"""
+        # Summarize options
+        options = []
+        for i, option in enumerate(valid_options):
+            option_summary = self._summarize_option(option)
+            options.append({
+                "index": i,
+                "description": option_summary
+            })
+        
+        return {
+            "card_name": current_card.name,
+            "options": options,
+            "player_health": caster.health,
+            "player_max_health": caster.max_health,
+            "round": gs.round_num,
+            "clash": gs.clash_num
+        }
+    
+    def _build_draft_context(self, player, gs, available_sets) -> Dict[str, Any]:
+        """Build context for drafting decisions"""
+        # Summarize available sets
+        sets = []
+        for i, spell_set in enumerate(available_sets):
+            element = spell_set[0].element
+            cards = []
+            for card in spell_set:
+                cards.append({
+                    "name": card.name,
+                    "types": card.types,
+                    "priority": card.priority,
+                    "is_conjury": card.is_conjury
+                })
+            
+            sets.append({
+                "index": i,
+                "element": element,
+                "cards": cards
+            })
+        
+        return {
+            "available_sets": sets,
+            "round": gs.round_num
+        }
+    
+    def _summarize_board_state(self, gs) -> Dict[str, Any]:
+        """Summarize the current board state"""
+        active_spells = {
+            "player": [],
+            "enemies": []
+        }
+        
+        # Count active spells by type
+        for player in gs.players:
+            spells = []
+            for spell in player.board[gs.clash_num - 1]:
+                if spell.status == 'revealed':
+                    spells.append({
+                        "name": spell.card.name,
+                        "types": spell.card.types,
+                        "element": spell.card.element
+                    })
+            
+            if hasattr(self, 'current_player') and player == self.current_player:
+                active_spells["player"] = spells
+            else:
+                active_spells["enemies"].extend(spells)
+        
+        return active_spells
+    
+    def _summarize_card_effects(self, card) -> str:
+        """Create a brief summary of what a card does"""
+        summary_parts = []
+        
+        # Check resolve effects
+        for effect in card.resolve_effects:
+            action = effect.get('action', {})
+            if isinstance(action, dict):
+                action_type = action.get('type', '')
+                params = action.get('parameters', {})
+                
+                if action_type == 'damage':
+                    summary_parts.append(f"Deal {params.get('value', 0)} damage")
+                elif action_type == 'heal':
+                    summary_parts.append(f"Heal {params.get('value', 0)}")
+                elif action_type == 'weaken':
+                    summary_parts.append(f"Weaken {params.get('value', 0)}")
+                elif action_type == 'bolster':
+                    summary_parts.append(f"Bolster {params.get('value', 0)}")
+        
+        # Note if it has advance effects
+        if card.advance_effects:
+            summary_parts.append("Has advance effects")
+        
+        return "; ".join(summary_parts) if summary_parts else "Complex effects"
+    
+    def _summarize_option(self, option) -> str:
+        """Summarize a player_choice option"""
+        if isinstance(option, dict):
+            option_type = option.get('type', '')
+            params = option.get('parameters', {})
+            
+            if option_type == 'damage':
+                return f"Deal {params.get('value', 0)} damage"
+            elif option_type == 'heal':
+                return f"Heal {params.get('value', 0)}"
+            elif option_type == 'advance':
+                return "Advance a spell"
+            elif option_type == 'cancel':
+                return "Cancel a spell"
+            elif option_type == 'discard':
+                return "Force discard"
+            else:
+                return option_type.replace('_', ' ').title()
+        
+        return str(option)
+    
+    def _store_communication(self, message: str):
+        """Store AI communication for display"""
+        self.last_communication = message
+        
+        # Add to engine logs if available
+        if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+            self.engine.ai_decision_logs.append(
+                f"\\033[94m[Claude]: {message}\\033[0m"
+            )
+    
+    def _fallback_decision(self, player, gs, valid_indices):
+        """Fallback to a traditional AI when LLM fails"""
+        if self.fallback_ai:
+            return self.fallback_ai._select_card(player, gs, valid_indices)
+        
+        # Ultimate fallback - random choice
+        import random
+        return random.choice(valid_indices)
+    
+    def _get_llm_decision_sync(self, context: Dict[str, Any], decision_type: str) -> Optional[Dict[str, Any]]:
+        """Synchronous wrapper for async LLM calls"""
+        # Create new event loop for thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(self._get_llm_decision(context, decision_type))
+        finally:
+            loop.close()
+    
+    @abstractmethod
+    async def _get_llm_decision(self, context: Dict[str, Any], decision_type: str) -> Optional[Dict[str, Any]]:
+        """Get a decision from the LLM - must be implemented by subclasses"""
+        raise NotImplementedError

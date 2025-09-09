@@ -22,6 +22,11 @@ python elephants_prototype.py
 ```
 Play against an AI opponent with full interactive controls. You'll be prompted to make choices for drafting, playing cards, and resolving effects.
 
+To play against Claude AI:
+1. Make sure `ANTHROPIC_API_KEY` is set in your environment
+2. Run `python elephants_prototype.py`
+3. When prompted "Choose AI Difficulty", select option 5 for Claude
+
 ### AI vs AI Testing
 
 #### Spectator Mode (Visual, Auto-advancing)
@@ -126,6 +131,7 @@ The analytics system tracks:
 - **medium**: Basic strategy and situational awareness
 - **hard**: Advanced strategy with solid fundamentals and tactical play
 - **expert**: Complex multi-turn planning, combo recognition, and overthinking everything
+- **claude**: LLM-powered AI that uses natural language reasoning (requires ANTHROPIC_API_KEY environment variable)
 
 ## Game Rules
 
