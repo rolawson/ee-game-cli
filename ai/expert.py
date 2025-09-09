@@ -63,9 +63,23 @@ class ExpertAI(BaseAI):
             score += self._evaluate_damage_efficiency(card, player, gs) * 0.10
             
             # 6. Response threat evaluation (NEW)
-            # Increase weight when health is low
-            response_weight = 0.25 if player.health <= 5 else 0.20
-            score += self._evaluate_response_threat_for_attack(card, player, gs) * response_weight
+            # Increase weight when health is low or card is extra vulnerable
+            response_weight = 0.20
+            if player.health <= 5:
+                response_weight = 0.30
+            if card.is_conjury:
+                response_weight += 0.15  # Conjuries need extra caution
+            if 'attack' in card.types and 'boost' in card.types:
+                response_weight += 0.10  # Multi-type cards are risky
+                
+            response_threat = self._evaluate_response_threat_for_attack(card, player, gs)
+            score += response_threat * response_weight
+            
+            # Log if we're avoiding due to responses
+            if response_threat < -50 and self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                self.engine.ai_decision_logs.append(
+                    f"\033[90m[AI-EXPERT] {card.name} has high response risk ({response_threat:.0f})\033[0m"
+                )
             
             # 7. Board state synergy evaluation (NEW)
             score += self._evaluate_board_state_synergy(card, player, gs) * 0.15
@@ -299,9 +313,17 @@ class ExpertAI(BaseAI):
                 future_damage = self._estimate_card_damage_in_context(card, player, gs, gs.clash_num + 1)
                 score += future_damage * 5
             
-            # Check for enemy responses
+            # Check for enemy responses with higher penalty for vulnerable cards
             enemy_responses = self._count_enemy_responses(enemy, gs)
-            score -= enemy_responses * 15
+            response_penalty = enemy_responses * 15
+            
+            # Extra penalty for conjuries and multi-type cards
+            if card.is_conjury:
+                response_penalty *= 2
+            if 'boost' in card.types:  # Attack + Boost
+                response_penalty *= 1.5
+                
+            score -= response_penalty
         
         if 'remedy' in card.types:
             healing = self._estimate_card_healing(card)
@@ -1076,11 +1098,22 @@ class ExpertAI(BaseAI):
     
     def _evaluate_response_threat_for_attack(self, card, player, gs):
         """Evaluate how dangerous enemy responses are to this attack spell"""
-        if 'attack' not in card.types:
+        # Check if card is vulnerable (attack, boost, or conjury)
+        vulnerable_types = {'attack', 'boost'}
+        is_vulnerable = bool(vulnerable_types.intersection(card.types)) or card.is_conjury
+        
+        if not is_vulnerable:
             return 0
         
         threat_score = 0
         weights = self.threat_data.get('threat_evaluation_weights', {})
+        
+        # Vulnerability multiplier based on card properties
+        vulnerability_multiplier = 1.0
+        if card.is_conjury:
+            vulnerability_multiplier *= 2.0  # Conjuries are prime targets
+        if 'attack' in card.types and 'boost' in card.types:
+            vulnerability_multiplier *= 1.5  # Multi-type cards are extra vulnerable
         
         # Health-based multiplier for threat perception
         health_multiplier = 1.0
@@ -1089,7 +1122,36 @@ class ExpertAI(BaseAI):
         elif player.health <= 5:
             health_multiplier = 2.0  # Double threat concern when vulnerable
         
-        # Check each opponent
+        # CRITICAL: Check already revealed enemy responses
+        for enemy in gs.players:
+            if enemy == player:
+                continue
+            
+            # Check visible responses on the board
+            for clash_idx, clash_list in enumerate(enemy.board):
+                for spell in clash_list:
+                    if spell.status == 'revealed' and 'response' in spell.card.types:
+                        # This response is already on the board and will trigger!
+                        immediate_threat = 50  # Base threat for visible response
+                        
+                        # Extra threat if it's in the current clash
+                        if clash_idx == gs.clash_num - 1:
+                            immediate_threat *= 2
+                        
+                        # Check if it specifically targets our card type
+                        spell_str = str(spell.card.resolve_effects).lower()
+                        if any(t in spell_str for t in card.types):
+                            immediate_threat *= 1.5
+                        
+                        threat_score += immediate_threat * vulnerability_multiplier
+                        
+                        if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                            self.engine.ai_decision_logs.append(
+                                f"\033[90m[AI-EXPERT] WARNING: {spell.card.name} is already revealed! "
+                                f"Threat to {card.name}: {immediate_threat * vulnerability_multiplier:.0f}\033[0m"
+                            )
+        
+        # Then check potential responses from hand (existing logic)
         for enemy in gs.players:
             if enemy == player:
                 continue
@@ -1561,12 +1623,63 @@ class ExpertAI(BaseAI):
                 value += healing * 20
         
         elif option.get('type') == 'advance':
-            # Advancing is complex - depends on the spell
-            value += 40 * (4 - gs.clash_num)
+            # Advancing is complex - evaluate based on the target spell
+            target_spell = self._identify_advance_target(option, caster, gs)
+            if target_spell:
+                advance_value = self._evaluate_advance_value(target_spell, caster, gs)
+                value += advance_value
+            else:
+                # Generic advance value if we can't identify the target
+                value += 40 * (4 - gs.clash_num)
+        
+        elif option.get('type') == 'move':
+            # Moving spells (Space element) - evaluate based on target spells
+            move_value = self._evaluate_move_value(option, caster, gs)
+            value += move_value
+        
+        elif option.get('type') == 'cast':
+            # Casting extra spells (Illuminate, Overexert) - very valuable
+            cast_value = self._evaluate_cast_value(option, caster, gs)
+            value += cast_value
         
         elif option.get('type') == 'cancel':
             # Canceling high-priority spells is valuable
             value += 60
+        
+        elif option.get('type') == 'protect_from_enemy_effects':
+            # Protection is very valuable when health is low
+            protect_value = 30
+            if caster.health <= 3:
+                protect_value *= 2
+            value += protect_value
+        
+        elif option.get('type') == 'damage_per_spell':
+            # Scaling damage based on active spells
+            params = option.get('parameters', {})
+            spell_type = params.get('spell_type', 'any')
+            active_count = self._count_active_spells_of_type(caster, gs, spell_type)
+            value += active_count * 15
+        
+        elif option.get('type') == 'heal_per_spell':
+            # Scaling healing based on active spells
+            params = option.get('parameters', {})
+            spell_type = params.get('spell_type', 'any')
+            active_count = self._count_active_spells_of_type(caster, gs, spell_type)
+            healing_value = active_count * 20
+            if caster.health <= 2:
+                healing_value *= 2
+            value += healing_value
+        
+        elif option.get('type') == 'weaken_per_spell':
+            # Scaling weaken based on active spells
+            params = option.get('parameters', {})
+            spell_type = params.get('spell_type', 'any')
+            active_count = self._count_active_spells_of_type(caster, gs, spell_type)
+            value += active_count * 25  # Weaken is valuable long-term
+        
+        elif option.get('type') == 'copy_spell':
+            # Copying spells is complex - depends on what's available
+            value += 50  # Base value for flexibility
         
         return value
     
@@ -2613,3 +2726,180 @@ class ExpertAI(BaseAI):
             if condition.get('type') == 'if_caster_has_active_spell_of_type':
                 return True
         return False
+    
+    def _evaluate_move_value(self, option, caster, gs):
+        """Evaluate the value of moving spells between clashes"""
+        value = 0
+        params = option.get('parameters', {})
+        
+        # Moving spells is complex - we need to consider:
+        # 1. Which spells are being moved
+        # 2. From which clash to which clash
+        # 3. Strategic implications
+        
+        # Check all spells that could be moved
+        best_move_value = 0
+        
+        for clash_idx in range(4):
+            for player in gs.players:
+                for spell in player.board[clash_idx]:
+                    if spell.status == 'revealed':
+                        # Evaluate moving this spell
+                        move_val = self._calculate_single_move_value(spell, clash_idx, caster, gs)
+                        best_move_value = max(best_move_value, move_val)
+                        
+                        if move_val > 50 and self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                            self.engine.ai_decision_logs.append(
+                                f"\\033[90m[AI-EXPERT] Considering move: {spell.card.name} from clash {clash_idx+1} (+{move_val})\033[0m"
+                            )
+        
+        return best_move_value
+    
+    def _calculate_single_move_value(self, spell, from_clash, caster, gs):
+        """Calculate value of moving a specific spell"""
+        value = 0
+        
+        # Moving enemy spells away from current clash is defensive
+        if spell.owner != caster and from_clash == gs.clash_num - 1:
+            damage_prevented = self._estimate_card_damage(spell.card)
+            value += damage_prevented * 20
+        
+        # Moving our spells to better positions
+        if spell.owner == caster:
+            # Check if spell has clash count conditions
+            if self._get_primary_condition_type(spell.card) == 'spell_clashes_count':
+                # Moving to a new clash increases clash count
+                current_clashes = self._count_spell_clashes(spell.card, caster, gs)
+                for effect in spell.card.resolve_effects:
+                    condition = effect.get('condition', {})
+                    if condition.get('type') == 'spell_clashes_count':
+                        required = condition.get('parameters', {}).get('count', 3)
+                        if current_clashes < required:
+                            # Moving helps meet condition
+                            value += 100
+        
+        return value
+    
+    def _evaluate_cast_value(self, option, caster, gs):
+        """Evaluate the value of casting extra spells"""
+        # Casting extra spells is almost always valuable
+        base_value = 80  # Base value for card advantage
+        
+        # Even better if we have good cards in hand
+        if len(caster.hand) > 0:
+            # Estimate average card value in hand
+            avg_damage = sum(self._estimate_card_damage(c) for c in caster.hand) / len(caster.hand)
+            avg_healing = sum(self._estimate_card_healing(c) for c in caster.hand) / len(caster.hand)
+            
+            base_value += avg_damage * 10 + avg_healing * 8
+            
+            # Check for specific high-value cards we could cast
+            for card in caster.hand:
+                # Conjuries are great to cast for free
+                if card.is_conjury and gs.clash_num <= 2:
+                    base_value += 40
+                
+                # Response spells for defense
+                if 'response' in card.types and caster.health <= 5:
+                    base_value += 30
+                    
+            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                self.engine.ai_decision_logs.append(
+                    f"\\033[90m[AI-EXPERT] Cast option value: {base_value} (hand size: {len(caster.hand)})\033[0m"
+                )
+        
+        return base_value
+    
+    def _identify_advance_target(self, option, caster, gs):
+        """Try to identify which spell would be advanced by this option"""
+        # This is a simplified version - in reality we'd need to check the game's targeting system
+        # For now, we'll check if the option has parameters that indicate the target
+        params = option.get('parameters', {})
+        target_type = params.get('target', '')
+        
+        if target_type == 'this_spell':
+            # Current spell is advancing itself
+            return None  # Can't evaluate self-advance in this context
+        
+        # For "prompt" type advances, we need to look at potential targets
+        # We'll evaluate all possible advance targets
+        return None  # Will be handled by evaluate_advance_value
+    
+    def _evaluate_advance_value(self, target_spell, caster, gs):
+        """Evaluate the value of advancing a specific spell or any spell"""
+        max_value = 0
+        
+        # If no specific target, evaluate all possible advance targets
+        if target_spell is None:
+            # Check all spells on board that could be advanced
+            for clash_idx in range(gs.clash_num):  # Past clashes
+                for player in gs.players:
+                    if player.name == caster.name:
+                        for spell in player.board[clash_idx]:
+                            if spell.status == 'revealed':
+                                spell_value = self._calculate_single_advance_value(spell.card, caster, gs, clash_idx)
+                                max_value = max(max_value, spell_value)
+                                
+                                if spell_value > 100 and self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                                    self.engine.ai_decision_logs.append(
+                                        f"\\033[90m[AI-EXPERT] High-value advance target: {spell.card.name} (+{spell_value})\033[0m"
+                                    )
+        else:
+            # Evaluate specific target
+            max_value = self._calculate_single_advance_value(target_spell, caster, gs, None)
+        
+        return max_value
+    
+    def _calculate_single_advance_value(self, card, caster, gs, current_clash_idx):
+        """Calculate value of advancing a single spell"""
+        value = 0
+        
+        # 1. Check if spell has spell_clashes_count condition (like Turbulence)
+        primary_condition = self._get_primary_condition_type(card)
+        if primary_condition == 'spell_clashes_count':
+            # Calculate current and potential damage
+            current_clashes = self._count_spell_clashes(card, caster, gs)
+            
+            # Check the condition requirement
+            for effect in card.resolve_effects:
+                condition = effect.get('condition', {})
+                if condition.get('type') == 'spell_clashes_count':
+                    required = condition.get('parameters', {}).get('count', 3)
+                    if current_clashes < required and current_clashes + 1 >= required:
+                        # Advancing will meet the condition!
+                        conditional_damage = self._extract_action_value(effect.get('action'))
+                        base_damage = self._estimate_card_damage(card)
+                        bonus_value = (conditional_damage - base_damage) * 50
+                        value += bonus_value
+                        
+                        if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                            self.engine.ai_decision_logs.append(
+                                f"\\033[90m[AI-EXPERT] Advancing {card.name} will unlock {conditional_damage} damage!\033[0m"
+                            )
+        
+        # 2. Base value for advancing any spell
+        remaining_clashes = 4 - gs.clash_num
+        if remaining_clashes > 0:
+            # Value of having the spell active again
+            spell_damage = self._estimate_card_damage(card)
+            spell_heal = self._estimate_card_healing(card)
+            value += (spell_damage * 15 + spell_heal * 20) * min(remaining_clashes, 2)
+        
+        # 3. Advance effects bonus
+        if card.advance_effects:
+            value += 30  # Spells with advance effects benefit more
+        
+        # 4. Priority adjustment
+        if card.priority == 'A':
+            value += 20  # Advance priority spells are designed to be advanced
+        
+        return value
+    
+    def _count_active_spells_of_type(self, player, gs, spell_type):
+        """Count active spells of a specific type in current clash"""
+        count = 0
+        for spell in player.board[gs.clash_num - 1]:
+            if spell.status == 'revealed':
+                if spell_type == 'any' or spell_type in spell.card.types:
+                    count += 1
+        return count

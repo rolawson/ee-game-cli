@@ -222,7 +222,7 @@ The `ConditionChecker` class evaluates various condition types used in spell eff
 ### Historical Conditions
 - **`if_spell_previously_resolved_this_round`**: Checks if this spell resolved in a past clash
   - Parameters: `count` (1 = any past clash, 2+ = specific number of times)
-- **`spell_clashes_count`**: Checks if this spell has been in a specific number of clashes (including current)
+t- **`spell_clashes_count`**: Checks if this spell has been in a specific number of clashes (including current)
   - Parameters: `count` (total number of clashes required, default 3)
 - **`if_spell_advanced_this_turn`**: Checks if any spell has advanced this round
 
