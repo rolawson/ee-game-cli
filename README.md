@@ -73,16 +73,31 @@ python ai_winrate_test.py hard expert 30  # 30 games of hard vs expert
 ### Analytics and Data Generation
 The game includes comprehensive analytics tracking for balance testing:
 
-#### Generate Analytics Data
+#### Unified Analytics System
 ```bash
-# Quick test (5 games)
-python generate_analytics_data.py quick
+# Run games with specific AI matchups
+python analytics.py 100                           # 100 games of expert vs expert
+python analytics.py 50 --ai1 hard --ai2 medium   # 50 games of hard vs medium
+python analytics.py 200 --ai1 expert --ai2 easy  # 200 games of expert vs easy
 
-# Custom number of games
+# Quick test mode (10 games)
+python analytics.py quick --ai1 medium --ai2 hard
+
+# Tournament mode (all AI types play each other)
+python analytics.py tournament --games 30         # 30 games per matchup
+
+# Silent mode (suppress progress messages)
+python analytics.py 100 --ai1 expert --ai2 hard --silent
+```
+
+Available AI types: `easy`, `medium`, `hard`, `expert`
+
+#### Legacy Analytics Tools
+```bash
+# Generate Analytics Data (older tool)
+python generate_analytics_data.py quick
 python generate_analytics_data.py 100              # 100 hard vs hard games
 python generate_analytics_data.py 50 medium easy   # 50 medium vs easy games
-
-# Full tournament
 python generate_analytics_data.py tournament 20    # 20 games per matchup
 
 # Interactive analytics tournament
@@ -148,8 +163,9 @@ The analytics system tracks:
 - `ai_winrate_test.py` - Test AI win rates using full game engine
 
 ### Analytics Tools
+- `analytics.py` - Unified analytics system for running AI games with specific matchups
 - `game_logger.py` - Game event logging system for analytics
-- `generate_analytics_data.py` - Generate game data for analysis
+- `generate_analytics_data.py` - Generate game data for analysis (legacy)
 - `run_analytics_tournament.py` - Interactive tournament runner for analytics
 - `analyze_real_world_data.py` - Generate comprehensive analytics reports
 

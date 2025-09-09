@@ -264,34 +264,66 @@ Elemental Elephants/
 
   ## Analysis Tools
 
+  ### Overview of Analytics Systems
+  
+  The codebase includes multiple analytics tools with different purposes:
+  
+  1. **`analytics.py`** - Unified analytics system (recommended)
+     - Most comprehensive and flexible tool
+     - Allows specific AI matchup selection (--ai1, --ai2)
+     - Includes tournament mode and silent operation
+     - Generates detailed reports with spell usage, damage, and win rates
+     - Best for: Targeted testing and comprehensive analysis
+  
+  2. **`generate_analytics_data.py`** - Legacy data generation tool
+     - Simpler interface but less flexible
+     - Limited to predefined AI combinations
+     - Still functional but analytics.py is preferred
+     - Best for: Quick compatibility with older scripts
+  
+  3. **`ai_tournament.py`** / **`ai_vs_ai.py`** - Tournament runners
+     - Focused on AI vs AI competitions
+     - Good for win rate comparisons
+     - Less detailed analytics than analytics.py
+     - Best for: Quick AI performance checks
+  
+  4. **`analyze_real_world_data.py`** - Human game analyzer
+     - Processes game logs from human players
+     - Different focus than AI-only tools
+     - Best for: Analyzing actual player behavior
+
   ### For Watching AI Battles
-  - `tools/ai_spectator.py` - Watch AI vs AI with adjustable speed
-    - Usage: `python tools/ai_spectator.py`
+  - `ai_spectator.py` - Watch AI vs AI with adjustable speed
+    - Usage: `python ai_spectator.py [ai1] [ai2] [delay] [num_games]`
     - Features: Visual display, speed control, pause/resume
+    - Best for: Understanding AI decision-making
 
   ### For AI Performance Analysis
-  - `tools/ai_tournament.py` - Run tournaments between AI types
-    - Usage: `python tools/ai_tournament.py [games_per_matchup]`
+  - `ai_tournament.py` - Run tournaments between AI types
+    - Usage: `python ai_tournament.py [games_per_matchup]`
     - Output: Win rates for each AI difficulty
 
-  - `tools/ai_winrate_test.py` - Quick win rate testing
-    - Usage: `python tools/ai_winrate_test.py`
+  - `ai_winrate_test.py` - Quick win rate testing
+    - Usage: `python ai_winrate_test.py [ai1] [ai2] [num_games]`
     - Output: Simple win percentage
 
   ### For Game & Spell Analysis
-  - `tools/analytics.py` - Core analytics engine (SilentGameEngine)
-  - `tools/gameplay_analytics.py` - Analyze battle statistics
-    - Usage: `python tools/gameplay_analytics.py`
+  - `analytics.py` - Unified analytics engine (SilentGameEngine)
+    - Usage: `python analytics.py [num_games] --ai1 [type] --ai2 [type]`
+    - Features: Full game simulation, detailed spell tracking, comprehensive reports
+    
+  - `gameplay_analytics.py` - Analyze battle statistics
+    - Usage: `python gameplay_analytics.py`
     - Reads from: `test_results/` directory
 
-  - `tools/analyze_real_world_data.py` - Analyze your games
-    - Usage: `python tools/analyze_real_world_data.py`
+  - `analyze_real_world_data.py` - Analyze your games
+    - Usage: `python analyze_real_world_data.py`
     - Input: Game logs from your play sessions
     - Output: Spell effectiveness, element balance
 
   ### For Data Generation
-  - `tools/generate_analytics_data.py` - Generate test data
-  - `tools/damage_calculator.py` - Calculate spell damage potential
+  - `generate_analytics_data.py` - Generate test data (legacy)
+  - `damage_calculator.py` - Calculate spell damage potential
 
   ## Data Flow
   1. Play games (human or AI) → game_logger.py → game logs
