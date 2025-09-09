@@ -394,3 +394,87 @@ class BaseAI(ABC):
                         damage += len([s for s in active_spells if spell_type in s.card.types])
         
         return damage
+    
+    def _calculate_conditional_value(self, card, owner, gs):
+        """Calculate the potential value including conditional effects"""
+        base_value = self._calculate_spell_damage(card, owner, gs)
+        
+        # Check each effect's condition
+        for effect in card.resolve_effects:
+            condition = effect.get('condition', {})
+            cond_type = condition.get('type')
+            
+            if cond_type == 'spell_clashes_count':
+                # For Turbulence-like spells
+                required = condition.get('parameters', {}).get('count', 3)
+                current_clashes = self._count_spell_clashes(card, owner, gs)
+                turns_to_condition = required - current_clashes
+                
+                if turns_to_condition <= (4 - gs.clash_num):
+                    # Can potentially meet condition
+                    conditional_damage = self._extract_action_value(effect.get('action'))
+                    value_modifier = 1.0 / (turns_to_condition + 1)  # Closer = better
+                    base_value += conditional_damage * value_modifier
+                    
+            elif cond_type == 'if_caster_has_active_spell_of_type':
+                # For Flow, Ignite, Defend, Besiege
+                spell_type = condition.get('parameters', {}).get('spell_type', 'any')
+                count_needed = condition.get('parameters', {}).get('count', 1)
+                
+                # Check if we can meet this condition
+                type_cards_in_hand = sum(1 for c in owner.hand if spell_type in c.types or spell_type == 'any')
+                if type_cards_in_hand >= count_needed:
+                    conditional_value = self._extract_action_value(effect.get('action'))
+                    base_value += conditional_value * 0.8  # High probability
+                    
+            elif cond_type == 'if_spell_previously_resolved_this_round':
+                # For Flow's past clash bonus
+                if gs.clash_num > 1:  # Not first clash
+                    conditional_value = self._extract_action_value(effect.get('action'))
+                    # Check if this spell could have been played earlier
+                    if card.notfirst == 0 or gs.clash_num > 2:
+                        base_value += conditional_value * 0.6
+                        
+        return base_value
+    
+    def _count_spell_clashes(self, card, owner, gs):
+        """Count how many clashes this spell has been in"""
+        clash_count = 0
+        
+        # Check current board
+        for player in gs.players:
+            if player.name == owner.name:
+                for clash_idx, clash_spells in enumerate(player.board):
+                    for spell in clash_spells:
+                        if spell.card.id == card.id:
+                            clash_count += 1
+                            break
+        
+        return clash_count
+    
+    def _extract_action_value(self, action):
+        """Extract numeric value from an action (damage, heal, etc)"""
+        if isinstance(action, dict):
+            action_type = action.get('type')
+            if action_type == 'damage':
+                return action.get('parameters', {}).get('value', 0)
+            elif action_type == 'heal':
+                return action.get('parameters', {}).get('value', 0)
+            elif action_type == 'bolster':
+                return action.get('parameters', {}).get('value', 0) * 0.5  # Less valuable than damage
+            elif action_type == 'weaken':
+                return action.get('parameters', {}).get('value', 0) * 0.7
+            elif action_type == 'player_choice':
+                # Return the best option value
+                max_value = 0
+                for option in action.get('options', []):
+                    option_value = self._extract_action_value(option)
+                    max_value = max(max_value, option_value)
+                return max_value
+        elif isinstance(action, list):
+            # Multiple actions
+            total = 0
+            for sub_action in action:
+                total += self._extract_action_value(sub_action)
+            return total
+        return 0

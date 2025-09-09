@@ -264,16 +264,16 @@
       "resolve_effects": [
     {
       "condition": {
-        "type": "if_spell_advanced_count",
+        "type": "spell_clashes_count",
         "parameters": {
-          "count": 2
+          "count": 3
         }
       },
       "action": {
         "type": "damage",
         "target": "prompt_player_or_conjury",
         "parameters": {
-          "value": 2
+          "value": 3
         }
       }
     },
@@ -296,7 +296,7 @@
     "notfirst": 0,
     "notlast": 1,
     "base": true,
-    "instruction": "If this spell advanced at least 2 times: THEN: 💥 DAMAGE 💥 DAMAGE Otherwise, 💥 DAMAGE"
+    "instruction": "If this spell was in at least 2 other clashes: THEN: 💥 DAMAGE 💥 DAMAGE Otherwise, 💥 DAMAGE"
   },
   {
     "id": 8,

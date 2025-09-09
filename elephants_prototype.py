@@ -127,9 +127,9 @@ class Card:
             count_str = p.get('count', 1)
             return f"If an enemy has {count_str} active {p['spell_type']} spell(s): "
         if cond_type == 'if_spell_previously_resolved_this_round': return "If this spell resolved in a past clash: "
-        if cond_type == 'if_spell_was_active_in_other_clashes':
-            count = cond.get('parameters', {}).get('count', 2)
-            return f"If this spell was active in at least {count} other clashes: "
+        if cond_type == 'spell_clashes_count':
+            count = cond.get('parameters', {}).get('count', 3)
+            return f"If this spell was in {count} clashes: "
         if cond_type == 'if_spell_advanced_count':
             count = cond.get('parameters', {}).get('count', 2)
             return f"If this spell advanced {count} times: "
@@ -543,25 +543,36 @@ class ConditionChecker:
                             return spell.resolve_condition_met
             return False
         
-        if cond_type == 'if_spell_was_active_in_other_clashes':
-            # For Impact - check if this spell was active in at least 'count' other clashes
+        if cond_type == 'spell_clashes_count':
+            # Check if this spell has been in at least 'count' clashes (including current)
             params = condition_data.get('parameters', {})
-            required_count = params.get('count', 2)
+            required_count = params.get('count', 3)
             
-            # Count how many OTHER clashes this spell was active in
-            active_clash_count = 0
+            # Count how many clashes this spell has been in
+            clashes_seen = set()
+            
+            # Current clash counts if the spell is resolving right now
+            clashes_seen.add(gs.clash_num)
+            
+            # Check event log for past clashes where this spell was played/active
             for event in gs.event_log:
-                if (event['type'] == 'spell_active_in_clash' and
-                    event['player'] == caster.name and
-                    event['card_id'] == current_card.id and
-                    event['clash'] != gs.clash_num):  # Don't count current clash
-                    active_clash_count += 1
+                if event['player'] == caster.name and event['card_id'] == current_card.id:
+                    if event['type'] == 'spell_prepared':
+                        # This tracks the original clash where the spell was played
+                        clashes_seen.add(event.get('clash', event.get('clash_num', -1)))
+                    elif event['type'] == 'spell_active_in_clash':
+                        # This tracks clashes where the spell was active
+                        clashes_seen.add(event.get('clash', event.get('clash_num', -1)))
             
-            # Debug logging for Impact
-            if current_card.name == "Impact" and DEBUG_AI:
-                gs.action_log.append(f"{Colors.GREY}[DEBUG] Impact was active in {active_clash_count} other clashes, needs {required_count} to trigger weaken{Colors.ENDC}")
+            # Remove invalid clash numbers
+            clashes_seen.discard(-1)
+            clash_count = len(clashes_seen)
             
-            return active_clash_count >= required_count
+            # Debug logging
+            if DEBUG_AI and current_card.name == "Turbulence":
+                gs.action_log.append(f"{Colors.GREY}[DEBUG] {current_card.name} has been in clashes: {sorted(clashes_seen)}, total: {clash_count}, needs {required_count}{Colors.ENDC}")
+            
+            return clash_count >= required_count
         
         if cond_type == 'if_spell_advanced_count':
             # For Turbulence - check if this spell has advanced at least 'count' times

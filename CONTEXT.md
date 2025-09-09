@@ -222,8 +222,8 @@ The `ConditionChecker` class evaluates various condition types used in spell eff
 ### Historical Conditions
 - **`if_spell_previously_resolved_this_round`**: Checks if this spell resolved in a past clash
   - Parameters: `count` (1 = any past clash, 2+ = specific number of times)
-- **`if_spell_was_active_in_other_clashes`**: Checks if this spell was active in other clashes (Impact)
-  - Parameters: `count` (number of other clashes required)
+- **`spell_clashes_count`**: Checks if this spell has been in a specific number of clashes (including current)
+  - Parameters: `count` (total number of clashes required, default 3)
 - **`if_spell_advanced_this_turn`**: Checks if any spell has advanced this round
 
 ### Special Conditions
@@ -325,7 +325,7 @@ Elemental Elephants/
    - spell_analysis_report.txt - Generated comprehensive balance report
 
 4. **Spell Updates**:
-   - Turbulence: Now checks if_spell_was_active_in_other_clashes (2+)
+   - Turbulence: Uses spell_clashes_count condition (3+ clashes for triple damage)
    - Impact: damage_per_spell_from_other_clashes action
    - Grow/Prickle: auto_optimal_choice for intelligent option selection
 

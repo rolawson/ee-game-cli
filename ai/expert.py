@@ -70,6 +70,15 @@ class ExpertAI(BaseAI):
             # 7. Board state synergy evaluation (NEW)
             score += self._evaluate_board_state_synergy(card, player, gs) * 0.15
             
+            # 8. Conditional spell timing evaluation
+            if self._has_conditional_effects(card):
+                condition_score = self._evaluate_condition_timing(card, player, gs)
+                score += condition_score * 0.10
+                if condition_score > 50 and self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                    self.engine.ai_decision_logs.append(
+                        f"\033[90m[AI-EXPERT] {card.name} has good condition timing (+{condition_score})\033[0m"
+                    )
+            
             # Log extensive analysis
             if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                 self.engine.ai_decision_logs.append(
@@ -103,7 +112,8 @@ class ExpertAI(BaseAI):
             'enemy_threats': self._analyze_all_enemy_threats(player, gs),
             'combo_sequences': self._identify_combo_sequences(player, gs),
             'resource_management': self._plan_resource_usage(player, gs),
-            'timing_windows': self._identify_critical_timings(player, gs)
+            'timing_windows': self._identify_critical_timings(player, gs),
+            'condition_setups': self._plan_condition_setups(player, gs)
         }
         
         if self.engine and hasattr(self.engine, 'ai_decision_logs'):
@@ -262,8 +272,8 @@ class ExpertAI(BaseAI):
             # Value attacks based on enemy health and defenses
             enemy = next(p for p in gs.players if p != player)
             
-            # Use context-aware damage calculation
-            damage = self._estimate_card_damage_in_context(card, player, gs)
+            # Use context-aware damage calculation including conditional effects
+            damage = self._calculate_conditional_value(card, player, gs)
             static_damage = self._estimate_card_damage(card)
             
             # Log if context damage differs significantly
@@ -2402,4 +2412,204 @@ class ExpertAI(BaseAI):
             if spell_type == 'any':
                 return True
             return spell_type in spell_card.types
+        return False
+    
+    def _plan_condition_setups(self, player, gs):
+        """Plan how to meet conditions for high-value spells"""
+        setup_plans = []
+        
+        for card in player.hand:
+            if self._has_conditional_effects(card):
+                plan = {
+                    'card': card,
+                    'condition_type': self._get_primary_condition_type(card),
+                    'setup_required': self._analyze_setup_needs(card, player, gs),
+                    'optimal_timing': self._calculate_optimal_timing(card, gs),
+                    'enablers': self._find_enabler_cards(card, player),
+                    'value_if_met': self._calculate_conditional_value(card, player, gs)
+                }
+                setup_plans.append(plan)
+        
+        return setup_plans
+    
+    def _has_conditional_effects(self, card):
+        """Check if a card has conditional effects worth planning for"""
+        for effect in card.resolve_effects:
+            condition = effect.get('condition', {})
+            if condition.get('type') not in ['always', None]:
+                return True
+        return False
+    
+    def _get_primary_condition_type(self, card):
+        """Get the main condition type for a card"""
+        for effect in card.resolve_effects:
+            condition = effect.get('condition', {})
+            cond_type = condition.get('type')
+            if cond_type and cond_type != 'always':
+                return cond_type
+        return None
+    
+    def _analyze_setup_needs(self, card, player, gs):
+        """Analyze what's needed to meet a card's conditions"""
+        needs = {'turns_required': 0, 'cards_required': [], 'can_meet': True}
+        
+        for effect in card.resolve_effects:
+            condition = effect.get('condition', {})
+            cond_type = condition.get('type')
+            
+            if cond_type == 'spell_clashes_count':
+                # For Turbulence
+                required = condition.get('parameters', {}).get('count', 3)
+                current = self._count_spell_clashes(card, player, gs)
+                turns_needed = required - current
+                
+                if turns_needed > (4 - gs.clash_num):
+                    needs['can_meet'] = False
+                else:
+                    needs['turns_required'] = max(needs['turns_required'], turns_needed)
+                    # Check for advance cards
+                    advance_cards = [c for c in player.hand if 'advance' in str(c.resolve_effects + c.advance_effects)]
+                    needs['cards_required'].extend(advance_cards)
+                    
+            elif cond_type == 'if_caster_has_active_spell_of_type':
+                # For Flow, Ignite, Defend, Besiege
+                spell_type = condition.get('parameters', {}).get('spell_type', 'any')
+                count_needed = condition.get('parameters', {}).get('count', 1)
+                
+                matching_cards = [c for c in player.hand if spell_type in c.types or spell_type == 'any']
+                if len(matching_cards) < count_needed:
+                    needs['can_meet'] = False
+                else:
+                    needs['cards_required'].extend(matching_cards[:count_needed])
+                    
+            elif cond_type == 'if_spell_previously_resolved_this_round':
+                # For Flow's past clash bonus
+                if gs.clash_num == 4:  # Last clash
+                    needs['can_meet'] = False
+                elif card.notfirst and gs.clash_num == 1:
+                    needs['turns_required'] = 1  # Need to wait
+        
+        return needs
+    
+    def _find_enabler_cards(self, card, player):
+        """Find cards that help meet conditions"""
+        enablers = []
+        primary_condition = self._get_primary_condition_type(card)
+        
+        if primary_condition == 'spell_clashes_count':
+            # Find advance cards
+            for c in player.hand:
+                if 'advance' in str(c.resolve_effects + c.advance_effects):
+                    enablers.append({'card': c, 'type': 'advance'})
+                    
+        elif primary_condition == 'if_caster_has_active_spell_of_type':
+            # Find cards of the required type
+            for effect in card.resolve_effects:
+                condition = effect.get('condition', {})
+                if condition.get('type') == primary_condition:
+                    spell_type = condition.get('parameters', {}).get('spell_type', 'any')
+                    for c in player.hand:
+                        if c != card and (spell_type in c.types or spell_type == 'any'):
+                            enablers.append({'card': c, 'type': 'synergy'})
+        
+        return enablers
+    
+    def _calculate_optimal_timing(self, card, gs):
+        """Calculate when to play a conditional card"""
+        primary_condition = self._get_primary_condition_type(card)
+        
+        if primary_condition == 'spell_clashes_count':
+            # Play early if we have advance enablers
+            if gs.clash_num <= 2:
+                return 1  # High priority to play early
+            else:
+                return 0.3  # Less valuable late
+                
+        elif primary_condition == 'if_caster_has_active_spell_of_type':
+            # Coordinate with other spells
+            return 0.8  # Generally good to play with others
+            
+        elif primary_condition == 'if_spell_previously_resolved_this_round':
+            # Better in later clashes
+            if gs.clash_num >= 2:
+                return 1.0
+            else:
+                return 0.2
+                
+        return 0.5  # Default
+    
+    def _evaluate_condition_timing(self, card, player, gs):
+        """Determine strategic value of playing conditional cards now"""
+        timing_score = 0
+        primary_condition = self._get_primary_condition_type(card)
+        
+        # Cards that need multiple clashes (like spell_clashes_count)
+        if primary_condition == 'spell_clashes_count':
+            if gs.clash_num <= 2:  # Early game
+                advance_cards = [c for c in player.hand if 'advance' in str(c.resolve_effects + c.advance_effects)]
+                if advance_cards:
+                    timing_score += 100
+                    if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                        self.engine.ai_decision_logs.append(
+                            f"\\033[90m[AI-EXPERT] {card.name} can be set up with {len(advance_cards)} advance cards\\033[0m"
+                        )
+            else:
+                timing_score -= 50  # Too late to set up
+                        
+        # Cards that need other active spells
+        elif primary_condition == 'if_caster_has_active_spell_of_type':
+            setup_needs = self._analyze_setup_needs(card, player, gs)
+            if setup_needs['can_meet'] and setup_needs['cards_required']:
+                timing_score += 80
+                if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                    enabler_names = [c.name for c in setup_needs['cards_required'][:2]]
+                    self.engine.ai_decision_logs.append(
+                        f"\\033[90m[AI-EXPERT] {card.name} can combo with {enabler_names}\\033[0m"
+                    )
+                    
+        # Cards that scale with active spells (player_choice with damage/heal per spell)
+        elif self._has_scaling_choice_effects(card):
+            active_count = sum(1 for s in player.board[gs.clash_num-1] if s.status == 'revealed')
+            potential_count = active_count + min(2, len([c for c in player.hand if c != card]))
+            if potential_count >= 2:
+                timing_score += 90
+                
+        # Cards that need previous resolution
+        elif primary_condition == 'if_spell_previously_resolved_this_round':
+            if gs.clash_num >= 2:
+                timing_score += 70
+            else:
+                timing_score -= 30
+                
+        return timing_score
+    
+    def _has_scaling_choice_effects(self, card):
+        """Check if card has choice effects that scale with spell count"""
+        for effect in card.resolve_effects:
+            action = effect.get('action', {})
+            
+            # Handle case where action is a list
+            if isinstance(action, list):
+                for sub_action in action:
+                    if isinstance(sub_action, dict) and sub_action.get('type') == 'player_choice':
+                        for option in sub_action.get('options', []):
+                            if isinstance(option, dict):
+                                opt_type = option.get('type', '')
+                                if opt_type in ['damage_per_spell', 'heal_per_spell', 'damage_multi_target']:
+                                    return True
+            # Handle case where action is a dict
+            elif isinstance(action, dict) and action.get('type') == 'player_choice':
+                for option in action.get('options', []):
+                    if isinstance(option, dict):
+                        opt_type = option.get('type', '')
+                        if opt_type in ['damage_per_spell', 'heal_per_spell', 'damage_multi_target']:
+                            return True
+        return False
+    
+    def _needs_active_spells(self, card):
+        """Check if card needs active spells for its conditions"""
+        for effect in card.resolve_effects:
+            condition = effect.get('condition', {})
+            if condition.get('type') == 'if_caster_has_active_spell_of_type':
+                return True
         return False
