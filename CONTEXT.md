@@ -57,7 +57,7 @@ The AI uses these categories for:
 
 ### 5. AI System (Modular Architecture)
 
-The AI system is organized in a separate `ai/` module with sophisticated strategic capabilities. For detailed AI architecture information, see `AI_ARCHITECTURE.md`.
+The AI system is organized in a separate `ai/` module with sophisticated strategic capabilities.
 
 #### Module Structure:
 ```
@@ -114,10 +114,76 @@ ai/
     - **Comprehensive cancellation**: Analyzes immediate damage, combo enablement, future threats, defensive value, and tempo impact
     - Overthinks decisions, leading to interesting but not always optimal play
 
+#### Key AI Features:
+
+**Combo Recognition**:
+- Identifies spell enablers and payoffs
+- Recognizes multi-card combo chains
+- Values setup for future turns
+- Considers passive effect synergies
+
+**Strategic Evaluation Factors** (Hard/Expert AI):
+- **Timing**: Response spell conditions, conjury vulnerability
+- **Positioning**: Card mobility, advancement potential
+- **Resource Management**: Hand size, card advantage
+- **Risk Assessment**: Self-damage evaluation, lethal prevention
+- **Adaptability**: Counter-strategies based on opponent patterns
+
+#### Testing Framework:
+
+**Available Testing Tools**:
+1. **ai_spectator.py**: Visual AI vs AI with configurable delays
+2. **ai_battle.py**: Fast automated battles for statistics
+3. **ai_vs_ai.py**: Tournament system with detailed analysis
+4. **ai_test.py**: Basic testing framework
+5. **ai_winrate_test.py**: Test AI win rates using full game engine
+
+All test results are saved to `test_results/` directory.
+
+#### Configuration:
+
+**Game Initialization**:
+```python
+engine = GameEngine(player_names, ai_difficulty='medium')
+# ai_difficulty options: 'easy', 'medium', 'hard', 'expert'
+```
+
+**Element Categories Configuration**:
+Edit `element_categories.json` to:
+- Add new elements
+- Adjust category assignments
+- Modify synergy values
+- Change draft priorities
+
 #### Integration:
 - The `GameEngine` accepts an `ai_difficulty` parameter ('easy', 'medium', 'hard', 'expert')
 - AI decision logs are stored during the prepare phase and revealed after the cast phase
 - Each AI instance has a reference to the engine for logging purposes
+- The AI system integrates with:
+  - `GameEngine`: AI strategy selection and initialization
+  - `ActionHandler`: Choice resolution for player_choice actions
+  - `Element Categories`: Strategic element classification
+  - Game state evaluation through direct access to `GameState`
+
+#### Performance Considerations:
+- AI decisions are made in real-time without significant delay
+- Hard AI performs more calculations but remains responsive
+- Opponent tracking has minimal memory overhead
+- Element category loading happens once at initialization
+
+#### Future Enhancement Opportunities:
+
+**Near-term**:
+1. **Personality System**: Aggressive, defensive, combo-focused variants
+2. **Learning Components**: Adapt to player patterns over sessions
+3. **Multi-game Memory**: Track strategies across multiple games
+4. **Advanced Drafting**: Counter-drafting based on opponent picks
+
+**Long-term**:
+1. **Machine Learning Integration**: Train on game logs
+2. **Monte Carlo Tree Search**: For deeper strategic planning
+3. **Neural Network Evaluation**: For complex board states
+4. **Tournament Evolution**: Genetic algorithms for strategy optimization
 
 ## The Game Flow (Simplified)
 
@@ -179,7 +245,6 @@ Elemental Elephants/
 ├── HOWTOPLAY.md            # Game rules
 ├── CLARIFICATIONS.md       # Rules clarifications
 ├── CONTEXT.md              # This file
-├── AI_ARCHITECTURE.md      # Consolidated AI documentation
 ├── spell_analytics.py      # Spell balance analysis tool
 ├── gameplay_analytics.py   # Game statistics tracking
 └── test_results/           # AI test results
