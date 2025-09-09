@@ -395,6 +395,45 @@ class BaseAI(ABC):
         
         return damage
     
+    def _extract_action_value(self, action):
+        """Extract numeric value from an action (damage, healing, etc.)"""
+        if not action:
+            return 0
+            
+        if isinstance(action, dict):
+            action_type = action.get('type', '')
+            params = action.get('parameters', {})
+            
+            if action_type in ['damage', 'heal', 'weaken', 'bolster']:
+                return params.get('value', 0)
+            elif action_type == 'damage_multi_target':
+                # Assume hitting 2 targets on average
+                return params.get('value', 0) * 2
+            elif action_type in ['damage_per_spell', 'heal_per_spell', 'weaken_per_spell']:
+                # Estimate 2 spells active on average
+                return 2
+            elif action_type == 'player_choice':
+                # Take the maximum value from options
+                max_val = 0
+                for option in action.get('options', []):
+                    opt_val = self._extract_action_value(option)
+                    max_val = max(max_val, opt_val)
+                return max_val
+            elif action_type == 'sequence':
+                # Sum all actions in sequence
+                total = 0
+                for seq_action in action.get('actions', []):
+                    total += self._extract_action_value(seq_action)
+                return total
+        elif isinstance(action, list):
+            # If action is a list, sum all sub-actions
+            total = 0
+            for sub_action in action:
+                total += self._extract_action_value(sub_action)
+            return total
+            
+        return 0
+    
     def _calculate_conditional_value(self, card, owner, gs):
         """Calculate the potential value including conditional effects"""
         base_value = self._calculate_spell_damage(card, owner, gs)

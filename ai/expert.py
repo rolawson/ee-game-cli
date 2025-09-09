@@ -93,6 +93,15 @@ class ExpertAI(BaseAI):
                         f"\033[90m[AI-EXPERT] {card.name} has good condition timing (+{condition_score})\033[0m"
                     )
             
+            # 9. Mobility evaluation (NEW)
+            mobility_score = self._evaluate_contextual_mobility_value(card, player, gs)
+            if mobility_score > 0:
+                score += mobility_score * 0.10
+                if self.engine and hasattr(self.engine, 'ai_decision_logs') and mobility_score > 50:
+                    self.engine.ai_decision_logs.append(
+                        f"\033[90m[AI-EXPERT] {card.name} has mobility potential (+{mobility_score:.0f})\033[0m"
+                    )
+            
             # Log extensive analysis
             if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                 self.engine.ai_decision_logs.append(
@@ -355,7 +364,17 @@ class ExpertAI(BaseAI):
         
         # Priority considerations
         if card.priority == 'A':
-            score += 10 * (4 - gs.clash_num)  # Advance priority scales with remaining clashes
+            # Check if this is a "pure mobility" card (no resolve effects)
+            if not card.resolve_effects:
+                # This card ONLY does something when advanced
+                # Give it a very low base score
+                score -= 30
+                if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                    self.engine.ai_decision_logs.append(
+                        f"\033[90m[AI-EXPERT] {card.name} has no resolve effects (-30 base))\033[0m"
+                    )
+            else:
+                score += 10 * (4 - gs.clash_num)  # Advance priority scales with remaining clashes
         elif str(card.priority).isdigit():
             priority_val = int(card.priority)
             if priority_val <= 2:
@@ -442,6 +461,27 @@ class ExpertAI(BaseAI):
         same_element_count = sum(1 for c in player.hand if c.element == card.element)
         if same_element_count >= 2:
             score += same_element_count * 15
+        
+        # Check if this is a location accumulator that we can advance
+        patterns = self._identify_mobility_patterns(card)
+        for pattern in patterns:
+            if pattern['type'] == 'location_accumulator':
+                # We have a card that needs multiple locations
+                current_locations = self._count_spell_clashes(card, player, gs)
+                if current_locations < pattern['required_locations']:
+                    # Check if we have cards that can advance it
+                    advance_cards = [c for c in player.hand if c != card and 
+                                   'advance' in str(c.resolve_effects + c.advance_effects)]
+                    if advance_cards:
+                        # High value for playing location accumulators early with advance support
+                        remaining_turns = 4 - gs.clash_num
+                        if remaining_turns >= pattern['required_locations'] - current_locations:
+                            score += 80  # Very high value - we can reach the goal!
+                            
+                            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                                self.engine.ai_decision_logs.append(
+                                    f"\033[90m[AI-EXPERT] {card.name} can reach {pattern['required_locations']} locations with {len(advance_cards)} advance cards (+80)\033[0m"
+                                )
         
         return score
     
@@ -2893,6 +2933,31 @@ class ExpertAI(BaseAI):
         if card.priority == 'A':
             value += 20  # Advance priority spells are designed to be advanced
         
+        # 5. Mobility pattern bonus (NEW)
+        mobility_patterns = self._identify_mobility_patterns(card)
+        for pattern in mobility_patterns:
+            if pattern['type'] == 'location_accumulator':
+                # This spell benefits from being in multiple locations
+                current_locations = self._count_spell_clashes(card, caster, gs)
+                if current_locations < pattern['required_locations']:
+                    # Advancing helps reach the requirement
+                    progress_ratio = (current_locations + 1) / pattern['required_locations']
+                    value += pattern['payoff'] * progress_ratio * 30
+                    
+                    if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                        self.engine.ai_decision_logs.append(
+                            f"\\033[90m[AI-EXPERT] {card.name} is {current_locations}/{pattern['required_locations']} locations toward goal\033[0m"
+                        )
+            
+            elif pattern['type'] == 'temporal_sequencer':
+                # This spell benefits from temporal progression
+                if gs.clash_num > current_clash_idx:
+                    value += 40  # Moving forward in time helps
+            
+            elif pattern['type'] == 'designed_for_movement':
+                # Advance priority cards are meant to move
+                value += 25
+        
         return value
     
     def _count_active_spells_of_type(self, player, gs, spell_type):
@@ -2903,3 +2968,338 @@ class ExpertAI(BaseAI):
                 if spell_type == 'any' or spell_type in spell.card.types:
                     count += 1
         return count
+    
+    def _identify_mobility_patterns(self, card):
+        """Identify mobility patterns from card effects, not names"""
+        patterns = []
+        
+        # Analyze resolve effects and advance effects
+        all_effects = card.resolve_effects + card.advance_effects
+        
+        for effect in all_effects:
+            action = effect.get('action', {})
+            condition = effect.get('condition', {})
+            
+            # Pattern 1: Cards that care about being in multiple locations
+            if condition.get('type') == 'spell_clashes_count':
+                patterns.append({
+                    'type': 'location_accumulator',
+                    'required_locations': condition.get('parameters', {}).get('count', 0),
+                    'payoff': self._extract_action_value(action)
+                })
+            
+            # Pattern 2: Cards that need temporal progression
+            if condition.get('type') == 'if_spell_previously_resolved_this_round':
+                patterns.append({
+                    'type': 'temporal_sequencer',
+                    'requires_prior_resolution': True,
+                    'payoff': self._extract_action_value(action)
+                })
+            
+            # Pattern 3: Cards that manipulate board positions
+            if isinstance(action, dict):
+                action_type = action.get('type', '')
+                if action_type in ['advance', 'move_clash_to_clash', 'advance_from_past_clash', 'move_to_future_clash']:
+                    patterns.append({
+                        'type': 'position_manipulator',
+                        'manipulation_type': action_type,
+                        'target': action.get('parameters', {}).get('target', 'other')
+                    })
+            elif isinstance(action, list):
+                for sub_action in action:
+                    if isinstance(sub_action, dict):
+                        action_type = sub_action.get('type', '')
+                        if action_type in ['advance', 'move_clash_to_clash', 'advance_from_past_clash']:
+                            patterns.append({
+                                'type': 'position_manipulator',
+                                'manipulation_type': action_type,
+                                'target': sub_action.get('parameters', {}).get('target', 'other')
+                            })
+            
+            # Pattern 4: Cards that scale with board state
+            if isinstance(action, dict) and action.get('type') == 'player_choice':
+                for option in action.get('options', []):
+                    if self._is_scaling_effect(option):
+                        patterns.append({
+                            'type': 'board_state_scaler',
+                            'scaling_type': option.get('type'),
+                            'scaling_factor': self._get_scaling_factor(option)
+                        })
+        
+        # Pattern 5: Cards with advance priority (designed to move)
+        if card.priority == 'A':
+            patterns.append({'type': 'designed_for_movement'})
+        
+        return patterns
+    
+    def _is_scaling_effect(self, effect):
+        """Check if an effect scales with board state"""
+        if isinstance(effect, dict):
+            effect_type = effect.get('type', '')
+            return any(keyword in effect_type for keyword in ['per_spell', 'multi_target', 'equal_to'])
+        return False
+    
+    def _get_scaling_factor(self, effect):
+        """Get the scaling factor from an effect"""
+        if isinstance(effect, dict):
+            # For per_spell effects, return the multiplier
+            if 'per_spell' in effect.get('type', ''):
+                return effect.get('parameters', {}).get('value', 1)
+            # For multi_target, count potential targets
+            elif 'multi_target' in effect.get('type', ''):
+                return 3  # Estimate 3 potential targets
+        return 1
+    
+    def _evaluate_contextual_mobility_value(self, card, player, gs):
+        """Evaluate mobility value based on card behavior patterns"""
+        mobility_value = 0
+        patterns = self._identify_mobility_patterns(card)
+        
+        for pattern in patterns:
+            if pattern['type'] == 'location_accumulator':
+                # Value based on ability to reach required locations
+                current_locations = self._count_spell_clashes(card, player, gs)
+                needed_locations = pattern['required_locations'] - current_locations
+                achievable = self._can_achieve_locations(needed_locations, player, gs)
+                
+                if achievable['possible']:
+                    # Calculate payoff ratio - how much better is the conditional effect?
+                    base_value = self._estimate_card_damage(card) + self._estimate_card_healing(card)
+                    payoff_ratio = pattern['payoff'] / max(1, base_value) if base_value > 0 else pattern['payoff']
+                    mobility_value += payoff_ratio * 50 * achievable['probability']
+                    
+                    if self.engine and hasattr(self.engine, 'ai_decision_logs') and payoff_ratio > 2:
+                        self.engine.ai_decision_logs.append(
+                            f"\\033[90m[AI-MOBILITY] {card.name} has {payoff_ratio:.1f}x payoff at {pattern['required_locations']} locations\\033[0m"
+                        )
+            
+            elif pattern['type'] == 'temporal_sequencer':
+                # Value based on ability to sequence actions
+                can_sequence = self._can_create_temporal_sequence(card, player, gs)
+                if can_sequence:
+                    mobility_value += pattern['payoff'] * 0.7  # Discount for time
+                    
+            elif pattern['type'] == 'position_manipulator':
+                # Value based on targets available to manipulate
+                valuable_targets = self._evaluate_manipulation_targets(pattern, player, gs)
+                mobility_value += valuable_targets * 20
+                
+            elif pattern['type'] == 'board_state_scaler':
+                # Value based on ability to maximize board state
+                optimal_state = pattern['scaling_factor'] * 3  # Assume we could have 3 spells
+                achievable_state = self._estimate_achievable_board_state(player, gs)
+                state_ratio = min(1.0, achievable_state / max(1, optimal_state))
+                mobility_value += pattern['scaling_factor'] * state_ratio * 30
+                
+            elif pattern['type'] == 'designed_for_movement':
+                # Cards with 'A' priority benefit from movement strategies
+                # BUT only if they have valuable targets to move
+                movement_opportunities = self._count_movement_opportunities(player, gs)
+                
+                # Check if this card has no resolve effects (like Gust/Blow)
+                has_resolve_effects = bool(card.resolve_effects)
+                
+                if not has_resolve_effects:
+                    # This card ONLY does something when advanced
+                    # Need actual valuable targets to justify playing it
+                    if movement_opportunities == 0:
+                        mobility_value -= 50  # Penalty for no targets
+                        if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                            self.engine.ai_decision_logs.append(
+                                f"\\033[90m[AI-MOBILITY] {card.name} has no valuable advance targets (-50)\\033[0m"
+                            )
+                    else:
+                        mobility_value += movement_opportunities * 25
+                else:
+                    # Card has resolve effects too, so it's not purely mobility
+                    mobility_value += movement_opportunities * 15
+        
+        # Add element-based mobility affinity
+        element_affinity = self._get_element_mobility_affinity(card.element)
+        mobility_value += element_affinity
+        
+        return mobility_value
+    
+    def _can_achieve_locations(self, needed_locations, player, gs):
+        """Calculate if we can get a spell to needed locations"""
+        remaining_clashes = 4 - gs.clash_num
+        advance_cards = self._count_advance_effects_in_hand(player)
+        
+        # Can we advance enough times?
+        max_advances = min(advance_cards, remaining_clashes, needed_locations)
+        
+        return {
+            'possible': max_advances >= needed_locations,
+            'probability': min(1.0, max_advances / max(1, needed_locations)) if needed_locations > 0 else 1.0
+        }
+    
+    def _count_advance_effects_in_hand(self, player):
+        """Count cards in hand that can advance spells"""
+        count = 0
+        for card in player.hand:
+            effects_str = str(card.resolve_effects + card.advance_effects)
+            if 'advance' in effects_str:
+                count += 1
+        return count
+    
+    def _can_create_temporal_sequence(self, card, player, gs):
+        """Check if we can create a play-then-advance sequence"""
+        # Need to be able to play the card and have it resolve
+        if gs.clash_num >= 4:  # Last clash, no time
+            return False
+        
+        # Check if we have advance cards
+        has_advance = self._count_advance_effects_in_hand(player) > 0
+        
+        # Check if the card can be played now
+        can_play_now = card.notfirst == 0 or gs.clash_num > 1
+        
+        return has_advance and can_play_now
+    
+    def _evaluate_manipulation_targets(self, pattern, player, gs):
+        """Evaluate valuable targets for movement/advance"""
+        value = 0
+        
+        # Check all spells on board
+        for clash_idx in range(4):
+            for p in gs.players:
+                for spell in p.board[clash_idx]:
+                    if spell.status == 'revealed':
+                        # Is this a valuable target?
+                        target_patterns = self._identify_mobility_patterns(spell.card)
+                        
+                        # Moving location accumulators is valuable
+                        for tp in target_patterns:
+                            if tp['type'] == 'location_accumulator':
+                                # Check how close this spell is to meeting its requirement
+                                current_locations = self._count_spell_clashes(spell.card, p, gs)
+                                required = tp['required_locations']
+                                if current_locations < required:
+                                    # Calculate the value based on how much damage/benefit we'd unlock
+                                    unlocked_value = tp['payoff'] - self._estimate_card_damage(spell.card)
+                                    if unlocked_value > 0:
+                                        value += unlocked_value * 10  # High value for unlocking conditions
+                                        
+                                        if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                                            self.engine.ai_decision_logs.append(
+                                                f"\033[90m[AI-EXPERT] {spell.card.name} would unlock {unlocked_value} extra value at {required} locations\033[0m"
+                                            )
+                        
+                        # Moving our high-damage spells is valuable
+                        if p == player:
+                            spell_damage = self._estimate_card_damage(spell.card)
+                            if spell_damage >= 2:
+                                value += 1
+                        
+                        # Moving enemy threats away is valuable
+                        elif clash_idx == gs.clash_num - 1:
+                            threat_value = self._estimate_card_damage(spell.card)
+                            value += threat_value * 0.5
+        
+        return value
+    
+    def _estimate_achievable_board_state(self, player, gs):
+        """Estimate how many spells we can have active when this resolves"""
+        current_active = sum(1 for s in player.board[gs.clash_num - 1] 
+                           if s.status == 'revealed')
+        
+        # How many more can we play?
+        cards_in_hand = len(player.hand)
+        slots_available = 4 - current_active  # Max 4 per clash typically
+        
+        potential_additions = min(cards_in_hand - 1, slots_available, 2)  # Conservative estimate
+        
+        return current_active + potential_additions
+    
+    def _count_movement_opportunities(self, player, gs):
+        """Count valuable movement opportunities"""
+        opportunities = 0
+        
+        # Only count opportunities if there are valuable targets on the board
+        valuable_targets_exist = False
+        
+        # Check our board for spells that would benefit from advancing
+        for clash_idx in range(gs.clash_num):  # Only past/current clashes
+            for spell in player.board[clash_idx]:
+                if spell.status == 'revealed' and clash_idx < gs.clash_num - 1:
+                    # Spell in a past clash that could be advanced
+                    patterns = self._identify_mobility_patterns(spell.card)
+                    
+                    # Check if this spell would benefit from advancing
+                    for pattern in patterns:
+                        if pattern['type'] == 'location_accumulator':
+                            # Would advancing help reach the requirement?
+                            current_locations = self._count_spell_clashes(spell.card, player, gs)
+                            if current_locations < pattern['required_locations']:
+                                valuable_targets_exist = True
+                                opportunities += 2  # High value target
+                                
+                                if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                                    self.engine.ai_decision_logs.append(
+                                        f"\\033[90m[AI-MOBILITY] {spell.card.name} needs more locations ({current_locations}/{pattern['required_locations']})\\033[0m"
+                                    )
+                        
+                        elif pattern['type'] == 'temporal_sequencer':
+                            valuable_targets_exist = True
+                            opportunities += 1
+                    
+                    # Also check if the spell has high damage/healing that we want to reuse
+                    damage = self._estimate_card_damage(spell.card)
+                    healing = self._estimate_card_healing(spell.card)
+                    if damage >= 2 or healing >= 2:
+                        valuable_targets_exist = True
+                        opportunities += 1
+        
+        # Check enemy board for threats we might want to move away
+        for enemy in gs.players:
+            if enemy == player:
+                continue
+            for spell in enemy.board[gs.clash_num - 1]:
+                if spell.status == 'revealed' and 'attack' in spell.card.types:
+                    damage = self._estimate_card_damage(spell.card)
+                    if damage >= 2:
+                        valuable_targets_exist = True
+                        opportunities += 1
+        
+        # If no valuable targets exist, return 0
+        if not valuable_targets_exist:
+            return 0
+            
+        return opportunities
+    
+    def _get_element_mobility_affinity(self, element):
+        """Get mobility affinity from element categories data"""
+        # Access the class-level element categories data
+        if not BaseAI._element_categories:
+            return 0
+            
+        # Find which category this element belongs to
+        element_category_name = None
+        element_category_data = None
+        for category_name, category_data in BaseAI._element_categories.get('categories', {}).items():
+            if element in category_data.get('elements', []):
+                element_category_name = category_name
+                element_category_data = category_data
+                break
+                
+        if not element_category_data:
+            return 0
+            
+        mobility_score = 0
+        
+        # Check category
+        if element_category_name == 'mobility':
+            mobility_score += 30
+        
+        # Check spell type synergies - mobility elements often synergize with boosts
+        synergies = element_category_data.get('synergies', {})
+        if synergies.get('boost', 1.0) >= 1.3:
+            mobility_score += 20
+        
+        # Check description for mobility keywords
+        description = element_category_data.get('description', '').lower()
+        mobility_keywords = ['move', 'advance', 'position', 'timing', 'mobility', 'reposition']
+        if any(keyword in description for keyword in mobility_keywords):
+            mobility_score += 15
+        
+        return mobility_score

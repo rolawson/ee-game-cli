@@ -112,6 +112,7 @@ ai/
     - **Damage efficiency scoring**: Rewards cards that scale well with board state vs static damage
     - **Weaken effect valuation**: Properly values weakening effects based on enemy health and game length
     - **Comprehensive cancellation**: Analyzes immediate damage, combo enablement, future threats, defensive value, and tempo impact
+    - **Mobility pattern recognition**: Identifies and values cards based on movement behaviors without hardcoding
     - Overthinks decisions, leading to interesting but not always optimal play
 
 #### Key AI Features:
@@ -128,6 +129,31 @@ ai/
 - **Resource Management**: Hand size, card advantage
 - **Risk Assessment**: Self-damage evaluation, lethal prevention
 - **Adaptability**: Counter-strategies based on opponent patterns
+
+**Mobility Pattern Recognition** (Expert AI):
+The Expert AI uses a sophisticated pattern recognition system to identify and value "mobility" behaviors in cards without hardcoding specific spell names. This system recognizes several mobility patterns:
+
+1. **Location Accumulator**: Cards that gain value from being in multiple clash locations (e.g., spell_clashes_count condition)
+   - Tracks required locations vs current locations
+   - Values progress toward location goals
+   - Prioritizes advance actions for these cards
+
+2. **Temporal Sequencer**: Cards that need temporal progression (e.g., if_spell_previously_resolved_this_round)
+   - Values play-then-advance sequences
+   - Considers timing windows for setup
+
+3. **Position Manipulator**: Cards that move or advance other spells
+   - Identifies advance, move_clash_to_clash, and similar effects
+   - Values based on available manipulation targets
+
+4. **Board State Scaler**: Cards with effects that scale with board state
+   - Recognizes damage_per_spell, heal_per_spell patterns
+   - Values based on achievable board states
+
+5. **Designed for Movement**: Cards with advance priority ('A')
+   - Inherently valued for mobility strategies
+
+The system also considers element mobility affinity from element_categories.json, giving bonus value to elements categorized as "mobility" (Wind, Space, Time, Aster, Shadow).
 
 #### Testing Framework:
 
