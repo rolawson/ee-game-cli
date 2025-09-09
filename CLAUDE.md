@@ -18,4 +18,3 @@ Never hard-code specific spells or elements in logic. Develop logic in an extens
 When code is ready to commit, suggest a commit message, but do not attempt to commit yourself.
 
 After code is pushed, update CONTEXT.md and/or CLARIFICATIONS.md if it's appropriate to do so.
-
