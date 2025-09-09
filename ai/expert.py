@@ -352,14 +352,37 @@ class ExpertAI(BaseAI):
         
         if card.is_conjury:
             # Conjuries are complex - consider protection and timing
-            if gs.clash_num <= 2:
-                score += 80
-            else:
-                score += 40
+            base_conjury_value = 80 if gs.clash_num <= 2 else 40
+            
+            # Check enemy threats to conjuries
+            enemy_conjury_removal = 0
+            for enemy in gs.players:
+                if enemy == player:
+                    continue
+                    
+                # Check enemy hand for potential conjury removal
+                remaining_cards = len(enemy.hand)
+                # Estimate 30% of cards might be attacks that target conjuries
+                enemy_conjury_removal += remaining_cards * 0.3
+                
+                # Check visible enemy attacks
+                for spell in enemy.board[gs.clash_num - 1]:
+                    if spell.status == 'revealed' and 'attack' in spell.card.types:
+                        enemy_conjury_removal += 1
+            
+            # Reduce value based on threat level
+            threat_multiplier = max(0.2, 1.0 - (enemy_conjury_removal * 0.2))
+            score += base_conjury_value * threat_multiplier
             
             # Check if we can protect it
             if self._has_protection(player):
                 score += 30
+            
+            # Log conjury evaluation
+            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                self.engine.ai_decision_logs.append(
+                    f"\033[90m[AI-EXPERT] {card.name} conjury value: {base_conjury_value * threat_multiplier:.0f} (threat level: {enemy_conjury_removal:.1f})\033[0m"
+                )
         
         
         # Priority considerations
@@ -367,11 +390,33 @@ class ExpertAI(BaseAI):
             # Check if this is a "pure mobility" card (no resolve effects)
             if not card.resolve_effects:
                 # This card ONLY does something when advanced
-                # Give it a very low base score
+                # Evaluate based on what it can enable
+                enablement_value = 0
+                
+                # Check advance effects for value
+                for effect in card.advance_effects:
+                    action = effect.get('action', {})
+                    if isinstance(action, dict):
+                        action_type = action.get('type', '')
+                        if action_type == 'advance_from_hand':
+                            # Can advance cards from hand - valuable early
+                            if gs.clash_num <= 2:
+                                enablement_value += 30
+                        elif action_type == 'advance_from_past_clash':
+                            # Can advance past spells - check if we have valuable targets
+                            valuable_past_spells = self._count_valuable_past_spells(player, gs)
+                            enablement_value += valuable_past_spells * 20
+                        elif action_type in ['advance', 'player_choice']:
+                            # Can advance other spells - already evaluated in mobility
+                            enablement_value += 10
+                
+                # Apply penalty but offset by enablement value
                 score -= 30
+                score += enablement_value
+                
                 if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                     self.engine.ai_decision_logs.append(
-                        f"\033[90m[AI-EXPERT] {card.name} has no resolve effects (-30 base))\033[0m"
+                        f"\033[90m[AI-EXPERT] {card.name} advance-only card: base -30, enablement +{enablement_value}\033[0m"
                     )
             else:
                 score += 10 * (4 - gs.clash_num)  # Advance priority scales with remaining clashes
@@ -1671,6 +1716,28 @@ class ExpertAI(BaseAI):
             else:
                 # Generic advance value if we can't identify the target
                 value += 40 * (4 - gs.clash_num)
+        
+        elif option.get('type') == 'advance_from_hand':
+            # Advancing from hand (like Gleam) - very valuable early game
+            cards_to_advance = option.get('parameters', {}).get('value', 1)
+            if gs.clash_num <= 2 and len(caster.hand) >= cards_to_advance:
+                # Check for cards that benefit from being played early
+                location_accumulators = 0
+                conjuries = 0
+                for card in caster.hand:
+                    patterns = self._identify_mobility_patterns(card)
+                    if any(p['type'] == 'location_accumulator' for p in patterns):
+                        location_accumulators += 1
+                    if card.is_conjury:
+                        conjuries += 1
+                
+                # High value if we have cards that need to be on board early
+                if location_accumulators > 0:
+                    value += 100 * min(location_accumulators, cards_to_advance)
+                if conjuries > 0 and gs.clash_num == 1:
+                    value += 60 * min(conjuries, cards_to_advance)
+                else:
+                    value += 40 * cards_to_advance
         
         elif option.get('type') == 'move':
             # Moving spells (Space element) - evaluate based on target spells
@@ -3210,6 +3277,31 @@ class ExpertAI(BaseAI):
         potential_additions = min(cards_in_hand - 1, slots_available, 2)  # Conservative estimate
         
         return current_active + potential_additions
+    
+    def _count_valuable_past_spells(self, player, gs):
+        """Count past spells worth advancing"""
+        valuable_count = 0
+        
+        # Check past clashes
+        for clash_idx in range(gs.clash_num - 1):
+            for spell in player.board[clash_idx]:
+                if spell.status == 'revealed':
+                    # High damage/healing spells are worth advancing
+                    damage = self._estimate_card_damage(spell.card)
+                    healing = self._estimate_card_healing(spell.card)
+                    if damage >= 2 or healing >= 2:
+                        valuable_count += 1
+                    
+                    # Location accumulators are worth advancing
+                    patterns = self._identify_mobility_patterns(spell.card)
+                    for pattern in patterns:
+                        if pattern['type'] == 'location_accumulator':
+                            current = self._count_spell_clashes(spell.card, player, gs)
+                            if current < pattern['required_locations']:
+                                valuable_count += 1
+                                break
+        
+        return valuable_count
     
     def _count_movement_opportunities(self, player, gs):
         """Count valuable movement opportunities"""

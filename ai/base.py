@@ -477,19 +477,18 @@ class BaseAI(ABC):
         return base_value
     
     def _count_spell_clashes(self, card, owner, gs):
-        """Count how many clashes this spell has been in"""
-        clash_count = 0
+        """Count how many different clashes this spell has been in"""
+        clashes_seen = set()
         
-        # Check current board
+        # Check current board for this specific card instance
         for player in gs.players:
             if player.name == owner.name:
                 for clash_idx, clash_spells in enumerate(player.board):
                     for spell in clash_spells:
-                        if spell.card.id == card.id:
-                            clash_count += 1
-                            break
+                        if spell.card.id == card.id and spell.status == 'revealed':
+                            clashes_seen.add(clash_idx + 1)  # Clash numbers are 1-based
         
-        return clash_count
+        return len(clashes_seen)
     
     def _extract_action_value(self, action):
         """Extract numeric value from an action (damage, heal, etc)"""
