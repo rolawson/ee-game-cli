@@ -44,6 +44,9 @@ class LLMBaseAI(BaseAI):
         # Track player name for this AI
         if not self.player_name:
             self.player_name = player.name
+        
+        # Set current player for board state filtering
+        self.current_player = player
             
         # Build game state context
         context = self._build_game_context(player, gs, valid_indices)
@@ -221,8 +224,8 @@ class LLMBaseAI(BaseAI):
         if not hasattr(gs, 'action_log'):
             return []
         
-        # Get last 15 entries for current round/clash
-        recent_entries = gs.action_log[-15:]
+        # Get last 30 entries to ensure we capture the full round
+        recent_entries = gs.action_log[-30:]
         
         # Filter out entries that reveal hidden information
         filtered = []
@@ -294,18 +297,26 @@ class LLMBaseAI(BaseAI):
         # Count active spells by type
         for player in gs.players:
             spells = []
-            for spell in player.board[gs.clash_num - 1]:
-                if spell.status == 'revealed':
-                    spells.append({
-                        "name": spell.card.name,
-                        "types": spell.card.types,
-                        "element": spell.card.element
-                    })
+            for clash_idx in range(len(player.board)):
+                for spell in player.board[clash_idx]:
+                    # Only include this spell if:
+                    # 1. It's revealed (everyone can see it)
+                    # 2. OR it's our own spell (we can see our own prepared spells)
+                    if spell.status == 'revealed' or (hasattr(self, 'current_player') and spell.owner == self.current_player):
+                        spells.append({
+                            "name": spell.card.name,
+                            "types": spell.card.types,
+                            "element": spell.card.element,
+                            "clash": clash_idx + 1,
+                            "status": spell.status
+                        })
             
             if hasattr(self, 'current_player') and player == self.current_player:
                 active_spells["player"] = spells
             else:
-                active_spells["enemies"].extend(spells)
+                # For enemies, filter out prepared spells
+                enemy_spells = [s for s in spells if s.get('status') == 'revealed']
+                active_spells["enemies"].extend(enemy_spells)
         
         return active_spells
     
@@ -433,16 +444,49 @@ class LLMBaseAI(BaseAI):
             if result and isinstance(result, dict):
                 message = result.get("analysis", "")
                 if message:
-                    # Display the analysis
+                    # Always add to action log first so it's preserved
+                    if hasattr(gs, 'action_log'):
+                        gs.action_log.append(f"\n{Colors.HEADER}=== Claude's Round {gs.round_num} Analysis ==={Colors.ENDC}")
+                        gs.action_log.append(message)
+                    
+                    # Then pause to show it
                     if self.engine and hasattr(self.engine, '_pause'):
-                        self.engine._pause(f"\n{Colors.HEADER}=== Claude's Round {gs.round_num} Analysis ==={Colors.ENDC}\n{message}")
-                    else:
-                        # Fallback: add to action log
-                        if hasattr(gs, 'action_log'):
-                            gs.action_log.append(f"{Colors.HEADER}[Claude Analysis]: {message}{Colors.ENDC}")
+                        self.engine._pause("")  # Empty pause since message is in log
         except Exception as e:
             # Log the error
             if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                 self.engine.ai_decision_logs.append(
                     f"\033[90m[LLM-AI] Round analysis error: {str(e)}\033[0m"
                 )
+    
+    def provide_game_end_analysis(self, gs, winner):
+        """Provide final commentary when the game ends"""
+        # Build context for game end analysis
+        context = {
+            'winner': winner.name if winner else 'No one',
+            'winner_health': winner.health if winner else 0,
+            'winner_trunks': winner.trunks if winner else 0,
+            'total_rounds': gs.round_num,
+            'player_name': self.player_name,
+            'final_board': self._summarize_board_state(gs),
+            'all_players': [(p.name, p.health, p.max_health, p.trunks) for p in gs.players]
+        }
+        
+        try:
+            # Get analysis from LLM
+            future = self.executor.submit(self._get_llm_decision_sync, context, "game_end")
+            result = future.result(timeout=self.timeout_seconds)
+            
+            if result and isinstance(result, dict):
+                message = result.get("final_words", "")
+                if message:
+                    # Always add to action log first
+                    if hasattr(gs, 'action_log'):
+                        gs.action_log.append(f"\n{Colors.HEADER}=== {self.player_name}'s Final Words ==={Colors.ENDC}")
+                        gs.action_log.append(message)
+                    
+                    # Then pause to show it
+                    if self.engine and hasattr(self.engine, '_pause'):
+                        self.engine._pause("")  # Empty pause since message is in log
+        except Exception:
+            pass  # Silent fail for game end commentary

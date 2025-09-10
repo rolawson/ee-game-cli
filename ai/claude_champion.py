@@ -76,10 +76,10 @@ Response Styles to Mix Up:
 - Rambling professor: Long-winded explanations
 - Trash talker: Direct mockery of their plays
 
-CRITICAL: Don't follow a formula! No "Ah, the classic X!" every time. Be unpredictable!
-- Use spell effects in taunts: "Time to WEAKEN your hopes and DAMAGE your dreams!"
+CRITICAL: Don't follow a formula! Be unpredictable! Each response should feel completely different.
 
-Respond with JSON containing your decision, reasoning, and a snarky taunt using spell/element names."""
+For game decisions (cards, drafts): Respond with JSON.
+For commentary: Just respond naturally without JSON."""
     
     def _load_spells_data(self) -> str:
         """Load and format spells data for the system prompt"""
@@ -145,6 +145,13 @@ Metal: Reinforce, Besiege, Defend (defense)
                 prompt = self._build_draft_prompt(context)
             elif decision_type == "round_analysis":
                 prompt = self._build_round_analysis_prompt(context)
+                # Debug log the prompt
+                if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                    self.engine.ai_decision_logs.append(
+                        f"\\033[90m[Claude-Champion] Round prompt preview: {prompt[:150]}...\\033[0m"
+                    )
+            elif decision_type == "game_end":
+                prompt = self._build_game_end_prompt(context)
             else:
                 return None
             
@@ -152,7 +159,7 @@ Metal: Reinforce, Besiege, Defend (defense)
             response = await self.client.messages.create(
                 model=self.model,
                 max_tokens=500,
-                temperature=0.9,  # Higher temperature for more personality
+                temperature=1.0,  # Max temperature for maximum variety
                 system=self.system_prompt,
                 messages=[
                     {"role": "user", "content": prompt}
@@ -161,6 +168,20 @@ Metal: Reinforce, Besiege, Defend (defense)
             
             # Parse response
             content = response.content[0].text
+            
+            # Debug: Log the raw response
+            if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                self.engine.ai_decision_logs.append(
+                    f"\\033[90m[Claude-Champion] Raw response: {content[:200]}...\\033[0m"
+                )
+            
+            # For round analysis, return raw text
+            if decision_type == "round_analysis":
+                if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                    self.engine.ai_decision_logs.append(
+                        f"\\033[90m[Claude-Champion] Round analysis raw: {content}\\033[0m"
+                    )
+                return {"analysis": content}
             
             # Try to extract JSON from the response
             try:
@@ -323,62 +344,125 @@ Metal: Reinforce, Besiege, Defend (defense)
                     clean_action = clean_action.replace(f'\033{color}', '')
                 action_log_text.append(clean_action)
         
-        # Randomly choose a prompt style to encourage variety
-        prompt_styles = [
-            # Quick reaction style
-            lambda: [
-                f"Round {context['round']} done. Here's what went down:",
-                *[f"- {log}" for log in action_log_text],
+        # Check if action log is empty or just administrative
+        has_real_actions = any(
+            "dealt" in log or "healed" in log or "CANCELLED" in log or "lost a trunk" in log
+            for log in action_log_text
+        )
+        
+        if not has_real_actions:
+            # If nothing happened, use a simple prompt
+            prompt_parts = [
+                f"Round {context['round']} complete.",
+                "Nothing significant happened this round (no damage, healing, or other effects).",
                 "",
-                "Hit me with your hot take (2-3 sentences). GO!"
-            ],
-            
-            # Analytical style
-            lambda: [
-                f"MATCH ANALYSIS - ROUND {context['round']}",
-                "=== COMBAT LOG ===",
-                *[f"{log}" for log in action_log_text],
-                "",
-                "Provide expert commentary on the above sequence."
-            ],
-            
-            # Trash talk style
-            lambda: [
-                "ROUND RECAP:",
-                *[f"* {log}" for log in action_log_text],
-                "",
-                f"You played: {', '.join([play['card'] for play in context['round_plays']])}",
-                "Roast them or boast. Make it spicy!"
-            ],
-            
-            # Storyteller style
-            lambda: [
-                f"The tale of Round {context['round']}:",
-                *[f"  {log}" for log in action_log_text],
-                "",
-                "Spin this into a legendary tale (but keep it short)."
-            ],
-            
-            # Direct style
-            lambda: [
-                *[f"{log}" for log in action_log_text],
-                "",
-                "^ That just happened. Thoughts?"
+                "Comment on the lack of action (1-2 sentences)."
             ]
-        ]
+        else:
+            # Randomly choose a prompt style to encourage variety
+            prompt_styles = [
+                # Just the facts
+                lambda: [
+                    *[f"{log}" for log in action_log_text],
+                    "",
+                    "React."
+                ],
+                
+                # Salty loser
+                lambda: [
+                    *[f"{log}" for log in action_log_text],
+                    "",
+                    "You're salty about this. Let it out."
+                ],
+                
+                # Sports commentator
+                lambda: [
+                    *[f"{log}" for log in action_log_text],
+                    "",
+                    "COMMENTATE LIKE IT'S THE WORLD FINALS!"
+                ],
+                
+                # One word
+                lambda: [
+                    *[f"{log}" for log in action_log_text],
+                    "",
+                    "Sum this up in ONE WORD:"
+                ],
+                
+                # Confused
+                lambda: [
+                    *[f"{log}" for log in action_log_text],
+                    "",
+                    "Wait, what just happened? You're confused."
+                ],
+                
+                # Excuses
+                lambda: [
+                    *[f"{log}" for log in action_log_text],
+                    "",
+                    "Make excuses for why this round went the way it did."
+                ],
+                
+                # Victory dance
+                lambda: [
+                    *[f"{log}" for log in action_log_text],
+                    "",
+                    "Time to gloat! Be obnoxious about it!"
+                ]
+            ]
+            
+            # Pick a random style
+            style_names = ["Just react", "Salty", "Commentator", "One word", "Confused", "Excuses", "Victory dance"]
+            chosen_index = random.randint(0, len(prompt_styles) - 1)
+            chosen_style = prompt_styles[chosen_index]
+            prompt_parts = chosen_style()
+            
+            # Add debug info about which style was chosen
+            debug_msg = f"[DEBUG: Using {style_names[chosen_index]} style]"
+            prompt_parts.insert(0, debug_msg)
+            
+            # Also log it
+            if hasattr(self, 'engine') and self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                self.engine.ai_decision_logs.append(f"\\033[90m{debug_msg}\\033[0m")
         
-        # Pick a random style
-        chosen_style = random.choice(prompt_styles)
-        prompt_parts = chosen_style()
-        
-        # Always end with JSON requirement
-        prompt_parts.extend([
-            "",
-            "JSON required:",
-            '{"analysis": "<your response>"}'
-        ])
-        
+        # For round analysis, skip JSON and just get raw response
         return "\n".join(prompt_parts)
+    
+    def _build_game_end_prompt(self, context: Dict[str, Any]) -> str:
+        """Build prompt for game end commentary"""
+        import random
+        
+        winner = context['winner']
+        i_won = winner == context['player_name']
+        
+        if i_won:
+            # Victory prompts
+            prompts = [
+                f"YOU WON! {winner} is victorious with {context['winner_health']} HP and {context['winner_trunks']} trunks! Give us your victory speech!",
+                f"CHAMPION VICTORIOUS! Final score: {winner} wins in {context['total_rounds']} rounds. Gloat time!",
+                f"Game over. You won. Drop the mic.",
+                f"{winner} WINS! Your moment of glory has arrived. Make it memorable."
+            ]
+        else:
+            # Defeat prompts (but Champion never admits defeat)
+            prompts = [
+                f"{winner} won? IMPOSSIBLE! The game must be broken. Explain this travesty!",
+                f"Game ended. {winner} claims victory. You have thoughts about this 'victory'...",
+                f"{winner} destroyed your last trunk. React to this... situation.",
+                f"Final score: {winner} wins. The Champion demands a recount!"
+            ]
+        
+        chosen_prompt = random.choice(prompts)
+        
+        return f"""{chosen_prompt}
+
+Final stats:
+{chr(10).join(f"- {name}: {health}/{max_health} HP, {trunks} trunks" for name, health, max_health, trunks in context['all_players'])}
+
+Total rounds: {context['total_rounds']}
+
+JSON required:
+{{"final_words": "<your final message>"}}"""
     
     def _parse_text_response(self, content: str, decision_type: str) -> Optional[Dict[str, Any]]:
         """Parse non-JSON text responses as fallback"""
@@ -405,6 +489,10 @@ Metal: Reinforce, Besiege, Defend (defense)
         elif decision_type == "round_analysis":
             return {
                 "analysis": "Another round of pure domination by The Champion! My spell mastery remains unmatched!"
+            }
+        elif decision_type == "game_end":
+            return {
+                "final_words": "The Champion's legacy continues!"
             }
         
         return None

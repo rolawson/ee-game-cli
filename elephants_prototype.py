@@ -13,11 +13,11 @@ from ai import EasyAI, MediumAI, HardAI, ExpertAI, ClaudeSavantAI, ClaudeChampio
 from game_logger import game_logger
 
 # --- CONSTANTS ---
-DEBUG_AI = False  # Set to False to disable AI decision logging
+DEBUG_AI = True  # Set to False to disable AI decision logging
 
 # Load spell data from external JSON file
 def load_spell_data():
-    """Load spell data from spells.json file."""
+    """Load spell data from spells.json file."""as
     spell_file = os.path.join(os.path.dirname(__file__), 'spells.json')
     try:
         with open(spell_file, 'r') as f:
@@ -2740,6 +2740,12 @@ class GameEngine:
                     total_rounds=self.gs.round_num - 1
                 )
             
+            # Get final commentary from Claude AIs
+            for player in self.gs.players:
+                ai_strategy = self.ai_strategies.get(self.gs.players.index(player))
+                if ai_strategy and hasattr(ai_strategy, 'provide_game_end_analysis'):
+                    ai_strategy.provide_game_end_analysis(self.gs, winner)
+            
             self._pause()
         except Exception:
             clear_screen(); print("\n\n--- A CRITICAL ERROR OCCURRED ---")
@@ -2877,14 +2883,14 @@ class GameEngine:
                 played_card = PlayedCard(card_to_play, player)
                 player.board[self.gs.clash_num - 1].append(played_card)
                 
-                # Log opponent's play generically, but your play specifically.
+                # Log ALL plays generically to prevent cheating
+                log_message = f"{player.name} has prepared a spell."
+                self.gs.action_log.append(log_message)
+                
+                # Show the specific spell to human player only in the display
                 if player.is_human:
                     formatted_name = self._format_spell_name(card_to_play)
-                    log_message = f"{player.name} prepared {formatted_name}."
-                else:
-                    log_message = f"{player.name} has prepared a spell."
-                    
-                self.gs.action_log.append(log_message)
+                    print(f"You prepared {formatted_name}.")
             else:
                 self.gs.action_log.append(f"{player.name} did not play a spell.")
 
