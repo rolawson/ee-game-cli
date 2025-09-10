@@ -1,4 +1,4 @@
-"""Claude Sonnet AI implementation"""
+"""Claude Savant AI implementation - Analytical and learning-focused"""
 
 import os
 import json
@@ -10,8 +10,8 @@ from .llm_base import LLMBaseAI
 from .expert import ExpertAI
 
 
-class ClaudeAI(LLMBaseAI):
-    """Claude Sonnet-powered AI player"""
+class ClaudeSavantAI(LLMBaseAI):
+    """Claude Savant - Analytical AI that learns through gameplay"""
     
     def __init__(self):
         super().__init__()
@@ -100,7 +100,7 @@ Respond with JSON containing your decision, reasoning, and an optional message."
         except Exception as e:
             if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                 self.engine.ai_decision_logs.append(
-                    f"\\033[90m[Claude-AI] API error: {str(e)}\\033[0m"
+                    f"\\033[90m[Claude-Savant] API error: {str(e)}\\033[0m"
                 )
             return None
     

@@ -37,9 +37,14 @@ class LLMBaseAI(BaseAI):
         self.timeout_seconds = 10  # API timeout
         self.last_communication = ""  # Store last message for display
         self.round_history = []  # Track plays for end-of-round analysis
+        self.player_name = None  # Track which player this AI controls
         
     def _select_card(self, player, gs, valid_indices):
         """Select a card using LLM reasoning"""
+        # Track player name for this AI
+        if not self.player_name:
+            self.player_name = player.name
+            
         # Build game state context
         context = self._build_game_context(player, gs, valid_indices)
         
@@ -105,9 +110,8 @@ class LLMBaseAI(BaseAI):
                 choice_index = decision.get("choice_index", 0)
                 message = decision.get("message", "")
                 
-                # Store communication
-                if message and self.communication_enabled:
-                    self._store_communication(message)
+                # Don't display messages during gameplay
+                # Messages should only appear at end of round
                 
                 # Validate choice
                 if 0 <= choice_index < len(valid_options):
@@ -138,9 +142,8 @@ class LLMBaseAI(BaseAI):
                 set_index = decision.get("set_index", 0)
                 message = decision.get("message", "")
                 
-                # Store communication
-                if message and self.communication_enabled:
-                    self._store_communication(message)
+                # Don't display messages during draft phase
+                # Messages should only appear at end of round
                 
                 # Validate choice
                 if 0 <= set_index < len(available_sets):
@@ -200,14 +203,40 @@ class LLMBaseAI(BaseAI):
                 "description": self._summarize_card_effects(card)
             })
         
+        # Get recent action log entries (filter out hidden info)
+        recent_actions = self._get_filtered_action_log(gs, player)
+        
         return {
             "round": gs.round_num,
             "clash": gs.clash_num,
             "player": player_state,
             "enemies": enemies,
             "board": board_state,
-            "valid_cards": card_options
+            "valid_cards": card_options,
+            "recent_actions": recent_actions
         }
+    
+    def _get_filtered_action_log(self, gs, player) -> list[str]:
+        """Get recent action log entries, filtering out hidden opponent information"""
+        if not hasattr(gs, 'action_log'):
+            return []
+        
+        # Get last 15 entries for current round/clash
+        recent_entries = gs.action_log[-15:]
+        
+        # Filter out entries that reveal hidden information
+        filtered = []
+        for entry in recent_entries:
+            # Skip entries that reveal cards in opponent hands (before they're played)
+            if "Revealed from" in entry and "hand:" in entry:
+                # Only show if it's about the current player
+                if player.name in entry:
+                    filtered.append(entry)
+            else:
+                # Include most other entries (damage, healing, cancellations, etc.)
+                filtered.append(entry)
+        
+        return filtered
     
     def _build_choice_context(self, valid_options, caster, gs, current_card) -> Dict[str, Any]:
         """Build context for player_choice decisions"""
@@ -367,13 +396,28 @@ class LLMBaseAI(BaseAI):
     
     def provide_round_analysis(self, gs):
         """Provide teaching analysis at the end of each round"""
+        # Get the AI player
+        ai_player = next((p for p in gs.players if p.name == self.player_name), None)
+        
         # Build context for round analysis
         context = {
             'round': gs.round_num,
             'round_plays': [h for h in self.round_history if h['round'] == gs.round_num],
-            'player_health': [(p.name, p.health, p.max_health) for p in gs.players],
-            'player_trunks': [(p.name, p.trunks) for p in gs.players]
+            'player_health': [(p.name, p.health, p.max_health, p.trunks) for p in gs.players],
+            'game_state': gs,  # Pass full game state for element tracking
+            'action_log': self._get_filtered_action_log(gs, ai_player) if ai_player else []
         }
+        
+        # Add trunk changes if any
+        trunk_changes = []
+        for player in gs.players:
+            # Check if player lost a trunk this round (would need tracking)
+            # For now, we'll note if health is 0
+            if player.health == 0:
+                trunk_changes.append({'player': player.name, 'lost_trunk': True})
+        
+        if trunk_changes:
+            context['trunk_changes'] = trunk_changes
         
         # Debug log
         if self.engine and hasattr(self.engine, 'ai_decision_logs'):

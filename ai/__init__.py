@@ -6,6 +6,7 @@ from .medium import MediumAI
 from .hard import HardAI
 from .expert import ExpertAI
 from .llm_base import LLMBaseAI
-from .claude_ai import ClaudeAI
+from .claude_savant import ClaudeSavantAI
+from .claude_champion import ClaudeChampionAI
 
-__all__ = ['BaseAI', 'EasyAI', 'MediumAI', 'HardAI', 'ExpertAI', 'LLMBaseAI', 'ClaudeAI']
+__all__ = ['BaseAI', 'EasyAI', 'MediumAI', 'HardAI', 'ExpertAI', 'LLMBaseAI', 'ClaudeSavantAI', 'ClaudeChampionAI']

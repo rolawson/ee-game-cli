@@ -19,11 +19,11 @@ def test_claude_verbose():
     # Create engine
     engine = AutoPlayEngine(["Claude", "TestBot"], ai_difficulty='claude', delay=0.1)
     
-    # Import Claude AI
-    from ai.claude_ai import ClaudeAI
+    # Import Claude Savant AI
+    from ai.claude_savant import ClaudeSavantAI
     
     # Set up AI strategies properly
-    claude = ClaudeAI()
+    claude = ClaudeSavantAI()
     claude.engine = engine
     engine.ai_strategies[0] = claude  # Claude is player 0
     

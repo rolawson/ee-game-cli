@@ -7,7 +7,7 @@ from collections import defaultdict
 from typing import Any
 
 # Import AI classes from separate module
-from ai import EasyAI, MediumAI, HardAI, ExpertAI, ClaudeAI
+from ai import EasyAI, MediumAI, HardAI, ExpertAI, ClaudeSavantAI, ClaudeChampionAI
 
 # Import game logger for analytics
 from game_logger import game_logger
@@ -2628,11 +2628,20 @@ class GameEngine:
                     ai = ExpertAI()
                     if DEBUG_AI:
                         print(f"Created ExpertAI for player {i}: {name}")
-                elif ai_difficulty == 'claude':
+                elif ai_difficulty == 'claude' or ai_difficulty == 'claude_savant':
                     try:
-                        ai = ClaudeAI()
+                        ai = ClaudeSavantAI()
                         if DEBUG_AI:
-                            print(f"Created ClaudeAI for player {i}: {name}")
+                            print(f"Created ClaudeSavantAI for player {i}: {name}")
+                    except ValueError as e:
+                        # Fall back to Expert if API key not set
+                        print(f"{Colors.WARNING}Warning: {e}. Falling back to ExpertAI.{Colors.ENDC}")
+                        ai = ExpertAI()
+                elif ai_difficulty == 'claude_champion':
+                    try:
+                        ai = ClaudeChampionAI()
+                        if DEBUG_AI:
+                            print(f"Created ClaudeChampionAI for player {i}: {name}")
                     except ValueError as e:
                         # Fall back to Expert if API key not set
                         print(f"{Colors.WARNING}Warning: {e}. Falling back to ExpertAI.{Colors.ENDC}")
@@ -3382,16 +3391,18 @@ if __name__ == "__main__":
         print("[2] Medium (Basic strategy)")
         print("[3] Hard (Strategic)")
         print("[4] Expert (Overthinks everything)")
-        print("[5] Claude (AI powered by LLM)")
+        print("[5] Claude Savant (AI powered by LLM)")
+        print("[6] Claude Champion (Enhanced LLM AI)")
         
-        difficulty_choice = input("\nYour choice (1-5): ").strip()
+        difficulty_choice = input("\nYour choice (1-6): ").strip()
         
         difficulty_map = {
             '1': 'easy',
             '2': 'medium',
             '3': 'hard',
             '4': 'expert',
-            '5': 'claude'
+            '5': 'claude_savant',
+            '6': 'claude_champion'
         }
         
         ai_difficulty = difficulty_map.get(difficulty_choice, 'expert')
