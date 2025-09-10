@@ -420,14 +420,51 @@ class LLMBaseAI(BaseAI):
             return
         
         print(f">>> Found AI player: {ai_player.name}, proceeding with analysis...")
+        input(">>> Press Enter to continue...")  # Give time to read debug info
         
-        # Build context for round analysis
+        # Build context for round analysis - include ALL the rich context
+        # Build player state (same as card selection)
+        player_state = {
+            "name": ai_player.name,
+            "health": ai_player.health,
+            "max_health": ai_player.max_health,
+            "hand_size": len(ai_player.hand),
+            "trunks": ai_player.trunks
+        }
+        
+        # Build enemy states (same as card selection)
+        enemies = []
+        for p in gs.players:
+            if p != ai_player:
+                enemies.append({
+                    "name": p.name,
+                    "health": p.health,
+                    "max_health": p.max_health,
+                    "hand_size": len(p.hand),
+                    "trunks": p.trunks
+                })
+        
+        # Build board state (what spells were active during the round)
+        board_state = self._summarize_board_state(gs)
+        
+        # Get the FULL action log for this round (unfiltered for round analysis)
+        full_round_actions = []
+        for action in gs.action_log:
+            # Include all actions from this round
+            if "--- Round" in action and str(gs.round_num) in action:
+                full_round_actions = []  # Start fresh from this round marker
+            full_round_actions.append(action)
+        
         context = {
             'round': gs.round_num,
             'round_plays': [h for h in self.round_history if h['round'] == gs.round_num],
+            'player': player_state,
+            'enemies': enemies,
+            'board': board_state,
             'player_health': [(p.name, p.health, p.max_health, p.trunks) for p in gs.players],
             'game_state': gs,  # Pass full game state for element tracking
-            'action_log': self._get_filtered_action_log(gs, ai_player) if ai_player else []
+            'action_log': full_round_actions,  # Full unfiltered log for round analysis
+            'recent_actions': self._get_filtered_action_log(gs, ai_player)[-10:] if ai_player else []
         }
         
         # Add trunk changes if any
@@ -440,6 +477,13 @@ class LLMBaseAI(BaseAI):
         
         if trunk_changes:
             context['trunk_changes'] = trunk_changes
+        
+        # Debug log what we're sending
+        print(f">>> Context action_log has {len(context['action_log'])} entries")
+        if context['action_log']:
+            print(">>> Sample actions:")
+            for action in context['action_log'][-5:]:  # Last 5 actions
+                print(f"    - {action[:80]}...")
         
         # Debug log
         if self.engine and hasattr(self.engine, 'ai_decision_logs'):

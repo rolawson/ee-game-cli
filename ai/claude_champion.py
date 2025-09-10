@@ -314,7 +314,62 @@ Metal: Reinforce, Besiege, Defend (defense)
         """Build prompt for end-of-round taunting"""
         import random
         
-        # Get the action log first
+        # Debug what we received
+        print(f"\n>>> [CHAMPION DEBUG] Building round analysis prompt")
+        print(f">>> Action log entries: {len(context.get('action_log', []))}")
+        print(f">>> Round plays: {len(context.get('round_plays', []))}")
+        print(f">>> Player health: {context.get('player_health', [])}")
+        print(f">>> Has player state: {'player' in context}")
+        print(f">>> Has enemies: {len(context.get('enemies', []))}")
+        
+        # Build comprehensive round summary
+        prompt_parts = [
+            f"=== ROUND {context['round']} COMPLETE ===",
+            ""
+        ]
+        
+        # Add current status
+        if 'player' in context:
+            p = context['player']
+            prompt_parts.append(f"CHAMPION STATUS: {p['health']}/{p['max_health']} HP, {p['trunks']} trunks, {p['hand_size']} cards in hand")
+        
+        # Add enemy status
+        if 'enemies' in context:
+            prompt_parts.append("ENEMY STATUS:")
+            for enemy in context['enemies']:
+                prompt_parts.append(f"  {enemy['name']}: {enemy['health']}/{enemy['max_health']} HP, {enemy['trunks']} trunks, {enemy['hand_size']} cards")
+                # Add their tracked elements
+                enemy_elements = self.get_opponent_elements(enemy['name'])
+                if enemy_elements:
+                    prompt_parts.append(f"    Known elements: {', '.join(enemy_elements)}")
+        
+        prompt_parts.append("")
+        
+        # Add what the AI played this round
+        if 'round_plays' in context and context['round_plays']:
+            prompt_parts.append("YOUR PLAYS THIS ROUND:")
+            for play in context['round_plays']:
+                prompt_parts.append(f"  Clash {play['clash']}: {play['card']}")
+                if play.get('reasoning'):
+                    prompt_parts.append(f"    Strategy: {play['reasoning']}")
+        
+        prompt_parts.append("")
+        
+        # Add board state
+        if 'board' in context:
+            if context['board'].get('player'):
+                prompt_parts.append("YOUR ACTIVE SPELLS:")
+                for spell in context['board']['player']:
+                    prompt_parts.append(f"  - {spell['name']} ({spell['element']})")
+            
+            if context['board'].get('enemies'):
+                prompt_parts.append("ENEMY ACTIVE SPELLS:")
+                for spell in context['board']['enemies']:
+                    prompt_parts.append(f"  - {spell['name']} ({spell['element']})")
+        
+        prompt_parts.append("")
+        
+        # Process action log for key events
         action_log_text = []
         if 'action_log' in context and context['action_log']:
             for action in context['action_log']:
@@ -324,75 +379,60 @@ Metal: Reinforce, Besiege, Defend (defense)
                     clean_action = clean_action.replace(f'\033{color}', '')
                 action_log_text.append(clean_action)
         
-        # Check if action log is empty or just administrative
-        has_real_actions = any(
-            "dealt" in log or "healed" in log or "CANCELLED" in log or "lost a trunk" in log
-            for log in action_log_text
-        )
+        # Extract key events from action log
+        key_events = []
+        for log in action_log_text:
+            if any(word in log for word in ["dealt", "healed", "CANCELLED", "lost a trunk", "bolstered", "weakened", "advanced", "recalled", "discarded"]):
+                key_events.append(log)
         
-        if not has_real_actions:
-            # If nothing happened, use a simple prompt
-            prompt_parts = [
-                f"Round {context['round']} complete.",
-                "Nothing significant happened this round (no damage, healing, or other effects).",
-                "",
-                "Comment on the lack of action (1-2 sentences)."
-            ]
-        else:
+        if key_events:
+            prompt_parts.append("KEY BATTLE EVENTS:")
+            for event in key_events:
+                prompt_parts.append(f"  - {event}")
+            prompt_parts.append("")
+        
+        # Now add varied prompting styles
+        if True:  # Always use varied styles now
             # Randomly choose a prompt style to encourage variety
             prompt_styles = [
-                # Just the facts
-                lambda: [
-                    *[f"{log}" for log in action_log_text],
-                    "",
-                    "React."
+                # Strategic analysis
+                lambda: prompt_parts + [
+                    "Analyze this round from The Champion's perspective. Reference specific spells and outcomes."
                 ],
                 
-                # Salty loser
-                lambda: [
-                    *[f"{log}" for log in action_log_text],
-                    "",
-                    "You're salty about this. Let it out."
+                # Salty about specific plays
+                lambda: prompt_parts + [
+                    "You're salty about how this round went. Complain about specific spells and RNG."
                 ],
                 
                 # Sports commentator
-                lambda: [
-                    *[f"{log}" for log in action_log_text],
-                    "",
-                    "COMMENTATE LIKE IT'S THE WORLD FINALS!"
+                lambda: prompt_parts + [
+                    "COMMENTATE THIS ROUND LIKE IT'S THE WORLD FINALS! Name specific spells and damage!"
                 ],
                 
-                # One word
-                lambda: [
-                    *[f"{log}" for log in action_log_text],
-                    "",
-                    "Sum this up in ONE WORD:"
+                # Boastful champion
+                lambda: prompt_parts + [
+                    "Boast about your brilliant plays this round. Mock their choices. Be specific!"
                 ],
                 
-                # Confused
-                lambda: [
-                    *[f"{log}" for log in action_log_text],
-                    "",
-                    "Wait, what just happened? You're confused."
+                # Technical breakdown
+                lambda: prompt_parts + [
+                    "Give a technical breakdown of the spell interactions this round."
                 ],
                 
-                # Excuses
-                lambda: [
-                    *[f"{log}" for log in action_log_text],
-                    "",
-                    "Make excuses for why this round went the way it did."
+                # Trash talk
+                lambda: prompt_parts + [
+                    "Trash talk based on what actually happened. Reference their spells by name!"
                 ],
                 
-                # Victory dance
-                lambda: [
-                    *[f"{log}" for log in action_log_text],
-                    "",
-                    "Time to gloat! Be obnoxious about it!"
+                # Excuses with details
+                lambda: prompt_parts + [
+                    "Make excuses for why specific spells didn't work out as planned."
                 ]
             ]
             
             # Pick a random style
-            style_names = ["Just react", "Salty", "Commentator", "One word", "Confused", "Excuses", "Victory dance"]
+            style_names = ["Strategic analysis", "Salty", "Commentator", "Boastful", "Technical", "Trash talk", "Excuses"]
             chosen_index = random.randint(0, len(prompt_styles) - 1)
             chosen_style = prompt_styles[chosen_index]
             prompt_parts = chosen_style()
