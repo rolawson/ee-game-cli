@@ -2614,25 +2614,26 @@ class GameEngine:
         
         # Create AI strategies based on difficulty
         self.ai_strategies = {}
-        for i, name in enumerate(player_names):
-            if i > 0:  # AI players (not the human player)
+        # After randomization, find which players are AI based on is_human flag
+        for i, player in enumerate(self.gs.players):
+            if not player.is_human:  # AI players
                 if ai_difficulty == 'easy':
                     ai = EasyAI()
                     if DEBUG_AI:
-                        print(f"Created EasyAI for player {i}: {name}")
+                        print(f"Created EasyAI for player {i}: {player.name}")
                 elif ai_difficulty == 'hard':
                     ai = HardAI()
                     if DEBUG_AI:
-                        print(f"Created HardAI for player {i}: {name}")
+                        print(f"Created HardAI for player {i}: {player.name}")
                 elif ai_difficulty == 'expert':
                     ai = ExpertAI()
                     if DEBUG_AI:
-                        print(f"Created ExpertAI for player {i}: {name}")
+                        print(f"Created ExpertAI for player {i}: {player.name}")
                 elif ai_difficulty == 'claude' or ai_difficulty == 'claude_savant':
                     try:
                         ai = ClaudeSavantAI()
                         if DEBUG_AI:
-                            print(f"Created ClaudeSavantAI for player {i}: {name}")
+                            print(f"Created ClaudeSavantAI for player {i}: {player.name}")
                     except ValueError as e:
                         # Fall back to Expert if API key not set
                         print(f"{Colors.WARNING}Warning: {e}. Falling back to ExpertAI.{Colors.ENDC}")
@@ -2641,7 +2642,7 @@ class GameEngine:
                     try:
                         ai = ClaudeChampionAI()
                         if DEBUG_AI:
-                            print(f"Created ClaudeChampionAI for player {i}: {name}")
+                            print(f"Created ClaudeChampionAI for player {i}: {player.name}")
                     except ValueError as e:
                         # Fall back to Expert if API key not set
                         print(f"{Colors.WARNING}Warning: {e}. Falling back to ExpertAI.{Colors.ENDC}")
@@ -2649,9 +2650,12 @@ class GameEngine:
                 else:  # medium (default)
                     ai = MediumAI()
                     if DEBUG_AI:
-                        print(f"Created MediumAI for player {i}: {name}")
+                        print(f"Created MediumAI for player {i}: {player.name}")
                 
                 ai.engine = self  # Set engine reference
+                # Set player name immediately for Claude AIs
+                if hasattr(ai, 'player_name'):
+                    ai.player_name = player.name
                 self.ai_strategies[i] = ai
         
         # Keep backward compatibility
@@ -3189,9 +3193,15 @@ class GameEngine:
         # Claude provides end-of-round analysis BEFORE board is cleared
         # This allows the AI to reference the current board state and spells played
         for i, player in enumerate(self.gs.players):
-            ai = self.ai_strategies.get(i)
-            if ai and hasattr(ai, 'provide_round_analysis'):
-                ai.provide_round_analysis(self.gs)
+            # Only call round analysis for AI players
+            if not player.is_human:
+                ai = self.ai_strategies.get(i)
+                if ai and hasattr(ai, 'provide_round_analysis'):
+                    print(f"\n{Colors.HEADER}>>> Calling provide_round_analysis for {player.name} (AI type: {type(ai).__name__}){Colors.ENDC}")
+                    # Make sure the AI knows which player it is
+                    if hasattr(ai, 'player_name'):
+                        ai.player_name = player.name
+                    ai.provide_round_analysis(self.gs)
         
         for p in self.gs.players:
             for clash_list in p.board:

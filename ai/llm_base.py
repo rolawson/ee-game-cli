@@ -407,8 +407,19 @@ class LLMBaseAI(BaseAI):
     
     def provide_round_analysis(self, gs):
         """Provide teaching analysis at the end of each round"""
+        print(f"\n>>> LLMBaseAI.provide_round_analysis called")
+        print(f">>> self.player_name = {self.player_name}")
+        print(f">>> Players in game: {[p.name for p in gs.players]}")
+        print(f">>> Is Human flags: {[p.is_human for p in gs.players]}")
+        
         # Get the AI player
         ai_player = next((p for p in gs.players if p.name == self.player_name), None)
+        
+        if not ai_player:
+            print(f">>> ERROR: Could not find player '{self.player_name}' in game!")
+            return
+        
+        print(f">>> Found AI player: {ai_player.name}, proceeding with analysis...")
         
         # Build context for round analysis
         context = {

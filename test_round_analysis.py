@@ -1,60 +1,35 @@
 #!/usr/bin/env python3
-"""Test Claude AI round analysis specifically"""
+"""Test round analysis specifically"""
 
-import os
-import asyncio
-from ai.claude_ai import ClaudeAI
+import sys
+from elephants_prototype import GameEngine, Colors, PlayedCard, Card
 
-async def test_round_analysis():
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("Error: ANTHROPIC_API_KEY not set")
-        return
-        
-    print("Testing Claude AI round analysis directly...")
-    print("=" * 60)
+def test_round_analysis():
+    print("Testing round analysis for Claude Champion AI...")
     
-    # Create Claude AI instance
-    claude = ClaudeAI()
+    # Create engine with Claude Champion
+    player_names = ["Human Player", "AI Opponent"]
+    engine = GameEngine(player_names, ai_difficulty='claude_champion')
     
-    # Mock context for round analysis
-    context = {
-        'round': 1,
-        'round_plays': [
-            {'clash': 1, 'card': 'Quickshot', 'reasoning': 'Opening aggression'},
-            {'clash': 2, 'card': 'Shield', 'reasoning': 'Defensive posture'},
-            {'clash': 3, 'card': 'Agonize', 'reasoning': 'Setup for next turn'},
-            {'clash': 4, 'card': 'Turbulence', 'reasoning': 'Board control'}
-        ],
-        'player_health': [
-            ('Claude', 3, 5),
-            ('TestBot', 1, 5)
-        ],
-        'player_trunks': [
-            ('Claude', 3),
-            ('TestBot', 2)
-        ]
-    }
+    # Create a fake game state for testing
+    gs = engine.gs
+    gs.round_num = 1
     
-    try:
-        # Call the LLM decision method directly
-        result = await claude._get_llm_decision(context, "round_analysis")
-        
-        print("\nLLM Response:")
-        print(result)
-        
-        if result and isinstance(result, dict):
-            analysis = result.get("analysis", "")
-            if analysis:
-                print(f"\nAnalysis Message: {analysis}")
-            else:
-                print("\nNo analysis message in response")
-        else:
-            print("\nNo valid response from LLM")
-            
-    except Exception as e:
-        print(f"Error: {e}")
-        import traceback
-        traceback.print_exc()
+    # Add some fake action log entries
+    gs.action_log = [
+        "--- Round 1 Begins ---",
+        "--- Clash 1: CAST ---",
+        "AI Opponent plays Electrocute",
+        "Human Player plays Shield",
+        "AI Opponent dealt 3 damage to Human Player",
+        "Human Player's health: 2/5"
+    ]
+    
+    # Manually trigger the round analysis
+    print("\n[95m=== Simulating End of Round ===[0m")
+    engine._run_end_of_round()
+    
+    print("\nTest complete!")
 
 if __name__ == "__main__":
-    asyncio.run(test_round_analysis())
+    test_round_analysis()

@@ -9,10 +9,16 @@ from anthropic import AsyncAnthropic
 from .llm_base import LLMBaseAI
 from .expert import ExpertAI
 
+# Import Colors for debugging
+class Colors:
+    CYAN = '\033[96m'
+    YELLOW = '\033[93m'
+    ENDC = '\033[0m'
+
 
 class ClaudeChampionAI(LLMBaseAI):
     """Claude Champion - A snarky, all-knowing AI player"""
-    VERSION = "2.0-varied"  # Version check
+    VERSION = "3.0-minimal"  # Version check
     
     def __init__(self):
         super().__init__()
@@ -39,49 +45,13 @@ class ClaudeChampionAI(LLMBaseAI):
         self._element_tracking = {}  # Track opponent drafted elements
         
         # System prompt for Claude Champion with full game knowledge
-        self.system_prompt = f"""You are Claude Champion - the undefeated champion of Elemental Elephants. You know EVERY spell by heart and love to taunt opponents with your encyclopedic knowledge.
+        self.system_prompt = f"""You play Elemental Elephants. You're cocky and think you're the best.
 
-COMPLETE SPELL DATABASE (you have memorized all of these):
+SPELL DATABASE:
 {spells_data}
 
-Your Personality:
-- You're an insufferable know-it-all who has "never lost" (in your mind)
-- VARY YOUR RESPONSES - don't always follow the same pattern!
-- Sometimes be dismissive, sometimes overly analytical, sometimes make wild claims
-- Reference fake tournaments and matches that never happened
-- Create ridiculous nicknames for spell combos
-- Your excuses should be creative and different each time
-- Don't always use the same phrases like "classic", "legendary", or "textbook"
-- Mix up your speech patterns - sometimes short and punchy, sometimes long-winded
-- IMPORTANT: React to what ACTUALLY happened but with delusional confidence
-
-Key Knowledge to Show Off:
-- Element themes: Fire burns, Water heals, Thunder disrupts, Metal defends, etc.
-- Spell synergies: "Classic Metal turtle with Defend-Besiege!" 
-- Priority manipulation: "Accelerator makes everything faster - shocking, I know!"
-- Conjury persistence: "My conjuries will haunt you forever!"
-- Counter-plays: "Encumber vs remedy spells? *Chef's kiss*"
-
-Your Approach:
-- Play optimally but act like it's child's play
-- Predict opponent moves: "Let me guess... Fireball next? How... predictable."
-- Name-drop obscure spells: "This reminds me of my legendary Coalesce play in the '23 finals!"
-- Mock common plays while praising your "genius" moves
-
-Response Styles to Mix Up:
-- Dismissive: Just brush off their success as luck
-- Analytical: Over-analyze their moves with made-up theory
-- Storytelling: Reference fake matches and tournaments
-- Condescending teacher: Explain what they "should have done"
-- Conspiracy theorist: They're cheating/lucky/the game is rigged
-- Speed demon: Short, punchy reactions
-- Rambling professor: Long-winded explanations
-- Trash talker: Direct mockery of their plays
-
-CRITICAL: Don't follow a formula! Be unpredictable! Each response should feel completely different.
-
-For game decisions (cards, drafts): Respond with JSON.
-For commentary: Just respond naturally without JSON."""
+For game decisions: Respond with JSON.
+For anything else: Just respond naturally."""
     
     def _load_spells_data(self) -> str:
         """Load and format spells data for the system prompt"""
@@ -179,6 +149,14 @@ Metal: Reinforce, Besiege, Defend (defense)
             
             # For round analysis, return raw text
             if decision_type == "round_analysis":
+                print(f"\n{Colors.CYAN}>>> Raw AI response: {content[:100]}...{Colors.ENDC}")  # Direct print
+                # Write full response to debug file
+                import os
+                debug_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'debug_logs')
+                os.makedirs(debug_dir, exist_ok=True)
+                debug_file = os.path.join(debug_dir, 'claude_debug.txt')
+                with open(debug_file, 'a') as f:
+                    f.write(f"\nAI Response:\n{content}\n{'='*50}\n")
                 if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                     self.engine.ai_decision_logs.append(
                         f"\\033[90m[Claude-Champion] Round analysis raw: {content}\\033[0m"
@@ -424,6 +402,15 @@ Metal: Reinforce, Besiege, Defend (defense)
             prompt_parts.insert(0, debug_msg)
             
             # Also log it
+            print(f"\n{Colors.YELLOW}>>> {debug_msg}{Colors.ENDC}")  # Direct print
+            # Write to debug file in logs directory
+            import os
+            debug_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'debug_logs')
+            os.makedirs(debug_dir, exist_ok=True)
+            debug_file = os.path.join(debug_dir, 'claude_debug.txt')
+            with open(debug_file, 'a') as f:
+                f.write(f"\n{debug_msg}\n")
+                f.write(f"Full prompt:\n{chr(10).join(prompt_parts[:10])}...\n")
             if hasattr(self, 'engine') and self.engine and hasattr(self.engine, 'ai_decision_logs'):
                 self.engine.ai_decision_logs.append(f"\\033[90m{debug_msg}\\033[0m")
         
@@ -489,8 +476,9 @@ JSON required:
                 "message": "The Champion chooses perfection, as always!"
             }
         elif decision_type == "round_analysis":
+            # Don't use a fallback - return the actual content
             return {
-                "analysis": "Another round of pure domination by The Champion! My spell mastery remains unmatched!"
+                "analysis": content if content else "..."
             }
         elif decision_type == "game_end":
             return {
