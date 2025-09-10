@@ -17,7 +17,7 @@ DEBUG_AI = True  # Set to False to disable AI decision logging
 
 # Load spell data from external JSON file
 def load_spell_data():
-    """Load spell data from spells.json file."""as
+    """Load spell data from spells.json file."""
     spell_file = os.path.join(os.path.dirname(__file__), 'spells.json')
     try:
         with open(spell_file, 'r') as f:

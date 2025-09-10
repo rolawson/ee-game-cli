@@ -12,9 +12,11 @@ from .expert import ExpertAI
 
 class ClaudeChampionAI(LLMBaseAI):
     """Claude Champion - A snarky, all-knowing AI player"""
+    VERSION = "2.0-varied"  # Version check
     
     def __init__(self):
         super().__init__()
+        print(f"[ClaudeChampion] Initialized version {self.VERSION}")
         
         # Initialize Anthropic client
         api_key = os.environ.get("ANTHROPIC_API_KEY")
