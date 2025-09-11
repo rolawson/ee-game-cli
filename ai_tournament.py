@@ -31,8 +31,9 @@ class SilentGameEngine(GameEngine):
     
     def __init__(self, player_names, ai_difficulties):
         """Initialize with specific AI difficulties for each player"""
-        # Call parent constructor with first AI's difficulty
-        super().__init__(player_names, ai_difficulties[0])
+        # Call parent constructor with 'none' to prevent it from creating AIs
+        # We'll create them ourselves with the correct types
+        super().__init__(player_names, 'none')
         
         # Override display with a mock
         self.display = type('MockDisplay', (), {
@@ -40,9 +41,23 @@ class SilentGameEngine(GameEngine):
             '_get_spell_type_icons': lambda self, card: ''
         })()
         
-        # Set up AI strategies for both players
+        # Clear any AI strategies created by parent
         self.ai_strategies = {}
-        for i, difficulty in enumerate(ai_difficulties):
+        
+        # Mark both players as AI
+        for player in self.gs.players:
+            player.is_human = False
+        
+        # Create a mapping from original names to difficulties
+        ai_mapping = {}
+        for i, name in enumerate(player_names):
+            ai_mapping[name] = ai_difficulties[i]
+        
+        # Set up AI strategies for both players based on their actual names
+        for i, player in enumerate(self.gs.players):
+            # Find which AI type this player should have based on their name
+            difficulty = ai_mapping.get(player.name, 'medium')
+            
             if difficulty == 'easy':
                 ai = EasyAI()
             elif difficulty == 'medium':
@@ -59,11 +74,10 @@ class SilentGameEngine(GameEngine):
                 ai = MediumAI()  # Default
             
             ai.engine = self
+            # Set player name for Claude AIs
+            if hasattr(ai, 'player_name'):
+                ai.player_name = player.name
             self.ai_strategies[i] = ai
-        
-        # Mark both players as AI
-        for player in self.gs.players:
-            player.is_human = False
     
     def _pause(self, message=""):
         """Override to skip all pauses"""

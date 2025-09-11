@@ -2621,7 +2621,10 @@ class GameEngine:
         # After randomization, find which players are AI based on is_human flag
         for i, player in enumerate(self.gs.players):
             if not player.is_human:  # AI players
-                if ai_difficulty == 'easy':
+                if ai_difficulty == 'none':
+                    # Skip AI creation - subclass will handle it
+                    continue
+                elif ai_difficulty == 'easy':
                     ai = EasyAI()
                     if DEBUG_AI:
                         print(f"Created EasyAI for player {i}: {player.name}")
