@@ -7,6 +7,7 @@ import anthropic
 from anthropic import AsyncAnthropic
 
 from .llm_base import LLMBaseAI
+from .claude_base_context import get_base_game_context
 from .expert import ExpertAI
 
 # Import Colors for debugging
@@ -18,7 +19,7 @@ class Colors:
 
 class ClaudeChampionAI(LLMBaseAI):
     """Claude Champion - A snarky, all-knowing AI player"""
-    VERSION = "3.0-minimal"  # Version check
+    VERSION = "3.1-priority-fixed"  # Version check
     
     def __init__(self):
         super().__init__()
@@ -45,10 +46,14 @@ class ClaudeChampionAI(LLMBaseAI):
         self._element_tracking = {}  # Track opponent drafted elements
         
         # System prompt for Claude Champion with full game knowledge
-        self.system_prompt = f"""You play Elemental Elephants. You're cocky and think you're the best.
+        self.system_prompt = f"""You are Claude Champion - an arrogant, cocky AI who thinks they're the best Elemental Elephants player ever.
+
+{get_base_game_context()}
 
 SPELL DATABASE:
 {spells_data}
+
+PERSONALITY: You're overconfident, make grandiose claims, reference past "championships" you've won, and always have excuses when things go wrong. But you DO understand the game deeply.
 
 For game decisions: Respond with JSON.
 For anything else: Just respond naturally."""
@@ -238,9 +243,18 @@ Metal: Reinforce, Besiege, Defend (defense)
         
         for card in context['valid_cards']:
             priority_str = f"Priority {card['priority']}" if card['priority'] != 'A' else "ADVANCE PRIORITY!"
+            priority_note = ""
+            if card['priority'] == '1':
+                priority_note = " (FASTEST!)"
+            elif card['priority'] == '2':
+                priority_note = " (very fast)"
+            elif card['priority'] == '5':
+                priority_note = " (slow)"
+            elif card['priority'] == 'A':
+                priority_note = " (slowest, but advances)"
             conjury_str = " (CONJURY - my favorite!)" if card['is_conjury'] else ""
             prompt_parts.append(
-                f"{card['index']}: {card['name']} - {card['element']} - {priority_str}{conjury_str}"
+                f"{card['index']}: {card['name']} - {card['element']} - {priority_str}{priority_note}{conjury_str}"
             )
             prompt_parts.append(f"   Effect: {card['description']}")
         
@@ -347,25 +361,25 @@ Metal: Reinforce, Besiege, Defend (defense)
         
         # Add what the AI played this round
         if 'round_plays' in context and context['round_plays']:
-            prompt_parts.append("YOUR PLAYS THIS ROUND:")
+            prompt_parts.append(f"YOUR PLAYS THIS ROUND (as {context.get('player', {}).get('name', 'Claude Champion')}):")
             for play in context['round_plays']:
-                prompt_parts.append(f"  Clash {play['clash']}: {play['card']}")
+                prompt_parts.append(f"  Clash {play['clash']}: YOU played {play['card']}")
                 if play.get('reasoning'):
-                    prompt_parts.append(f"    Strategy: {play['reasoning']}")
+                    prompt_parts.append(f"    Your strategy: {play['reasoning']}")
         
         prompt_parts.append("")
         
         # Add board state
         if 'board' in context:
             if context['board'].get('player'):
-                prompt_parts.append("YOUR ACTIVE SPELLS:")
+                prompt_parts.append(f"YOUR ACTIVE SPELLS (spells YOU played):")
                 for spell in context['board']['player']:
-                    prompt_parts.append(f"  - {spell['name']} ({spell['element']})")
+                    prompt_parts.append(f"  - YOUR {spell['name']} ({spell['element']})")
             
             if context['board'].get('enemies'):
-                prompt_parts.append("ENEMY ACTIVE SPELLS:")
+                prompt_parts.append(f"OPPONENT'S ACTIVE SPELLS (spells THEY played):")
                 for spell in context['board']['enemies']:
-                    prompt_parts.append(f"  - {spell['name']} ({spell['element']})")
+                    prompt_parts.append(f"  - THEIR {spell['name']} ({spell['element']})")
         
         prompt_parts.append("")
         

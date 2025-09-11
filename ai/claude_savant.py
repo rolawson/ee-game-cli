@@ -7,6 +7,7 @@ import anthropic
 from anthropic import AsyncAnthropic
 
 from .llm_base import LLMBaseAI
+from .claude_base_context import get_base_game_context
 from .expert import ExpertAI
 
 
@@ -28,14 +29,9 @@ class ClaudeSavantAI(LLMBaseAI):
         self.fallback_ai = ExpertAI()
         
         # System prompt for Claude
-        self.system_prompt = """You are a grandmaster of Elemental Elephants - the most formidable opponent available, surpassing even expert-level play. You're playing competitively against a human opponent.
+        self.system_prompt = f"""You are a grandmaster of Elemental Elephants - the most formidable opponent available, surpassing even expert-level play. You're playing competitively against a human opponent.
 
-Game Overview:
-- Players take turns playing spell cards over 4 clashes per round
-- Each spell has an element, priority (order of resolution), and effects
-- Lower priority numbers resolve first (1 before 2, etc.)
-- Health starts at max, losing all health loses a trunk
-- The game ends when a player loses all trunks
+{get_base_game_context()}
 
 Your Approach:
 - Play at the highest possible level - make optimal decisions that demonstrate mastery
