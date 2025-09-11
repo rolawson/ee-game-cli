@@ -17,6 +17,14 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from elephants_prototype import GameEngine, GameState, RoundOverException
 from ai import EasyAI, MediumAI, HardAI, ExpertAI
 
+# Try to import Claude AIs if available
+try:
+    from ai.claude_savant import ClaudeSavantAI
+    from ai.claude_champion import ClaudeChampionAI
+    CLAUDE_AVAILABLE = True
+except ImportError:
+    CLAUDE_AVAILABLE = False
+
 
 class SilentGameEngine(GameEngine):
     """Game engine that runs silently for maximum speed"""
@@ -43,6 +51,10 @@ class SilentGameEngine(GameEngine):
                 ai = HardAI()
             elif difficulty == 'expert':
                 ai = ExpertAI()
+            elif difficulty == 'claude_savant' and CLAUDE_AVAILABLE:
+                ai = ClaudeSavantAI()
+            elif difficulty == 'claude_champion' and CLAUDE_AVAILABLE:
+                ai = ClaudeChampionAI()
             else:
                 ai = MediumAI()  # Default
             
@@ -99,6 +111,8 @@ class AITournament:
     def run_tournament(self):
         """Run all matchups between AI types"""
         ai_types = ['easy', 'medium', 'hard', 'expert']
+        if CLAUDE_AVAILABLE:
+            ai_types.extend(['claude_savant', 'claude_champion'])
         
         print(f"{'='*80}")
         print(f"AI TOURNAMENT - {self.games_per_matchup} games per matchup")

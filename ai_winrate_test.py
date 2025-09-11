@@ -35,6 +35,15 @@ def test_ai_matchup(ai1_type, ai2_type, num_games=20):
             # Import all AI types
             from ai import EasyAI, MediumAI, HardAI, ExpertAI
             
+            # Try to import Claude AIs if available
+            claude_available = False
+            try:
+                from ai.claude_savant import ClaudeSavantAI
+                from ai.claude_champion import ClaudeChampionAI
+                claude_available = True
+            except ImportError:
+                pass
+            
             # Set up first AI
             if first_ai == 'easy':
                 engine.ai_strategies[0] = EasyAI()
@@ -43,6 +52,13 @@ def test_ai_matchup(ai1_type, ai2_type, num_games=20):
             elif first_ai == 'hard':
                 engine.ai_strategies[0] = HardAI()
             elif first_ai == 'expert':
+                engine.ai_strategies[0] = ExpertAI()
+            elif first_ai in ['claude_savant', 'savant'] and claude_available:
+                engine.ai_strategies[0] = ClaudeSavantAI()
+            elif first_ai in ['claude_champion', 'champion'] and claude_available:
+                engine.ai_strategies[0] = ClaudeChampionAI()
+            else:
+                # Default to expert
                 engine.ai_strategies[0] = ExpertAI()
             
             # Set up second AI
@@ -53,6 +69,13 @@ def test_ai_matchup(ai1_type, ai2_type, num_games=20):
             elif second_ai == 'hard':
                 engine.ai_strategies[1] = HardAI()
             elif second_ai == 'expert':
+                engine.ai_strategies[1] = ExpertAI()
+            elif second_ai in ['claude_savant', 'savant'] and claude_available:
+                engine.ai_strategies[1] = ClaudeSavantAI()
+            elif second_ai in ['claude_champion', 'champion'] and claude_available:
+                engine.ai_strategies[1] = ClaudeChampionAI()
+            else:
+                # Default to expert
                 engine.ai_strategies[1] = ExpertAI()
             
             # Set engine references

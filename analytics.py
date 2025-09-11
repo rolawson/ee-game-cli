@@ -18,6 +18,14 @@ import io
 # Import game components
 from elephants_prototype import GameEngine, GameState, DashboardDisplay
 from ai import EasyAI, MediumAI, HardAI, ExpertAI
+
+# Try to import Claude AIs if available
+try:
+    from ai.claude_savant import ClaudeSavantAI
+    from ai.claude_champion import ClaudeChampionAI
+    CLAUDE_AVAILABLE = True
+except ImportError:
+    CLAUDE_AVAILABLE = False
 from game_logger import game_logger
 
 
@@ -100,6 +108,10 @@ class UnifiedAnalytics:
                 engine.ai_strategies[0] = HardAI()
             elif ai1_type == 'expert':
                 engine.ai_strategies[0] = ExpertAI()
+            elif ai1_type == 'claude_savant' and CLAUDE_AVAILABLE:
+                engine.ai_strategies[0] = ClaudeSavantAI()
+            elif ai1_type == 'claude_champion' and CLAUDE_AVAILABLE:
+                engine.ai_strategies[0] = ClaudeChampionAI()
             else:
                 engine.ai_strategies[0] = HardAI()  # Default
             
@@ -115,6 +127,10 @@ class UnifiedAnalytics:
                 engine.ai_strategies[1] = HardAI()
             elif ai2_type == 'expert':
                 engine.ai_strategies[1] = ExpertAI()
+            elif ai2_type == 'claude_savant' and CLAUDE_AVAILABLE:
+                engine.ai_strategies[1] = ClaudeSavantAI()
+            elif ai2_type == 'claude_champion' and CLAUDE_AVAILABLE:
+                engine.ai_strategies[1] = ClaudeChampionAI()
             else:
                 engine.ai_strategies[1] = HardAI()  # Default
             
@@ -144,6 +160,8 @@ class UnifiedAnalytics:
     def run_tournament(self, games_per_matchup: int = 20) -> None:
         """Run a full tournament between all AI types"""
         ai_types = ['easy', 'medium', 'hard', 'expert']
+        if CLAUDE_AVAILABLE:
+            ai_types.extend(['claude_savant', 'claude_champion'])
         
         print(f"\n{'='*60}")
         print(f"TOURNAMENT MODE: {games_per_matchup} games per matchup")
@@ -851,8 +869,11 @@ def main():
     parser.add_argument('mode', nargs='?', default='100', 
                        help='Number of games or mode (quick/tournament)')
     parser.add_argument('--games', type=int, help='Games per matchup for tournament')
-    parser.add_argument('--ai1', default='expert', choices=['easy', 'medium', 'hard', 'expert'])
-    parser.add_argument('--ai2', default='expert', choices=['easy', 'medium', 'hard', 'expert'])
+    ai_choices = ['easy', 'medium', 'hard', 'expert']
+    if CLAUDE_AVAILABLE:
+        ai_choices.extend(['claude_savant', 'claude_champion'])
+    parser.add_argument('--ai1', default='expert', choices=ai_choices)
+    parser.add_argument('--ai2', default='expert', choices=ai_choices)
     parser.add_argument('--silent', action='store_true', help='Suppress progress messages')
     
     args = parser.parse_args()

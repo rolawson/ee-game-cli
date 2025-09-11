@@ -13,6 +13,15 @@ from ai.medium import MediumAI
 from ai.hard import HardAI
 from ai.expert import ExpertAI
 
+# Try to import Claude AIs if available
+try:
+    from ai.claude_savant import ClaudeSavantAI
+    from ai.claude_champion import ClaudeChampionAI
+    CLAUDE_AVAILABLE = True
+except ImportError:
+    CLAUDE_AVAILABLE = False
+    print("Note: Claude AIs not available. Set ANTHROPIC_API_KEY to enable.")
+
 
 class AutoPlayEngine(GameEngine):
     """Modified game engine that auto-advances but shows display"""
@@ -166,10 +175,24 @@ class SpectatorMode:
         """Create AI instance"""
         if ai_type == 'easy':
             return EasyAI()
+        elif ai_type == 'medium':
+            return MediumAI()
         elif ai_type == 'hard':
             return HardAI()
         elif ai_type == 'expert':
             return ExpertAI()
+        elif ai_type == 'claude_savant' or ai_type == 'savant':
+            if CLAUDE_AVAILABLE:
+                return ClaudeSavantAI()
+            else:
+                print(f"Claude Savant not available, falling back to Expert AI")
+                return ExpertAI()
+        elif ai_type == 'claude_champion' or ai_type == 'champion':
+            if CLAUDE_AVAILABLE:
+                return ClaudeChampionAI()
+            else:
+                print(f"Claude Champion not available, falling back to Expert AI")
+                return ExpertAI()
         else:
             return MediumAI()
     
@@ -257,7 +280,9 @@ if __name__ == "__main__":
         print("  python ai_spectator.py hard easy 0.5      # Fast game")
         print("  python ai_spectator.py hard medium 2.0 5  # 5 slower games")
         print("  python ai_spectator.py hard hard 0        # Maximum speed")
-        print("\nAI types: easy, medium, hard, expert")
+        print("\nAI types: easy, medium, hard, expert, savant, champion")
         print("Delay: seconds between actions (default 1.0)")
+        if not CLAUDE_AVAILABLE:
+            print("\nNote: Claude AIs require ANTHROPIC_API_KEY environment variable")
     else:
         main()

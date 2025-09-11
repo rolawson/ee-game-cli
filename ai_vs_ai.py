@@ -23,6 +23,15 @@ from elephants_prototype import GameEngine, DEBUG_AI
 from ai.easy import EasyAI
 from ai.medium import MediumAI  
 from ai.hard import HardAI
+from ai.expert import ExpertAI
+
+# Try to import Claude AIs if available
+try:
+    from ai.claude_savant import ClaudeSavantAI
+    from ai.claude_champion import ClaudeChampionAI
+    CLAUDE_AVAILABLE = True
+except ImportError:
+    CLAUDE_AVAILABLE = False
 
 
 class AIGameRunner:
@@ -38,9 +47,20 @@ class AIGameRunner:
         """Create an AI instance of the specified type"""
         if ai_type == 'easy':
             return EasyAI()
+        elif ai_type == 'medium':
+            return MediumAI()
         elif ai_type == 'hard':
             return HardAI()
+        elif ai_type == 'expert':
+            return ExpertAI()
+        elif ai_type in ['claude_savant', 'savant'] and CLAUDE_AVAILABLE:
+            return ClaudeSavantAI()
+        elif ai_type in ['claude_champion', 'champion'] and CLAUDE_AVAILABLE:
+            return ClaudeChampionAI()
         else:
+            if ai_type.startswith('claude') and not CLAUDE_AVAILABLE:
+                print(f"Claude AI not available, falling back to Expert AI")
+                return ExpertAI()
             return MediumAI()
     
     def run_game(self):

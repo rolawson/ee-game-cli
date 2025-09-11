@@ -117,22 +117,48 @@ ai/
 
 ### LLM-Based AI System
 
-The game now supports AI players powered by Large Language Models (LLMs), starting with Claude Sonnet. These AIs use natural language reasoning to make decisions and can communicate with players.
+The game supports AI players powered by Large Language Models (Claude from Anthropic). These AIs use natural language reasoning to make decisions and provide commentary.
+
+**Available AI Types**:
+- `easy` - Random play with simple preferences
+- `medium` - Basic strategy and situational awareness  
+- `hard` - Advanced strategy with solid fundamentals
+- `expert` - Complex multi-turn planning and combo recognition
+- `claude_savant` (or `savant`) - LLM-powered competitive AI (requires ANTHROPIC_API_KEY)
+- `claude_champion` (or `champion`) - LLM-powered boastful AI (requires ANTHROPIC_API_KEY)
 
 #### Architecture:
 
-**New AI Classes**:
+**Base Infrastructure**:
 - **`LLMBaseAI`** (`ai/llm_base.py`): Base class for all LLM-powered AIs
   - Inherits from `BaseAI` to maintain compatibility
   - Provides common LLM interaction patterns
   - Handles prompt construction and response parsing
   - Manages persona configuration
+  - Supports round analysis and game-end commentary
+  - Uses ExecutorService for async API calls with timeout handling
 
-- **`ClaudeAI`** (`ai/claude_ai.py`): Claude Sonnet implementation
-  - Uses Anthropic's API for decision-making
-  - Configurable difficulty levels and personas
-  - Can explain reasoning in natural language
-  - Supports player communication (one-way from AI to player)
+- **`claude_base_context.py`**: Shared game rules and context for all Claude personas
+  - Complete game rules and priority system
+  - Spell type descriptions and effects
+  - Strategy notes and interaction rules
+  - Helper functions for priority notes and emojis
+
+**Claude AI Personalities**:
+- **`ClaudeSavantAI`** (`ai/claude_savant.py`): Analytical, competitive AI
+  - Plays at grandmaster level with optimal decision-making
+  - Focuses on learning and improvement
+  - Provides competitive analysis of gameplay
+  - Uses temperature 0.7 for strategic variety
+
+- **`ClaudeChampionAI`** (`ai/claude_champion.py`): Snarky, boastful AI personality
+  - Claims to be an undefeated champion
+  - Makes excuses when things go wrong
+  - References fictional tournament victories
+  - Uses temperature 1.0 for maximum personality variety
+  - Includes element tracking and spell database from Expert AI
+  - Multiple commentary styles (strategic, salty, commentator, etc.)
+
 
 #### Persona System:
 
@@ -345,7 +371,9 @@ Elemental Elephants/
 │   ├── hard.py             # Strategic scoring AI
 │   ├── expert.py           # Complex planning AI
 │   ├── llm_base.py         # Base class for LLM AIs
-│   └── claude_ai.py        # Claude Sonnet AI
+│   ├── claude_base_context.py  # Shared game rules for Claude AIs
+│   ├── claude_savant.py    # Competitive Claude personality
+│   └── claude_champion.py  # Boastful Claude personality
 ├── spells.json             # Card definitions
 ├── element_categories.json # Element categorization and synergies
 ├── HOWTOPLAY.md            # Game rules

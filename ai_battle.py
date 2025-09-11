@@ -17,6 +17,16 @@ class AutoGameEngine:
         from ai.hard import HardAI
         from ai.expert import ExpertAI
         
+        # Try to import Claude AIs if available
+        try:
+            from ai.claude_savant import ClaudeSavantAI
+            from ai.claude_champion import ClaudeChampionAI
+            self.ClaudeSavantAI = ClaudeSavantAI
+            self.ClaudeChampionAI = ClaudeChampionAI
+            self.claude_available = True
+        except ImportError:
+            self.claude_available = False
+        
         self.EasyAI = EasyAI
         self.MediumAI = MediumAI
         self.HardAI = HardAI
@@ -67,11 +77,20 @@ class AutoGameEngine:
         """Create AI instance by type"""
         if ai_type == 'easy':
             return self.EasyAI()
+        elif ai_type == 'medium':
+            return self.MediumAI()
         elif ai_type == 'hard':
             return self.HardAI()
         elif ai_type == 'expert':
             return self.ExpertAI()
+        elif ai_type in ['claude_savant', 'savant'] and self.claude_available:
+            return self.ClaudeSavantAI()
+        elif ai_type in ['claude_champion', 'champion'] and self.claude_available:
+            return self.ClaudeChampionAI()
         else:
+            if ai_type.startswith('claude') and not self.claude_available:
+                print(f"Claude AI not available, falling back to Expert AI")
+                return self.ExpertAI()
             return self.MediumAI()
     
     def _mock_handle_trunk_loss(self, player):
