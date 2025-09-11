@@ -333,6 +333,10 @@ class DashboardDisplay:
         
         # Display each player's row, with multiple rows if needed for stacked spells
         for i, p in enumerate(gs.players):
+            # Add visual separator between players
+            if i > 0:
+                print("-" * 150)
+            
             # Prepare player info that will be shown on first row only
             is_current = ">" if i == pov_player_index and p.is_human else " "
             p_color = Colors.CYAN if i == pov_player_index and p.is_human else Colors.ENDC
@@ -2748,6 +2752,9 @@ class GameEngine:
             for player in self.gs.players:
                 ai_strategy = self.ai_strategies.get(self.gs.players.index(player))
                 if ai_strategy and hasattr(ai_strategy, 'provide_game_end_analysis'):
+                    # Make sure the AI knows which player it is
+                    if hasattr(ai_strategy, 'player_name'):
+                        ai_strategy.player_name = player.name
                     ai_strategy.provide_game_end_analysis(self.gs, winner)
             
             self._pause()
@@ -2808,9 +2815,29 @@ class GameEngine:
         
         self._pause("Setup complete. The first round is about to begin.")
     def _run_round(self) -> None:
+        # Preserve AI round analysis from end of previous round
+        preserved_analysis = []
+        if hasattr(self.gs, 'action_log'):
+            for log in self.gs.action_log:
+                # Preserve AI analysis messages
+                if "Round" in log and "Analysis" in log:
+                    preserved_analysis.append(log)
+                elif any(color in log for color in [Colors.YELLOW, Colors.CYAN]) and ("analysis" in log.lower() or "round" in log.lower()):
+                    preserved_analysis.append(log)
+        
         self.gs.action_log.clear()
+        
+        # Re-add preserved analysis first
+        for analysis in preserved_analysis:
+            self.gs.action_log.append(analysis)
+        
+        if preserved_analysis:
+            self.gs.action_log.append("")  # Add spacing
+            
         self.gs.action_log.append(f"--- Round {self.gs.round_num} Begins ---")
         self.gs.event_log.clear()
+        # Clear AI decision logs at the start of each round (not after each clash)
+        self.ai_decision_logs.clear()
         for p in self.gs.players: 
             p.is_invulnerable = False
             p.knocked_out_this_turn = False
@@ -2936,7 +2963,7 @@ class GameEngine:
             self.gs.action_log.append(f"\n{Colors.BOLD}AI Decision Analysis:{Colors.ENDC}")
             for log in self.ai_decision_logs:
                 self.gs.action_log.append(log)
-            self.ai_decision_logs.clear()  # Clear for next clash
+            # Don't clear here - keep logs visible throughout the round
         
         self._pause("All spells are revealed simultaneously!")
     
@@ -3197,7 +3224,9 @@ class GameEngine:
             if not player.is_human:
                 ai = self.ai_strategies.get(i)
                 if ai and hasattr(ai, 'provide_round_analysis'):
-                    print(f"\n{Colors.HEADER}>>> Calling provide_round_analysis for {player.name} (AI type: {type(ai).__name__}){Colors.ENDC}")
+                    # Only print debug info in verbose mode
+                    if getattr(self, 'verbose', True):
+                        print(f"\n{Colors.HEADER}>>> Calling provide_round_analysis for {player.name} (AI type: {type(ai).__name__}){Colors.ENDC}")
                     # Make sure the AI knows which player it is
                     if hasattr(ai, 'player_name'):
                         ai.player_name = player.name

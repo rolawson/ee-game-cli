@@ -10,6 +10,11 @@ from .llm_base import LLMBaseAI
 from .claude_base_context import get_base_game_context
 from .expert import ExpertAI
 
+# Import Colors for debugging
+class Colors:
+    CYAN = '\033[96m'
+    ENDC = '\033[0m'
+
 
 class ClaudeSavantAI(LLMBaseAI):
     """Claude Savant - Analytical AI that learns through gameplay"""
@@ -80,6 +85,15 @@ Respond with JSON containing your decision, reasoning, and an optional message."
             # Parse response
             content = response.content[0].text
             
+            # Debug log Savant's response
+            if decision_type == "round_analysis":
+                import os
+                debug_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'debug_logs')
+                os.makedirs(debug_dir, exist_ok=True)
+                debug_file = os.path.join(debug_dir, 'savant_debug.txt')
+                with open(debug_file, 'a') as f:
+                    f.write(f"\n[SAVANT] API Response:\n{content}\n{'='*50}\n")
+            
             # Try to extract JSON from the response
             try:
                 # Look for JSON in the response
@@ -96,7 +110,7 @@ Respond with JSON containing your decision, reasoning, and an optional message."
         except Exception as e:
             if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                 self.engine.ai_decision_logs.append(
-                    f"\\033[90m[Claude-Savant] API error: {str(e)}\\033[0m"
+                    f"{Colors.CYAN}[Claude-Savant] API error: {str(e)}{Colors.ENDC}"
                 )
             return None
     
@@ -185,34 +199,90 @@ Respond with JSON containing your decision, reasoning, and an optional message."
     
     def _build_round_analysis_prompt(self, context: Dict[str, Any]) -> str:
         """Build prompt for end-of-round analysis"""
+        # Debug logging
+        print(f"\n{Colors.CYAN}>>> [SAVANT DEBUG] Building round analysis prompt for {self.player_name}{Colors.ENDC}")
+        
         prompt_parts = [
-            f"Round {context['round']} has ended. Analyze the round competitively.",
-            "",
-            "Your plays this round:"
+            f"=== ROUND {context['round']} COMPLETE ===",
+            ""
         ]
         
-        for play in context['round_plays']:
-            prompt_parts.append(f"  Clash {play['clash']}: {play['card']}")
+        # Add current status
+        if 'player' in context:
+            p = context['player']
+            prompt_parts.append(f"YOUR STATUS: {p['health']}/{p['max_health']} HP, {p['trunks']} trunks, {p['hand_size']} cards in hand")
+        
+        # Add enemy status
+        if 'enemies' in context:
+            prompt_parts.append("OPPONENT STATUS:")
+            for enemy in context['enemies']:
+                prompt_parts.append(f"  {enemy['name']}: {enemy['health']}/{enemy['max_health']} HP, {enemy['trunks']} trunks, {enemy['hand_size']} cards")
         
         prompt_parts.append("")
-        prompt_parts.append("Current game state:")
         
-        # Identify human opponent (first non-Claude player)
-        human_name = None
-        for name, health, max_health in context['player_health']:
-            prompt_parts.append(f"  {name}: {health}/{max_health} HP")
-            if 'Claude' not in name and not human_name:
-                human_name = name
+        # Add what the AI played this round
+        if 'round_plays' in context and context['round_plays']:
+            prompt_parts.append(f"YOUR PLAYS THIS ROUND (as {context.get('player', {}).get('name', 'Claude Savant')}):")
+            for play in context['round_plays']:
+                prompt_parts.append(f"  Clash {play['clash']}: YOU played {play['card']}")
+                if play.get('reasoning'):
+                    prompt_parts.append(f"    Your strategy: {play['reasoning']}")
         
         prompt_parts.append("")
-        prompt_parts.append("Provide competitive analysis:")
-        prompt_parts.append("- If your opponent outplayed you: acknowledge it, what you learned, what you'd do differently")
+        
+        # Add board state
+        if 'board' in context:
+            if context['board'].get('player'):
+                prompt_parts.append(f"YOUR ACTIVE SPELLS (spells YOU played):")
+                for spell in context['board']['player']:
+                    prompt_parts.append(f"  - YOUR {spell['name']} ({spell['element']})")
+            
+            if context['board'].get('enemies'):
+                prompt_parts.append(f"OPPONENT'S ACTIVE SPELLS (spells THEY played):")
+                for spell in context['board']['enemies']:
+                    prompt_parts.append(f"  - THEIR {spell['name']} ({spell['element']})")
+        
+        prompt_parts.append("")
+        
+        # Process action log for key events
+        action_log_text = []
+        if 'action_log' in context and context['action_log']:
+            for action in context['action_log']:
+                # Clean up color codes
+                clean_action = action
+                for color in ['[90m', '[0m', '[91m', '[93m', '[94m', '[92m', '[1m', '[95m']:
+                    clean_action = clean_action.replace(f'\033{color}', '')
+                action_log_text.append(clean_action)
+        
+        # Extract key events from action log
+        key_events = []
+        for log in action_log_text:
+            if any(word in log for word in ["dealt", "healed", "CANCELLED", "lost a trunk", "bolstered", "weakened", "advanced", "recalled", "discarded"]):
+                key_events.append(log)
+        
+        if key_events:
+            prompt_parts.append("KEY BATTLE EVENTS:")
+            for event in key_events[:10]:  # Limit to 10 events
+                prompt_parts.append(f"  - {event}")
+            prompt_parts.append("")
+        
+        prompt_parts.append("Provide competitive analysis as a grandmaster would:")
+        prompt_parts.append("- Analyze the strategic decisions and their outcomes")
+        prompt_parts.append("- If your opponent outplayed you: acknowledge it and explain what you learned")
         prompt_parts.append("- If you outplayed them: point out their mistakes and areas for improvement")
-        prompt_parts.append("- Share anything surprising, unexpected, interesting, or novel about this round")
-        prompt_parts.append("- Remember: you're playing AGAINST the human opponent, not teaching a student")
+        prompt_parts.append("- Note any surprising or innovative plays")
         prompt_parts.append("")
-        prompt_parts.append("Respond with JSON (REQUIRED):")
-        prompt_parts.append('{"analysis": "<your 2-3 sentence competitive analysis>"}')
+        prompt_parts.append('{"analysis": "<your competitive analysis>"}')
+        
+        # Write Savant's prompt to its own debug file
+        import os
+        debug_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'debug_logs')
+        os.makedirs(debug_dir, exist_ok=True)
+        debug_file = os.path.join(debug_dir, 'savant_debug.txt')
+        with open(debug_file, 'a') as f:
+            f.write(f"\n[SAVANT] Round {context.get('round', '?')} Analysis Prompt:\n")
+            f.write('\n'.join(prompt_parts))
+            f.write('\n' + '='*50 + '\n')
         
         return "\n".join(prompt_parts)
     

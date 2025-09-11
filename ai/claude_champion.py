@@ -125,7 +125,7 @@ Metal: Reinforce, Besiege, Defend (defense)
                 # Debug log the prompt
                 if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                     self.engine.ai_decision_logs.append(
-                        f"\\033[90m[Claude-Champion] Round prompt preview: {prompt[:150]}...\\033[0m"
+                        f"{Colors.YELLOW}[Claude-Champion] Round prompt preview: {prompt[:150]}...{Colors.ENDC}"
                     )
             elif decision_type == "game_end":
                 prompt = self._build_game_end_prompt(context)
@@ -149,7 +149,7 @@ Metal: Reinforce, Besiege, Defend (defense)
             # Debug: Log the raw response
             if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                 self.engine.ai_decision_logs.append(
-                    f"\\033[90m[Claude-Champion] Raw response: {content[:200]}...\\033[0m"
+                    f"{Colors.YELLOW}[Claude-Champion] Raw response: {content[:200]}...{Colors.ENDC}"
                 )
             
             # For round analysis, return raw text
@@ -164,7 +164,7 @@ Metal: Reinforce, Besiege, Defend (defense)
                     f.write(f"\nAI Response:\n{content}\n{'='*50}\n")
                 if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                     self.engine.ai_decision_logs.append(
-                        f"\\033[90m[Claude-Champion] Round analysis raw: {content}\\033[0m"
+                        f"{Colors.YELLOW}[Claude-Champion] Round analysis raw: {content}{Colors.ENDC}"
                     )
                 return {"analysis": content}
             
@@ -184,7 +184,7 @@ Metal: Reinforce, Besiege, Defend (defense)
         except Exception as e:
             if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                 self.engine.ai_decision_logs.append(
-                    f"\\033[90m[Claude-Champion] API error: {str(e)}\\033[0m"
+                    f"{Colors.YELLOW}[Claude-Champion] API error: {str(e)}{Colors.ENDC}"
                 )
             return None
     
@@ -466,7 +466,7 @@ Metal: Reinforce, Besiege, Defend (defense)
                 f.write(f"\n{debug_msg}\n")
                 f.write(f"Full prompt:\n{chr(10).join(prompt_parts[:10])}...\n")
             if hasattr(self, 'engine') and self.engine and hasattr(self.engine, 'ai_decision_logs'):
-                self.engine.ai_decision_logs.append(f"\\033[90m{debug_msg}\\033[0m")
+                self.engine.ai_decision_logs.append(f"{Colors.YELLOW}{debug_msg}{Colors.ENDC}")
         
         # For round analysis, skip JSON and just get raw response
         return "\n".join(prompt_parts)

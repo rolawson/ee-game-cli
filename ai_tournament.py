@@ -69,6 +69,48 @@ class SilentGameEngine(GameEngine):
         """Override to skip all pauses"""
         pass
     
+    def _run_end_of_round(self):
+        """Override to skip AI commentary in fast mode"""
+        # Import random here
+        import random
+        
+        # Clear action log and run basic end of round without commentary
+        self.gs.action_log.clear()
+        self.gs.action_log.append(f"--- End of Round {self.gs.round_num} ---")
+        
+        # Clear board
+        for p in self.gs.players:
+            for clash_list in p.board:
+                for spell in clash_list:
+                    p.discard_pile.append(spell.card)
+            p.board = [[] for _ in range(4)]
+        
+        # Update ringleader
+        self.gs.ringleader_index = (self.gs.ringleader_index + 1) % len(self.gs.players)
+        
+        # Handle empty hands and card management
+        for p in self.gs.players:
+            if not p.hand:
+                self._check_and_rebuild_deck()
+                available_sets = [s for s in self.gs.main_deck if s]
+                if available_sets:
+                    chosen_set = available_sets[0]
+                    self.gs.main_deck.remove(chosen_set)
+                    p.discard_pile.extend(chosen_set)
+                    random.shuffle(p.discard_pile)
+                    p.hand = p.discard_pile[:]
+                    p.discard_pile = []
+            elif len(p.hand) > 3:
+                while len(p.hand) > 3:
+                    p.hand.pop()
+            
+            # Recall logic
+            recall_count = min(2, len(p.discard_pile))
+            if recall_count > 0:
+                random.shuffle(p.discard_pile)
+                for _ in range(recall_count):
+                    p.hand.append(p.discard_pile.pop())
+    
     def display_draw(self, gs, pov_player_index=0, prompt=""):
         """Override to skip display"""
         pass

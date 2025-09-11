@@ -19,9 +19,13 @@ except ImportError:
     # Fallback if Colors not available
     class Colors:
         HEADER = '\033[95m'
+        BLUE = '\033[94m'
+        CYAN = '\033[96m'
+        GREEN = '\033[92m'
         GREY = '\033[90m'
         ENDC = '\033[0m'
         WARNING = '\033[93m'
+        YELLOW = '\033[93m'
         FAIL = '\033[91m'
 
 
@@ -72,10 +76,17 @@ class LLMBaseAI(BaseAI):
                 
                 # We don't need per-move messages anymore since we do end-of-round analysis
                 
-                # Log reasoning
+                # Log reasoning with color based on AI type
                 if reasoning and self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                    if 'Champion' in self.player_name:
+                        color = Colors.YELLOW
+                    elif 'Savant' in self.player_name:
+                        color = Colors.CYAN
+                    else:
+                        color = Colors.BLUE  # Use blue instead of grey
+                    
                     self.engine.ai_decision_logs.append(
-                        f"\\033[90m[LLM-AI] Reasoning: {reasoning}\\033[0m"
+                        f"{color}[{self.player_name}] {reasoning}{Colors.ENDC}"
                     )
                 
                 # Validate choice
@@ -92,7 +103,7 @@ class LLMBaseAI(BaseAI):
         except Exception as e:
             if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                 self.engine.ai_decision_logs.append(
-                    f"\\033[90m[LLM-AI] Error: {str(e)}, falling back\\033[0m"
+                    f"{Colors.WARNING}[{self.player_name}] Error: {str(e)}, falling back{Colors.ENDC}"
                 )
         
         # Fallback to traditional AI
@@ -132,6 +143,10 @@ class LLMBaseAI(BaseAI):
     
     def choose_draft_set(self, player, gs, available_sets):
         """Choose a spell set during drafting using LLM reasoning"""
+        # Set player name if not already set (important for drafting)
+        if not self.player_name and player:
+            self.player_name = player.name
+            
         # Build draft context
         context = self._build_draft_context(player, gs, available_sets)
         
@@ -144,9 +159,20 @@ class LLMBaseAI(BaseAI):
             if decision and isinstance(decision, dict):
                 set_index = decision.get("set_index", 0)
                 message = decision.get("message", "")
+                reasoning = decision.get("reasoning", "")
                 
-                # Don't display messages during draft phase
-                # Messages should only appear at end of round
+                # Add draft commentary to action log with appropriate color
+                if (message or reasoning) and hasattr(gs, 'action_log'):
+                    # Use player.name for identification since it's more reliable during drafting
+                    if 'Champion' in player.name:
+                        color = Colors.YELLOW
+                    elif 'Savant' in player.name:
+                        color = Colors.CYAN
+                    else:
+                        color = Colors.BLUE
+                    
+                    comment = message if message else reasoning
+                    gs.action_log.append(f"{color}[{player.name}] Draft analysis: {comment}{Colors.ENDC}")
                 
                 # Validate choice
                 if 0 <= set_index < len(available_sets):
@@ -407,10 +433,12 @@ class LLMBaseAI(BaseAI):
     
     def provide_round_analysis(self, gs):
         """Provide teaching analysis at the end of each round"""
-        print(f"\n>>> LLMBaseAI.provide_round_analysis called")
-        print(f">>> self.player_name = {self.player_name}")
-        print(f">>> Players in game: {[p.name for p in gs.players]}")
-        print(f">>> Is Human flags: {[p.is_human for p in gs.players]}")
+        # Debug output only if verbose mode or if DEBUG_AI is set
+        if getattr(self.engine, 'verbose', False) or os.environ.get('DEBUG_AI'):
+            print(f"\n>>> LLMBaseAI.provide_round_analysis called")
+            print(f">>> self.player_name = {self.player_name}")
+            print(f">>> Players in game: {[p.name for p in gs.players]}")
+            print(f">>> Is Human flags: {[p.is_human for p in gs.players]}")
         
         # Get the AI player
         ai_player = next((p for p in gs.players if p.name == self.player_name), None)
@@ -419,8 +447,11 @@ class LLMBaseAI(BaseAI):
             print(f">>> ERROR: Could not find player '{self.player_name}' in game!")
             return
         
-        print(f">>> Found AI player: {ai_player.name}, proceeding with analysis...")
-        input(">>> Press Enter to continue...")  # Give time to read debug info
+        if getattr(self.engine, 'verbose', False) or os.environ.get('DEBUG_AI'):
+            print(f">>> Found AI player: {ai_player.name}, proceeding with analysis...")
+        # Only pause in interactive mode (when there's a human player)
+        if any(p.is_human for p in gs.players):
+            input(">>> Press Enter to continue...")  # Give time to read debug info
         
         # Build context for round analysis - include ALL the rich context
         # Build player state (same as card selection)
@@ -487,8 +518,16 @@ class LLMBaseAI(BaseAI):
         
         # Debug log
         if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+            # Use color based on AI type
+            if 'Champion' in self.player_name:
+                color = Colors.YELLOW
+            elif 'Savant' in self.player_name:
+                color = Colors.CYAN
+            else:
+                color = Colors.BLUE
+            
             self.engine.ai_decision_logs.append(
-                f"\033[90m[LLM-AI] Requesting round {gs.round_num} analysis...\033[0m"
+                f"{color}[{self.player_name}] Requesting round {gs.round_num} analysis...{Colors.ENDC}"
             )
         
         try:
@@ -501,17 +540,30 @@ class LLMBaseAI(BaseAI):
                 if message:
                     # Always add to action log first so it's preserved
                     if hasattr(gs, 'action_log'):
-                        gs.action_log.append(f"\n{Colors.HEADER}=== Claude's Round {gs.round_num} Analysis ==={Colors.ENDC}")
-                        gs.action_log.append(message)
-                    
-                    # Then pause to show it
-                    if self.engine and hasattr(self.engine, '_pause'):
-                        self.engine._pause("")  # Empty pause since message is in log
+                        # Use different colors for different AIs
+                        if 'Champion' in self.player_name:
+                            color = Colors.YELLOW  # Yellow for Champion
+                        elif 'Savant' in self.player_name:
+                            color = Colors.CYAN    # Cyan for Savant
+                        else:
+                            color = Colors.HEADER  # Default blue
+                        
+                        gs.action_log.append(f"\n{color}=== {self.player_name}'s Round {gs.round_num} Analysis ==={Colors.ENDC}")
+                        # Split message into lines to ensure all are visible
+                        for line in message.split('\n'):
+                            if line.strip():
+                                gs.action_log.append(f"{color}{line}{Colors.ENDC}")
+                else:
+                    print(f">>> WARNING: {self.player_name} returned empty analysis!")
+                
+                # Then pause to show it (only if there was a message)
+                if message and self.engine and hasattr(self.engine, '_pause'):
+                    self.engine._pause("")  # Empty pause since message is in log
         except Exception as e:
             # Log the error
             if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                 self.engine.ai_decision_logs.append(
-                    f"\033[90m[LLM-AI] Round analysis error: {str(e)}\033[0m"
+                    f"{Colors.WARNING}[{self.player_name}] Round analysis error: {str(e)}{Colors.ENDC}"
                 )
     
     def provide_game_end_analysis(self, gs, winner):
@@ -537,8 +589,16 @@ class LLMBaseAI(BaseAI):
                 if message:
                     # Always add to action log first
                     if hasattr(gs, 'action_log'):
-                        gs.action_log.append(f"\n{Colors.HEADER}=== {self.player_name}'s Final Words ==={Colors.ENDC}")
-                        gs.action_log.append(message)
+                        # Use different colors for different AIs
+                        if 'Champion' in self.player_name:
+                            color = Colors.YELLOW  # Yellow for Champion
+                        elif 'Savant' in self.player_name:
+                            color = Colors.CYAN    # Cyan for Savant
+                        else:
+                            color = Colors.HEADER  # Default blue
+                        
+                        gs.action_log.append(f"\n{color}=== {self.player_name}'s Final Words ==={Colors.ENDC}")
+                        gs.action_log.append(f"{color}{message}{Colors.ENDC}")
                     
                     # Then pause to show it
                     if self.engine and hasattr(self.engine, '_pause'):

@@ -148,6 +148,12 @@ class SpectatorMode:
         ai1.engine = engine
         ai2.engine = engine
         
+        # Set player names for LLM AIs
+        if hasattr(ai1, 'player_name'):
+            ai1.player_name = engine.gs.players[0].name
+        if hasattr(ai2, 'player_name'):
+            ai2.player_name = engine.gs.players[1].name
+        
         engine.ai_strategies[0] = ai1
         engine.ai_strategies[1] = ai2
         
