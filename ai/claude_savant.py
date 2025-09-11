@@ -69,6 +69,8 @@ Respond with JSON containing your decision, reasoning, and an optional message."
                 prompt = self._build_draft_prompt(context)
             elif decision_type == "round_analysis":
                 prompt = self._build_round_analysis_prompt(context)
+            elif decision_type == "game_end":
+                prompt = self._build_game_end_prompt(context)
             else:
                 return None
             
@@ -303,6 +305,46 @@ Respond with JSON containing your decision, reasoning, and an optional message."
             f.write('\n' + '='*50 + '\n')
         
         return "\n".join(prompt_parts)
+    
+    def _build_game_end_prompt(self, context: Dict[str, Any]) -> str:
+        """Build prompt for game end commentary - Savant style"""
+        winner = context['winner']
+        i_won = winner == context['player_name']
+        
+        if i_won:
+            # Victory - analytical and learning-focused
+            prompt = f"""The game has concluded. You ({context['player_name']}) emerged victorious with {context['winner_health']} HP and {context['winner_trunks']} trunks remaining.
+
+Provide a thoughtful analysis of the match:
+- What were the key turning points that led to victory?
+- Which strategic decisions proved most effective?
+- What can both players learn from this match?
+- Were there any particularly clever plays or interesting spell interactions?
+
+Be gracious in victory and focus on the learning opportunities."""
+        else:
+            # Defeat - learning from the experience
+            prompt = f"""The game has concluded. {winner} emerged victorious. You ({context['player_name']}) fought well but ultimately fell.
+
+Provide an analytical post-mortem:
+- What were the critical moments where the game shifted?
+- Which of your opponent's strategies were most effective?
+- What could you have done differently?
+- What lessons will you take into future matches?
+
+Focus on learning and improvement rather than excuses."""
+        
+        prompt += f"""
+
+Final statistics:
+{chr(10).join(f"- {name}: {health}/{max_health} HP, {trunks} trunks" for name, health, max_health, trunks in context['all_players'])}
+
+Total rounds played: {context['total_rounds']}
+
+Respond with JSON:
+{{"final_words": "<your analytical closing thoughts>"}}"""
+        
+        return prompt
     
     def _parse_text_response(self, content: str, decision_type: str) -> Optional[Dict[str, Any]]:
         """Parse non-JSON text responses as fallback"""
