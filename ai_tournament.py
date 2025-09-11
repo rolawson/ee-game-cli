@@ -164,14 +164,19 @@ class AITournament:
         self.element_usage = defaultdict(lambda: defaultdict(int))
         self.start_time = None
         
-    def run_tournament(self):
+    def run_tournament(self, include_claude=False):
         """Run all matchups between AI types"""
+        self._included_claude = include_claude
         ai_types = ['easy', 'medium', 'hard', 'expert']
-        if CLAUDE_AVAILABLE:
+        if CLAUDE_AVAILABLE and include_claude:
             ai_types.extend(['claude_savant', 'claude_champion'])
         
         print(f"{'='*80}")
         print(f"AI TOURNAMENT - {self.games_per_matchup} games per matchup")
+        if include_claude:
+            print("Including Claude AIs (this will be slower)")
+        else:
+            print("Excluding Claude AIs (use --include-claude to add them)")
         print(f"{'='*80}\n")
         
         self.start_time = time.time()
@@ -277,6 +282,8 @@ class AITournament:
         report_file = f"ai_tournament_reports/ai_tournament_report_{timestamp}.txt"
         
         ai_types = ['easy', 'medium', 'hard', 'expert']
+        if hasattr(self, '_included_claude') and self._included_claude:
+            ai_types.extend(['claude_savant', 'claude_champion'])
         
         with open(report_file, 'w') as f:
             f.write("="*80 + "\n")
@@ -405,21 +412,41 @@ class AITournament:
 def main():
     """Run the tournament"""
     games = 20  # Default
+    include_claude = False
     
-    if len(sys.argv) > 1:
+    # Parse command line arguments
+    args = sys.argv[1:]
+    for i, arg in enumerate(args):
+        if arg == '--include-claude':
+            include_claude = True
+            args.pop(i)
+            break
+    
+    if args:
         try:
-            games = int(sys.argv[1])
+            games = int(args[0])
         except ValueError:
-            print(f"Usage: {sys.argv[0]} [games_per_matchup]")
+            print(f"Usage: {sys.argv[0]} [games_per_matchup] [--include-claude]")
             print(f"Example: {sys.argv[0]} 50")
+            print(f"Example: {sys.argv[0]} 20 --include-claude")
             sys.exit(1)
     
     print(f"Running AI Tournament with {games} games per matchup...")
     print("This will run the FULL game engine (all rules included)")
-    print("Estimated time: ~{:.1f} minutes\n".format(games * 16 * 0.5 / 60))
+    
+    # Adjust time estimate based on whether Claude is included
+    if include_claude:
+        time_per_game = 2.0  # Claude AIs are much slower
+        num_ai_types = 6 if CLAUDE_AVAILABLE else 4
+    else:
+        time_per_game = 0.5  # Traditional AIs are fast
+        num_ai_types = 4
+    
+    total_matchups = num_ai_types * (num_ai_types - 1)
+    print("Estimated time: ~{:.1f} minutes\n".format(games * total_matchups * time_per_game / 60))
     
     tournament = AITournament(games_per_matchup=games)
-    tournament.run_tournament()
+    tournament.run_tournament(include_claude=include_claude)
 
 
 if __name__ == "__main__":

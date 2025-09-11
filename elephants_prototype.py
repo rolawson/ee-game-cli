@@ -38,6 +38,7 @@ class Colors:
     HEADER='\033[95m'; BLUE='\033[94m'; CYAN='\033[96m'; GREEN='\033[92m'
     WARNING='\033[93m'; FAIL='\033[91m'; ENDC='\033[0m'; BOLD='\033[1m'
     UNDERLINE='\033[4m'; GREY='\033[90m'; YELLOW='\033[93m'
+    BLUEGREEN='\033[38;5;49m'  # Custom blue-green for Savant
     
 # Element emojis
 ELEMENT_EMOJIS = {
@@ -393,7 +394,7 @@ class DashboardDisplay:
                     print(f"[{i+1}] {emoji} {Colors.BOLD}{card.name}{Colors.ENDC} {type_icons} (P:{card.priority}, {type_str})"); 
                     print(f"    {Colors.GREY}> {card.get_instructions_text()}{Colors.ENDC}")
         print("-" * 89);
-        if gs.action_log: print(f"{Colors.BOLD}LOG:{Colors.ENDC}"); [print(f"  {entry}") for entry in gs.action_log[-20:]]
+        if gs.action_log: print(f"{Colors.BOLD}LOG:{Colors.ENDC}"); [print(f"  {entry}") for entry in gs.action_log[-35:]]
         if prompt: print(f"\n>>> {Colors.WARNING}{prompt}{Colors.ENDC}")
 
 
@@ -2768,7 +2769,9 @@ class GameEngine:
 
     def _setup_game(self):
         self._check_and_rebuild_deck()
-        self.gs.action_log.clear(); self.gs.action_log.append("--- Game Setup ---")
+        # Don't clear logs to preserve commentary
+        # self.gs.action_log.clear()
+        self.gs.action_log.append("--- Game Setup ---")
         self.gs.action_log.append(f"The starting Ringleader is: {self.gs.players[self.gs.ringleader_index].name}")
         # Draft in turn order starting from ringleader
         turn_order_indices = [(self.gs.ringleader_index + i) % len(self.gs.players) for i in range(len(self.gs.players))]
@@ -2818,24 +2821,10 @@ class GameEngine:
         
         self._pause("Setup complete. The first round is about to begin.")
     def _run_round(self) -> None:
-        # Preserve AI round analysis from end of previous round
-        preserved_analysis = []
-        if hasattr(self.gs, 'action_log'):
-            for log in self.gs.action_log:
-                # Preserve AI analysis messages
-                if "Round" in log and "Analysis" in log:
-                    preserved_analysis.append(log)
-                elif any(color in log for color in [Colors.YELLOW, Colors.CYAN]) and ("analysis" in log.lower() or "round" in log.lower()):
-                    preserved_analysis.append(log)
-        
-        self.gs.action_log.clear()
-        
-        # Re-add preserved analysis first
-        for analysis in preserved_analysis:
-            self.gs.action_log.append(analysis)
-        
-        if preserved_analysis:
-            self.gs.action_log.append("")  # Add spacing
+        # Don't clear logs anymore - we want to preserve all commentary
+        # Just add a separator for clarity
+        if hasattr(self.gs, 'action_log') and self.gs.action_log:
+            self.gs.action_log.append("\n" + "="*60 + "\n")
             
         self.gs.action_log.append(f"--- Round {self.gs.round_num} Begins ---")
         self.gs.event_log.clear()
@@ -2907,6 +2896,7 @@ class GameEngine:
                 ai_strategy = self.ai_strategies.get(player_index, self.ai_player)
                 if DEBUG_AI:
                     print(f"\n{Colors.GREY}[DEBUG] Using AI strategy for player {player_index}: {type(ai_strategy).__name__}{Colors.ENDC}")
+                    print(f"{Colors.GREY}[DEBUG] Player name: {player.name}{Colors.ENDC}")
                 chosen_index = ai_strategy.choose_card_to_play(player, self.gs)
                 if chosen_index is not None:
                     card_to_play = player.hand.pop(chosen_index)
@@ -2962,7 +2952,7 @@ class GameEngine:
                     self.gs.action_log.append(f"    {Colors.GREY}> {spell.card.get_instructions_text()}{Colors.ENDC}")
         
         # Show AI decision logs after reveal
-        if DEBUG_AI and self.ai_decision_logs:
+        if self.ai_decision_logs:
             self.gs.action_log.append(f"\n{Colors.BOLD}AI Decision Analysis:{Colors.ENDC}")
             for log in self.ai_decision_logs:
                 self.gs.action_log.append(log)
@@ -3218,7 +3208,9 @@ class GameEngine:
                     self._pause()
 
     def _run_end_of_round(self) -> None:
-        self.gs.action_log.clear(); self.gs.action_log.append(f"--- End of Round {self.gs.round_num} ---")
+        # Don't clear logs to preserve commentary
+        # self.gs.action_log.clear()
+        self.gs.action_log.append(f"--- End of Round {self.gs.round_num} ---")
         
         # Claude provides end-of-round analysis BEFORE board is cleared
         # This allows the AI to reference the current board state and spells played

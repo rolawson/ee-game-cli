@@ -14,6 +14,7 @@ from .expert import ExpertAI
 class Colors:
     CYAN = '\033[96m'
     YELLOW = '\033[93m'
+    GREY = '\033[90m'
     ENDC = '\033[0m'
 
 
@@ -125,7 +126,7 @@ Metal: Reinforce, Besiege, Defend (defense)
                 # Debug log the prompt
                 if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                     self.engine.ai_decision_logs.append(
-                        f"{Colors.YELLOW}[Claude-Champion] Round prompt preview: {prompt[:150]}...{Colors.ENDC}"
+                        f"{Colors.GREY}[Claude-Champion] Round prompt preview: {prompt[:150]}...{Colors.ENDC}"
                     )
             elif decision_type == "game_end":
                 prompt = self._build_game_end_prompt(context)
@@ -149,7 +150,7 @@ Metal: Reinforce, Besiege, Defend (defense)
             # Debug: Log the raw response
             if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                 self.engine.ai_decision_logs.append(
-                    f"{Colors.YELLOW}[Claude-Champion] Raw response: {content[:200]}...{Colors.ENDC}"
+                    f"{Colors.GREY}[Claude-Champion] Raw response: {content[:200]}...{Colors.ENDC}"
                 )
             
             # For round analysis, return raw text
@@ -164,7 +165,7 @@ Metal: Reinforce, Besiege, Defend (defense)
                     f.write(f"\nAI Response:\n{content}\n{'='*50}\n")
                 if self.engine and hasattr(self.engine, 'ai_decision_logs'):
                     self.engine.ai_decision_logs.append(
-                        f"{Colors.YELLOW}[Claude-Champion] Round analysis raw: {content}{Colors.ENDC}"
+                        f"{Colors.GREY}[Claude-Champion] Round analysis raw: {content}{Colors.ENDC}"
                     )
                 return {"analysis": content}
             

@@ -13,6 +13,7 @@ from .expert import ExpertAI
 # Import Colors for debugging
 class Colors:
     CYAN = '\033[96m'
+    GREY = '\033[90m'
     ENDC = '\033[0m'
 
 
@@ -85,6 +86,12 @@ Respond with JSON containing your decision, reasoning, and an optional message."
             # Parse response
             content = response.content[0].text
             
+            # Debug: Log the raw response (like Champion does)
+            if self.engine and hasattr(self.engine, 'ai_decision_logs') and decision_type == "select_card":
+                self.engine.ai_decision_logs.append(
+                    f"{Colors.GREY}[Claude-Savant] Raw response: {content[:200]}...{Colors.ENDC}"
+                )
+            
             # Debug log Savant's response
             if decision_type == "round_analysis":
                 import os
@@ -100,9 +107,19 @@ Respond with JSON containing your decision, reasoning, and an optional message."
                 import re
                 json_match = re.search(r'\{.*\}', content, re.DOTALL)
                 if json_match:
-                    return json.loads(json_match.group())
-            except:
-                pass
+                    parsed_json = json.loads(json_match.group())
+                    # Debug log the parsed JSON for card selection
+                    if decision_type == "select_card" and self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                        reasoning = parsed_json.get("reasoning", "No reasoning provided")
+                        self.engine.ai_decision_logs.append(
+                            f"{Colors.GREY}[Claude-Savant] Parsed reasoning: {reasoning[:100]}...{Colors.ENDC}"
+                        )
+                    return parsed_json
+            except Exception as e:
+                if self.engine and hasattr(self.engine, 'ai_decision_logs'):
+                    self.engine.ai_decision_logs.append(
+                        f"{Colors.GREY}[Claude-Savant] JSON parse error: {str(e)}{Colors.ENDC}"
+                    )
             
             # If no valid JSON, try to parse as structured text
             return self._parse_text_response(content, decision_type)
@@ -199,8 +216,9 @@ Respond with JSON containing your decision, reasoning, and an optional message."
     
     def _build_round_analysis_prompt(self, context: Dict[str, Any]) -> str:
         """Build prompt for end-of-round analysis"""
-        # Debug logging
-        print(f"\n{Colors.CYAN}>>> [SAVANT DEBUG] Building round analysis prompt for {self.player_name}{Colors.ENDC}")
+        # Debug logging in grey if verbose mode
+        if getattr(self.engine, 'verbose', False) or os.environ.get('DEBUG_AI'):
+            print(f"\n{Colors.GREY}>>> [SAVANT DEBUG] Building round analysis prompt for {self.player_name}{Colors.ENDC}")
         
         prompt_parts = [
             f"=== ROUND {context['round']} COMPLETE ===",
@@ -293,9 +311,11 @@ Respond with JSON containing your decision, reasoning, and an optional message."
         numbers = re.findall(r'\d+', content)
         
         if decision_type == "select_card" and numbers:
+            # Try to extract some reasoning from the text
+            reasoning = content[:200] if len(content) > 50 else "Strategic decision based on game state"
             return {
                 "card_index": int(numbers[0]),
-                "reasoning": "Parsed from text response",
+                "reasoning": reasoning,
                 "message": ""
             }
         elif decision_type == "make_choice" and numbers:
@@ -307,6 +327,12 @@ Respond with JSON containing your decision, reasoning, and an optional message."
             return {
                 "set_index": int(numbers[0]),
                 "message": ""
+            }
+        elif decision_type == "round_analysis":
+            # For round analysis, we need to extract the analysis text
+            # The content should already have the analysis
+            return {
+                "analysis": content
             }
         
         return None

@@ -27,6 +27,7 @@ except ImportError:
         WARNING = '\033[93m'
         YELLOW = '\033[93m'
         FAIL = '\033[91m'
+        BLUEGREEN = '\033[38;5;49m'  # Custom blue-green for Savant
 
 
 class LLMBaseAI(BaseAI):
@@ -78,15 +79,20 @@ class LLMBaseAI(BaseAI):
                 
                 # Log reasoning with color based on AI type
                 if reasoning and self.engine and hasattr(self.engine, 'ai_decision_logs'):
-                    if 'Champion' in self.player_name:
+                    # Check for Champion or Savant in player name (case insensitive)
+                    player_name_upper = self.player_name.upper()
+                    if 'CHAMPION' in player_name_upper:
                         color = Colors.YELLOW
-                    elif 'Savant' in self.player_name:
-                        color = Colors.CYAN
+                        emoji = "🏆 "
+                    elif 'SAVANT' in player_name_upper:
+                        color = Colors.BLUEGREEN  # Blue-green for Savant
+                        emoji = "🧬 "
                     else:
                         color = Colors.BLUE  # Use blue instead of grey
+                        emoji = ""
                     
                     self.engine.ai_decision_logs.append(
-                        f"{color}[{self.player_name}] {reasoning}{Colors.ENDC}"
+                        f"{color}{emoji}[{self.player_name}] {reasoning}{Colors.ENDC}"
                     )
                 
                 # Validate choice
@@ -164,15 +170,19 @@ class LLMBaseAI(BaseAI):
                 # Add draft commentary to action log with appropriate color
                 if (message or reasoning) and hasattr(gs, 'action_log'):
                     # Use player.name for identification since it's more reliable during drafting
-                    if 'Champion' in player.name:
+                    player_name_upper = player.name.upper()
+                    if 'CHAMPION' in player_name_upper:
                         color = Colors.YELLOW
-                    elif 'Savant' in player.name:
-                        color = Colors.CYAN
+                        emoji = "🏆 "
+                    elif 'SAVANT' in player_name_upper:
+                        color = Colors.BLUEGREEN  # Blue-green for Savant
+                        emoji = "🧬 "
                     else:
                         color = Colors.BLUE
+                        emoji = ""
                     
                     comment = message if message else reasoning
-                    gs.action_log.append(f"{color}[{player.name}] Draft analysis: {comment}{Colors.ENDC}")
+                    gs.action_log.append(f"{color}{emoji}[{player.name}] Draft analysis: {comment}{Colors.ENDC}")
                 
                 # Validate choice
                 if 0 <= set_index < len(available_sets):
@@ -519,15 +529,19 @@ class LLMBaseAI(BaseAI):
         # Debug log
         if self.engine and hasattr(self.engine, 'ai_decision_logs'):
             # Use color based on AI type
-            if 'Champion' in self.player_name:
+            player_name_upper = self.player_name.upper()
+            if 'CHAMPION' in player_name_upper:
                 color = Colors.YELLOW
-            elif 'Savant' in self.player_name:
-                color = Colors.CYAN
+                emoji = "🏆 "
+            elif 'SAVANT' in player_name_upper:
+                color = Colors.GREEN  # Green for better distinction
+                emoji = "🧬 "
             else:
                 color = Colors.BLUE
+                emoji = ""
             
             self.engine.ai_decision_logs.append(
-                f"{color}[{self.player_name}] Requesting round {gs.round_num} analysis...{Colors.ENDC}"
+                f"{color}{emoji}[{self.player_name}] Requesting round {gs.round_num} analysis...{Colors.ENDC}"
             )
         
         try:
@@ -541,14 +555,18 @@ class LLMBaseAI(BaseAI):
                     # Always add to action log first so it's preserved
                     if hasattr(gs, 'action_log'):
                         # Use different colors for different AIs
-                        if 'Champion' in self.player_name:
+                        player_name_upper = self.player_name.upper()
+                        if 'CHAMPION' in player_name_upper:
                             color = Colors.YELLOW  # Yellow for Champion
-                        elif 'Savant' in self.player_name:
-                            color = Colors.CYAN    # Cyan for Savant
+                            emoji = "🏆 "
+                        elif 'SAVANT' in player_name_upper:
+                            color = Colors.GREEN    # Green for Savant (more distinct from blue)
+                            emoji = "🧬 "
                         else:
-                            color = Colors.HEADER  # Default blue
+                            color = Colors.HEADER  # Default purple/magenta
+                            emoji = ""
                         
-                        gs.action_log.append(f"\n{color}=== {self.player_name}'s Round {gs.round_num} Analysis ==={Colors.ENDC}")
+                        gs.action_log.append(f"\n{color}{emoji}=== {self.player_name}'s Round {gs.round_num} Analysis ==={Colors.ENDC}")
                         # Split message into lines to ensure all are visible
                         for line in message.split('\n'):
                             if line.strip():
@@ -590,14 +608,18 @@ class LLMBaseAI(BaseAI):
                     # Always add to action log first
                     if hasattr(gs, 'action_log'):
                         # Use different colors for different AIs
-                        if 'Champion' in self.player_name:
+                        player_name_upper = self.player_name.upper()
+                        if 'CHAMPION' in player_name_upper:
                             color = Colors.YELLOW  # Yellow for Champion
-                        elif 'Savant' in self.player_name:
-                            color = Colors.CYAN    # Cyan for Savant
+                            emoji = "🏆 "
+                        elif 'SAVANT' in player_name_upper:
+                            color = Colors.GREEN    # Green for Savant (more distinct from blue)
+                            emoji = "🧬 "
                         else:
-                            color = Colors.HEADER  # Default blue
+                            color = Colors.HEADER  # Default purple/magenta
+                            emoji = ""
                         
-                        gs.action_log.append(f"\n{color}=== {self.player_name}'s Final Words ==={Colors.ENDC}")
+                        gs.action_log.append(f"\n{color}{emoji}=== {self.player_name}'s Final Words ==={Colors.ENDC}")
                         gs.action_log.append(f"{color}{message}{Colors.ENDC}")
                     
                     # Then pause to show it
