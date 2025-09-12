@@ -28,6 +28,8 @@ except ImportError:
         YELLOW = '\033[93m'
         FAIL = '\033[91m'
         BLUEGREEN = '\033[38;5;49m'  # Custom blue-green for Savant
+        ORANGE = '\033[38;5;208m'  # Reddish-orange for Daredevil
+        PINK = '\033[38;5;213m'  # Pink for Chevalier
 
 
 class LLMBaseAI(BaseAI):
@@ -79,14 +81,20 @@ class LLMBaseAI(BaseAI):
                 
                 # Log reasoning with color based on AI type
                 if reasoning and self.engine and hasattr(self.engine, 'ai_decision_logs'):
-                    # Check for Champion or Savant in player name (case insensitive)
-                    player_name_upper = self.player_name.upper()
-                    if 'CHAMPION' in player_name_upper:
+                    # Check AI identity (not player name)
+                    ai_type = getattr(self, 'ai_identity', '').upper()
+                    if ai_type == 'CHAMPION':
                         color = Colors.YELLOW
                         emoji = "🏆 "
-                    elif 'SAVANT' in player_name_upper:
+                    elif ai_type == 'SAVANT':
                         color = Colors.BLUEGREEN  # Blue-green for Savant
                         emoji = "🧬 "
+                    elif ai_type == 'DAREDEVIL':
+                        color = Colors.ORANGE  # Orange for Daredevil
+                        emoji = "😈 "
+                    elif ai_type == 'CHEVALIER':
+                        color = Colors.PINK  # Pink for Chevalier
+                        emoji = "🕊️ "
                     else:
                         color = Colors.BLUE  # Use blue instead of grey
                         emoji = ""
@@ -169,14 +177,20 @@ class LLMBaseAI(BaseAI):
                 
                 # Add draft commentary to action log with appropriate color
                 if (message or reasoning) and hasattr(gs, 'action_log'):
-                    # Use player.name for identification since it's more reliable during drafting
-                    player_name_upper = player.name.upper()
-                    if 'CHAMPION' in player_name_upper:
+                    # Check AI identity (not player name)
+                    ai_type = getattr(self, 'ai_identity', '').upper()
+                    if ai_type == 'CHAMPION':
                         color = Colors.YELLOW
                         emoji = "🏆 "
-                    elif 'SAVANT' in player_name_upper:
+                    elif ai_type == 'SAVANT':
                         color = Colors.BLUEGREEN  # Blue-green for Savant
                         emoji = "🧬 "
+                    elif ai_type == 'DAREDEVIL':
+                        color = Colors.ORANGE  # Orange for Daredevil
+                        emoji = "😈 "
+                    elif ai_type == 'CHEVALIER':
+                        color = Colors.PINK  # Pink for Chevalier
+                        emoji = "🕊️ "
                     else:
                         color = Colors.BLUE
                         emoji = ""
@@ -528,14 +542,20 @@ class LLMBaseAI(BaseAI):
         
         # Debug log
         if self.engine and hasattr(self.engine, 'ai_decision_logs'):
-            # Use color based on AI type
-            player_name_upper = self.player_name.upper()
-            if 'CHAMPION' in player_name_upper:
+            # Check AI identity (not player name)
+            ai_type = getattr(self, 'ai_identity', '').upper()
+            if ai_type == 'CHAMPION':
                 color = Colors.YELLOW
                 emoji = "🏆 "
-            elif 'SAVANT' in player_name_upper:
-                color = Colors.GREEN  # Green for better distinction
+            elif ai_type == 'SAVANT':
+                color = Colors.BLUEGREEN  # Blue-green for Savant
                 emoji = "🧬 "
+            elif ai_type == 'DAREDEVIL':
+                color = Colors.ORANGE  # Orange for Daredevil
+                emoji = "😈 "
+            elif ai_type == 'CHEVALIER':
+                color = Colors.PINK  # Pink for Chevalier
+                emoji = "🕊️ "
             else:
                 color = Colors.BLUE
                 emoji = ""
@@ -554,14 +574,20 @@ class LLMBaseAI(BaseAI):
                 if message:
                     # Always add to action log first so it's preserved
                     if hasattr(gs, 'action_log'):
-                        # Use different colors for different AIs
-                        player_name_upper = self.player_name.upper()
-                        if 'CHAMPION' in player_name_upper:
+                        # Check AI identity (not player name)
+                        ai_type = getattr(self, 'ai_identity', '').upper()
+                        if ai_type == 'CHAMPION':
                             color = Colors.YELLOW  # Yellow for Champion
                             emoji = "🏆 "
-                        elif 'SAVANT' in player_name_upper:
-                            color = Colors.GREEN    # Green for Savant (more distinct from blue)
+                        elif ai_type == 'SAVANT':
+                            color = Colors.BLUEGREEN  # Blue-green for Savant
                             emoji = "🧬 "
+                        elif ai_type == 'DAREDEVIL':
+                            color = Colors.ORANGE  # Orange for Daredevil
+                            emoji = "😈 "
+                        elif ai_type == 'CHEVALIER':
+                            color = Colors.PINK  # Pink for Chevalier
+                            emoji = "🕊️ "
                         else:
                             color = Colors.HEADER  # Default purple/magenta
                             emoji = ""
@@ -607,14 +633,20 @@ class LLMBaseAI(BaseAI):
                 if message:
                     # Always add to action log first
                     if hasattr(gs, 'action_log'):
-                        # Use different colors for different AIs
-                        player_name_upper = self.player_name.upper()
-                        if 'CHAMPION' in player_name_upper:
+                        # Check AI identity (not player name)
+                        ai_type = getattr(self, 'ai_identity', '').upper()
+                        if ai_type == 'CHAMPION':
                             color = Colors.YELLOW  # Yellow for Champion
                             emoji = "🏆 "
-                        elif 'SAVANT' in player_name_upper:
-                            color = Colors.GREEN    # Green for Savant (more distinct from blue)
+                        elif ai_type == 'SAVANT':
+                            color = Colors.BLUEGREEN  # Blue-green for Savant
                             emoji = "🧬 "
+                        elif ai_type == 'DAREDEVIL':
+                            color = Colors.ORANGE  # Orange for Daredevil
+                            emoji = "😈 "
+                        elif ai_type == 'CHEVALIER':
+                            color = Colors.PINK  # Pink for Chevalier
+                            emoji = "🕊️ "
                         else:
                             color = Colors.HEADER  # Default purple/magenta
                             emoji = ""

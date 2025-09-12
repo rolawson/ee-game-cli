@@ -15,6 +15,9 @@ class Colors:
     CYAN = '\033[96m'
     GREY = '\033[90m'
     ENDC = '\033[0m'
+    BLUEGREEN = '\033[38;5;49m'
+    ORANGE = '\033[38;5;208m'
+    PINK = '\033[38;5;213m'
 
 
 class ClaudeSavantAI(LLMBaseAI):
@@ -22,6 +25,7 @@ class ClaudeSavantAI(LLMBaseAI):
     
     def __init__(self):
         super().__init__()
+        self.ai_identity = "SAVANT"  # Fixed identity regardless of player name
         
         # Initialize Anthropic client
         api_key = os.environ.get("ANTHROPIC_API_KEY")

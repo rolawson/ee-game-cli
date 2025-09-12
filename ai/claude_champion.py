@@ -16,6 +16,8 @@ class Colors:
     YELLOW = '\033[93m'
     GREY = '\033[90m'
     ENDC = '\033[0m'
+    ORANGE = '\033[38;5;208m'
+    PINK = '\033[38;5;213m'
 
 
 class ClaudeChampionAI(LLMBaseAI):
@@ -24,6 +26,7 @@ class ClaudeChampionAI(LLMBaseAI):
     
     def __init__(self):
         super().__init__()
+        self.ai_identity = "CHAMPION"  # Fixed identity regardless of player name
         print(f"[ClaudeChampion] Initialized version {self.VERSION}")
         
         # Initialize Anthropic client
@@ -113,6 +116,12 @@ Metal: Reinforce, Besiege, Defend (defense)
     
     async def _get_llm_decision(self, context: Dict[str, Any], decision_type: str) -> Optional[Dict[str, Any]]:
         """Get a decision from Claude Champion"""
+        # Debug: Ensure we're using the right AI
+        if self.engine and hasattr(self.engine, 'ai_decision_logs') and decision_type == "select_card":
+            self.engine.ai_decision_logs.append(
+                f"{Colors.GREY}[DEBUG] Champion AI making decision for {self.player_name}{Colors.ENDC}"
+            )
+        
         try:
             # Build the appropriate prompt based on decision type
             if decision_type == "select_card":
@@ -477,6 +486,7 @@ Metal: Reinforce, Besiege, Defend (defense)
         import random
         
         winner = context['winner']
+        # Check if we won based on our player name in the game
         i_won = winner == context['player_name']
         
         if i_won:

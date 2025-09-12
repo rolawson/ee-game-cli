@@ -17,6 +17,8 @@ from ai.expert import ExpertAI
 try:
     from ai.claude_savant import ClaudeSavantAI
     from ai.claude_champion import ClaudeChampionAI
+    from ai.claude_daredevil import ClaudeDaredevilAI
+    from ai.claude_chevalier import ClaudeChevalierAI
     CLAUDE_AVAILABLE = True
 except ImportError:
     CLAUDE_AVAILABLE = False
@@ -199,6 +201,18 @@ class SpectatorMode:
             else:
                 print(f"Claude Champion not available, falling back to Expert AI")
                 return ExpertAI()
+        elif ai_type == 'claude_daredevil' or ai_type == 'daredevil':
+            if CLAUDE_AVAILABLE:
+                return ClaudeDaredevilAI()
+            else:
+                print(f"Claude Daredevil not available, falling back to Expert AI")
+                return ExpertAI()
+        elif ai_type == 'claude_chevalier' or ai_type == 'chevalier':
+            if CLAUDE_AVAILABLE:
+                return ClaudeChevalierAI()
+            else:
+                print(f"Claude Chevalier not available, falling back to Expert AI")
+                return ExpertAI()
         else:
             return MediumAI()
     
@@ -286,7 +300,7 @@ if __name__ == "__main__":
         print("  python ai_spectator.py hard easy 0.5      # Fast game")
         print("  python ai_spectator.py hard medium 2.0 5  # 5 slower games")
         print("  python ai_spectator.py hard hard 0        # Maximum speed")
-        print("\nAI types: easy, medium, hard, expert, savant, champion")
+        print("\nAI types: easy, medium, hard, expert, savant, champion, daredevil, chevalier")
         print("Delay: seconds between actions (default 1.0)")
         if not CLAUDE_AVAILABLE:
             print("\nNote: Claude AIs require ANTHROPIC_API_KEY environment variable")

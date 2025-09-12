@@ -39,6 +39,8 @@ class Colors:
     WARNING='\033[93m'; FAIL='\033[91m'; ENDC='\033[0m'; BOLD='\033[1m'
     UNDERLINE='\033[4m'; GREY='\033[90m'; YELLOW='\033[93m'
     BLUEGREEN='\033[38;5;49m'  # Custom blue-green for Savant
+    ORANGE='\033[38;5;208m'  # Reddish-orange for Daredevil
+    PINK='\033[38;5;213m'  # Pink for Chevalier
     
 # Element emojis
 ELEMENT_EMOJIS = {
